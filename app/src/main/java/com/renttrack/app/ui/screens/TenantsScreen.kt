@@ -358,7 +358,7 @@ private fun UnitFormDialog(unit: CondoUnit?, condominioId: Long, onDismiss: () -
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (unit != null) "Modifica Unità" else "Nuova Unità") },
+        title = { Text(if (unit != null) "Modifica inquilino" else "Nuovo inquilino") },
         text = {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 item {
@@ -407,7 +407,7 @@ private fun UnitFormDialog(unit: CondoUnit?, condominioId: Long, onDismiss: () -
                         )
                         OutlinedTextField(
                             value = millesimi, onValueChange = { millesimi = it },
-                            label = { Text("Millesimi") }, modifier = Modifier.weight(1f), singleLine = true,
+                            label = { Text("Quota %") }, modifier = Modifier.weight(1f), singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                         )
                     }

@@ -145,7 +145,7 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
                         ) {
                             Icon(Icons.Filled.Business, null, tint = TextSecondary, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(4.dp))
-                            Text("Condomini", color = TextSecondary, style = MaterialTheme.typography.labelMedium)
+                            Text("Proprietà", color = TextSecondary, style = MaterialTheme.typography.labelMedium)
                         }
                         // Reports
                         if (currentRoute != Screen.Reports.route) {

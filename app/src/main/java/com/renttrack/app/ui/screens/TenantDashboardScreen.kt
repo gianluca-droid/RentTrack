@@ -73,7 +73,7 @@ fun TenantDashboardScreen(
                     Spacer(Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            myUnit?.ownerName ?: "Condomino",
+                            myUnit?.ownerName ?: "Inquilino",
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                             color = TextPrimary
                         )
@@ -182,7 +182,7 @@ private fun AppartamentoTab(viewModel: RentViewModel, unit: com.renttrack.app.da
                     InfoRow("Piano", "Piano ${unit.floor}")
                     InfoRow("Tipo", unit.type)
                     InfoRow("Superficie", "${unit.areaMq.toInt()} m²")
-                    InfoRow("Millesimi", "${unit.millesimi.toInt()}/1000")
+                    InfoRow("Quota %", "${unit.millesimi.toInt()}/1000")
                     if (unit.ownerEmail.isNotBlank()) InfoRow("Email", unit.ownerEmail)
                     if (unit.ownerPhone.isNotBlank()) InfoRow("Telefono", unit.ownerPhone)
                 }

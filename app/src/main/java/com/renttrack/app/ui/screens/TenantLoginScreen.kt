@@ -77,7 +77,7 @@ fun TenantLoginScreen(
                     }
                     Spacer(Modifier.height(16.dp))
                     Text(
-                        "Accesso Condomino",
+                        "Accesso Inquilino",
                         style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold),
                         color = TextPrimary
                     )

@@ -21,8 +21,8 @@ sealed class Screen(
     data object Documenti  : Screen("documenti",   "Documenti",  "Archivio documenti",       Icons.Filled.Folder,       Icons.Outlined.FolderOpen)
     data object Reports    : Screen("reports",     "Report",     "Statistiche e report",     Icons.Filled.BarChart,     Icons.Outlined.BarChart)
     // ─── Lato Condomino ───────────────────────────────────────────────
-    data object ResidentLogin     : Screen("resident_login",     "Accesso Condomino",  "Seleziona il tuo appartamento", Icons.Filled.Person,  Icons.Outlined.Person)
-    data object ResidentDashboard : Screen("resident_dashboard", "Area Personale",     "La tua area riservata",         Icons.Filled.Home,    Icons.Outlined.Home)
+    data object ResidentLogin     : Screen("resident_login",     "Accesso Inquilino",  "Accedi come inquilino", Icons.Filled.Person,  Icons.Outlined.Person)
+    data object ResidentDashboard : Screen("resident_dashboard", "La mia area",     "Visualizza i tuoi pagamenti",         Icons.Filled.Home,    Icons.Outlined.Home)
 
     companion object {
         val bottomNavItems    by lazy { listOf(Dashboard, Tenants, Expenses, Payments, Documenti) }

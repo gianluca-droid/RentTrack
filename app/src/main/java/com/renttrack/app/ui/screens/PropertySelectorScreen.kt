@@ -59,7 +59,7 @@ fun PropertySelectorScreen(
                     Text("🏢", fontSize = 40.sp)
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        "I tuoi Condomini",
+                        "Le mie proprietà",
                         style = MaterialTheme.typography.headlineMedium.copy(
                             fontWeight = FontWeight.ExtraBold, color = TextPrimary
                         )
@@ -299,7 +299,7 @@ fun AddCondominioSheet(
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             Text(
-                if (condominio == null) "Nuovo Condominio" else "Modifica Condominio",
+                if (condominio == null) "Nuova Proprietà" else "Modifica Proprietà",
                 style = MaterialTheme.typography.titleLarge.copy(
                     fontWeight = FontWeight.Bold, color = TextPrimary
                 )
