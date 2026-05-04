@@ -17,17 +17,18 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.renttrack.app.data.model.Condominio
+import com.renttrack.app.ui.components.Formatters
 import com.renttrack.app.ui.components.condoTextFieldColors
 import com.renttrack.app.ui.theme.*
 import com.renttrack.app.viewmodel.RentViewModel
 
-private val condoGradients = listOf(
-    listOf(Color(0xFF6C63FF), Color(0xFF3DDC84)),
-    listOf(Color(0xFF54A0FF), Color(0xFF00C896)),
-    listOf(Color(0xFFFF9F43), Color(0xFFFF6B9D)),
-    listOf(Color(0xFFA29BFE), Color(0xFF54A0FF)),
-    listOf(Color(0xFF00C896), Color(0xFF6C63FF)),
-    listOf(Color(0xFFFF6B6B), Color(0xFFFF9F43))
+private val propertyGradients = listOf(
+    listOf(Color(0xFF00D4FF), Color(0xFF6C63FF)),
+    listOf(Color(0xFF10B981), Color(0xFF00D4FF)),
+    listOf(Color(0xFFF59E0B), Color(0xFFEC4899)),
+    listOf(Color(0xFFA78BFA), Color(0xFF00D4FF)),
+    listOf(Color(0xFF34D399), Color(0xFF6C63FF)),
+    listOf(Color(0xFFF87171), Color(0xFFF59E0B))
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -35,13 +36,12 @@ private val condoGradients = listOf(
 fun PropertySelectorScreen(
     viewModel: RentViewModel,
     onCondominioSelected: (Long) -> Unit,
-    onResidentAccess: () -> Unit = {}
+    onResidentAccess: () -> Unit = {}   // parametro mantenuto per compatibilità, non usato
 ) {
-    val condomini by viewModel.allCondomini.collectAsState()
-    val units by viewModel.units.collectAsState()
+    val proprieta by viewModel.allCondomini.collectAsState()
     var showAddSheet by remember { mutableStateOf(false) }
-    var condominioToEdit by remember { mutableStateOf<Condominio?>(null) }
-    var condominioToDelete by remember { mutableStateOf<Condominio?>(null) }
+    var toEdit by remember { mutableStateOf<Condominio?>(null) }
+    var toDelete by remember { mutableStateOf<Condominio?>(null) }
 
     Box(modifier = Modifier.fillMaxSize().background(DarkBg)) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -50,13 +50,11 @@ fun PropertySelectorScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(
-                        Brush.verticalGradient(listOf(Color(0xFF1A1A2E), DarkBg))
-                    )
+                    .background(Brush.verticalGradient(listOf(Color(0xFF0D1B2A), DarkBg)))
                     .padding(horizontal = 24.dp, vertical = 32.dp)
             ) {
                 Column {
-                    Text("🏢", fontSize = 40.sp)
+                    Text("🏠", fontSize = 40.sp)
                     Spacer(Modifier.height(8.dp))
                     Text(
                         "Le mie proprietà",
@@ -65,7 +63,8 @@ fun PropertySelectorScreen(
                         )
                     )
                     Text(
-                        "${condomini.size} condomini${if (condomini.size != 1) "" else "o"} gestito${if (condomini.size != 1) "i" else ""}",
+                        if (proprieta.isEmpty()) "Aggiungi il primo immobile"
+                        else "${proprieta.size} ${if (proprieta.size == 1) "immobile" else "immobili"} in gestione",
                         style = MaterialTheme.typography.bodyMedium,
                         color = TextMuted
                     )
@@ -74,22 +73,30 @@ fun PropertySelectorScreen(
 
             HorizontalDivider(color = DarkSurface)
 
-            if (condomini.isEmpty()) {
+            if (proprieta.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         Text("🏗️", fontSize = 56.sp)
-                        Text("Nessun condominio ancora", color = TextMuted,
-                            style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            "Nessuna proprietà ancora",
+                            color = TextMuted,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        Text(
+                            "Aggiungi il tuo primo immobile per iniziare",
+                            color = TextMuted.copy(alpha = 0.6f),
+                            style = MaterialTheme.typography.bodySmall
+                        )
                         Button(
                             onClick = { showAddSheet = true },
                             colors = ButtonDefaults.buttonColors(containerColor = Cyan400, contentColor = DarkBg)
                         ) {
                             Icon(Icons.Filled.Add, null)
                             Spacer(Modifier.width(8.dp))
-                            Text("Crea il primo condominio", fontWeight = FontWeight.Bold)
+                            Text("Aggiungi prima proprietà", fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -98,18 +105,13 @@ fun PropertySelectorScreen(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    itemsIndexed(condomini) { index, condo ->
-                        // Calcola stats per questa card
-                        val condoUnits = viewModel.allCondomini.collectAsState().value
-                        val unitCount = units.count()   // units è già filtered per activeCondominio, usiamo allUnits
-                        // Otteniamo le info dai flow globali: per semplicità usiamo conteggi da cedolini in memoria
-                        val pendingForThis = 0   // placeholder — i dati vengono caricati solo per il condominio attivo
-                        CondominioCard(
-                            condominio = condo,
-                            gradient = condoGradients[index % condoGradients.size],
-                            onClick = { onCondominioSelected(condo.id) },
-                            onEdit = { condominioToEdit = condo },
-                            onDelete = { condominioToDelete = condo }
+                    itemsIndexed(proprieta) { index, prop ->
+                        PropertyCard(
+                            proprieta = prop,
+                            gradient = propertyGradients[index % propertyGradients.size],
+                            onClick = { onCondominioSelected(prop.id) },
+                            onEdit = { toEdit = prop },
+                            onDelete = { toDelete = prop }
                         )
                     }
                     item { Spacer(Modifier.height(80.dp)) }
@@ -117,34 +119,22 @@ fun PropertySelectorScreen(
             }
         }
 
+        // FAB — aggiungi proprietà
         FloatingActionButton(
             onClick = { showAddSheet = true },
             modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
             containerColor = Cyan400, contentColor = DarkBg
-        ) { Icon(Icons.Filled.Add, "Aggiungi condominio") }
-
-        // Accesso condomino (area riservata mock)
-        OutlinedButton(
-            onClick = onResidentAccess,
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(16.dp),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = Purple400),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Purple400.copy(alpha = 0.5f))
-        ) {
-            Icon(Icons.Filled.Person, null, modifier = Modifier.size(16.dp))
-            Spacer(Modifier.width(6.dp))
-            Text("Area Condomino", style = MaterialTheme.typography.labelMedium)
-        }
+        ) { Icon(Icons.Filled.Add, "Aggiungi proprietà") }
+        // RIMOSSO: bottone "Area Condomino"
     }
 
     if (showAddSheet) {
-        AddCondominioSheet(
-            condominio = null,
+        PropertyFormSheet(
+            proprieta = null,
             onDismiss = { showAddSheet = false },
-            onConfirm = { nome, indirizzo, citta, cf, note ->
+            onConfirm = { nome, indirizzo, citta, note ->
                 viewModel.addCondominio(
-                    Condominio(nome = nome, indirizzo = indirizzo, citta = citta, cf = cf, note = note),
+                    Condominio(nome = nome, indirizzo = indirizzo, citta = citta, note = note),
                     andSelect = false
                 )
                 showAddSheet = false
@@ -152,42 +142,45 @@ fun PropertySelectorScreen(
         )
     }
 
-    condominioToEdit?.let { condo ->
-        AddCondominioSheet(
-            condominio = condo,
-            onDismiss = { condominioToEdit = null },
-            onConfirm = { nome, indirizzo, citta, cf, note ->
-                viewModel.updateCondominio(condo.copy(nome = nome, indirizzo = indirizzo, citta = citta, cf = cf, note = note))
-                condominioToEdit = null
+    toEdit?.let { prop ->
+        PropertyFormSheet(
+            proprieta = prop,
+            onDismiss = { toEdit = null },
+            onConfirm = { nome, indirizzo, citta, note ->
+                viewModel.updateCondominio(prop.copy(nome = nome, indirizzo = indirizzo, citta = citta, note = note))
+                toEdit = null
             }
         )
     }
 
-    condominioToDelete?.let { condo ->
+    toDelete?.let { prop ->
         AlertDialog(
-            onDismissRequest = { condominioToDelete = null },
+            onDismissRequest = { toDelete = null },
             containerColor = DarkSurface,
-            icon = { Icon(Icons.Filled.DeleteForever, null, tint = Color(0xFFFF6B6B)) },
-            title = { Text("Elimina condominio", color = TextPrimary, fontWeight = FontWeight.Bold) },
+            icon = { Icon(Icons.Filled.DeleteForever, null, tint = Red400) },
+            title = { Text("Elimina proprietà", color = TextPrimary, fontWeight = FontWeight.Bold) },
             text = {
-                Text("Eliminare \"${condo.nome}\"?\nTutti i dati (unità, spese, documenti) verranno eliminati definitivamente.",
-                    color = TextSecondary)
+                Text(
+                    "Eliminare \"${prop.nome}\"?\nTutti i dati (inquilini, spese, documenti) verranno eliminati definitivamente.",
+                    color = TextSecondary
+                )
             },
             confirmButton = {
-                TextButton(onClick = { viewModel.deleteCondominio(condo); condominioToDelete = null }) {
-                    Text("Elimina", color = Color(0xFFFF6B6B), fontWeight = FontWeight.Bold)
+                TextButton(onClick = { viewModel.deleteCondominio(prop); toDelete = null }) {
+                    Text("Elimina", color = Red400, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { condominioToDelete = null }) { Text("Annulla", color = TextSecondary) }
+                TextButton(onClick = { toDelete = null }) { Text("Annulla", color = TextSecondary) }
             }
         )
     }
 }
 
+// ─── Card proprietà ────────────────────────────────────────────────────
 @Composable
-fun CondominioCard(
-    condominio: Condominio,
+fun PropertyCard(
+    proprieta: Condominio,
     gradient: List<Color>,
     onClick: () -> Unit,
     onEdit: () -> Unit,
@@ -204,7 +197,7 @@ fun CondominioCard(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(6.dp)
+                    .height(5.dp)
                     .background(Brush.horizontalGradient(gradient))
             )
             Row(
@@ -215,82 +208,76 @@ fun CondominioCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                // Icona
                 Box(
                     modifier = Modifier
-                        .size(54.dp)
+                        .size(52.dp)
                         .background(Brush.linearGradient(gradient.map { it.copy(alpha = 0.2f) }), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Filled.Apartment, null, tint = gradient[0], modifier = Modifier.size(28.dp))
+                    Icon(Icons.Filled.Home, null, tint = gradient[0], modifier = Modifier.size(28.dp))
                 }
 
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text(
-                        condominio.nome,
+                        proprieta.nome,
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Bold, color = TextPrimary
                         ),
                         maxLines = 1, overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        "${condominio.indirizzo}, ${condominio.citta}",
+                        "${proprieta.indirizzo}, ${proprieta.citta}",
                         style = MaterialTheme.typography.bodySmall, color = TextSecondary,
                         maxLines = 1, overflow = TextOverflow.Ellipsis
                     )
-                    if (condominio.cf.isNotBlank()) {
-                        Text("CF: ${condominio.cf}", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                    if (proprieta.note.isNotBlank()) {
+                        Text(
+                            proprieta.note,
+                            style = MaterialTheme.typography.labelSmall, color = TextMuted,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis
+                        )
                     }
                 }
 
-                Column(
-                    horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
+                Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
                         Icon(Icons.Outlined.Edit, "Modifica", tint = TextMuted, modifier = Modifier.size(18.dp))
                     }
                     IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Outlined.Delete, "Elimina", tint = Color(0xFFFF6B6B).copy(alpha = 0.7f), modifier = Modifier.size(18.dp))
+                        Icon(Icons.Outlined.Delete, "Elimina", tint = Red400.copy(alpha = 0.7f), modifier = Modifier.size(18.dp))
                     }
                 }
             }
 
-            // Footer con bottone "Entra"
-            HorizontalDivider(color = gradient[0].copy(alpha = 0.15f))
+            HorizontalDivider(color = gradient[0].copy(alpha = 0.12f))
             TextButton(
                 onClick = onClick,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
                 Text(
-                    "Entra nel condominio",
+                    "Gestisci →",
                     color = gradient[0],
                     style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold)
                 )
-                Spacer(Modifier.width(4.dp))
-                Icon(Icons.Filled.ArrowForward, null, tint = gradient[0], modifier = Modifier.size(16.dp))
             }
         }
     }
 }
 
+// ─── Form aggiunta/modifica proprietà ─────────────────────────────────
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddCondominioSheet(
-    condominio: Condominio?,
+fun PropertyFormSheet(
+    proprieta: Condominio?,
     onDismiss: () -> Unit,
-    onConfirm: (nome: String, indirizzo: String, citta: String, cf: String, note: String) -> Unit
+    onConfirm: (nome: String, indirizzo: String, citta: String, note: String) -> Unit
 ) {
-    var nome by remember { mutableStateOf(condominio?.nome ?: "") }
-    var indirizzo by remember { mutableStateOf(condominio?.indirizzo ?: "") }
-    var citta by remember { mutableStateOf(condominio?.citta ?: "") }
-    var cf by remember { mutableStateOf(condominio?.cf ?: "") }
-    var note by remember { mutableStateOf(condominio?.note ?: "") }
+    var nome      by remember { mutableStateOf(proprieta?.nome ?: "") }
+    var indirizzo by remember { mutableStateOf(proprieta?.indirizzo ?: "") }
+    var citta     by remember { mutableStateOf(proprieta?.citta ?: "") }
+    var note      by remember { mutableStateOf(proprieta?.note ?: "") }
 
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        containerColor = DarkSurface
-    ) {
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = DarkSurface) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -299,28 +286,40 @@ fun AddCondominioSheet(
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             Text(
-                if (condominio == null) "Nuova Proprietà" else "Modifica Proprietà",
-                style = MaterialTheme.typography.titleLarge.copy(
-                    fontWeight = FontWeight.Bold, color = TextPrimary
-                )
+                if (proprieta == null) "📍 Nuova proprietà" else "✏️ Modifica proprietà",
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, color = TextPrimary)
             )
-            OutlinedTextField(nome, { nome = it }, label = { Text("Nome condominio *") },
-                modifier = Modifier.fillMaxWidth(), singleLine = true, colors = condoTextFieldColors())
-            OutlinedTextField(indirizzo, { indirizzo = it }, label = { Text("Indirizzo *") },
-                modifier = Modifier.fillMaxWidth(), singleLine = true, colors = condoTextFieldColors())
-            OutlinedTextField(citta, { citta = it }, label = { Text("Città *") },
-                modifier = Modifier.fillMaxWidth(), singleLine = true, colors = condoTextFieldColors())
-            OutlinedTextField(cf, { cf = it }, label = { Text("Codice fiscale condominio") },
-                modifier = Modifier.fillMaxWidth(), singleLine = true, colors = condoTextFieldColors())
-            OutlinedTextField(note, { note = it }, label = { Text("Note") },
-                modifier = Modifier.fillMaxWidth(), minLines = 2, maxLines = 3, colors = condoTextFieldColors())
+            OutlinedTextField(
+                nome, { nome = it },
+                label = { Text("Nome immobile *  (es. Via Roma 12 - Milano)") },
+                modifier = Modifier.fillMaxWidth(), singleLine = true,
+                colors = condoTextFieldColors()
+            )
+            OutlinedTextField(
+                indirizzo, { indirizzo = it },
+                label = { Text("Indirizzo *") },
+                modifier = Modifier.fillMaxWidth(), singleLine = true,
+                colors = condoTextFieldColors()
+            )
+            OutlinedTextField(
+                citta, { citta = it },
+                label = { Text("Città *") },
+                modifier = Modifier.fillMaxWidth(), singleLine = true,
+                colors = condoTextFieldColors()
+            )
+            OutlinedTextField(
+                note, { note = it },
+                label = { Text("Note (es. 2° piano, arredato, ...)") },
+                modifier = Modifier.fillMaxWidth(), minLines = 2, maxLines = 3,
+                colors = condoTextFieldColors()
+            )
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedButton(
                     onClick = onDismiss, modifier = Modifier.weight(1f),
                     border = BorderStroke(1.dp, TextMuted.copy(alpha = 0.4f))
                 ) { Text("Annulla", color = TextSecondary) }
                 Button(
-                    onClick = { onConfirm(nome.trim(), indirizzo.trim(), citta.trim(), cf.trim(), note.trim()) },
+                    onClick = { onConfirm(nome.trim(), indirizzo.trim(), citta.trim(), note.trim()) },
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(containerColor = Cyan400, contentColor = DarkBg),
                     enabled = nome.isNotBlank() && indirizzo.isNotBlank() && citta.isNotBlank()

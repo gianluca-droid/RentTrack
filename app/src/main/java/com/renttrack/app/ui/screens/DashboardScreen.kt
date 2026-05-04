@@ -82,14 +82,14 @@ fun DashboardScreen(viewModel: RentViewModel) {
                     icon = Icons.Filled.Description,
                     accentColor = if (pendingCedolini > 0) Amber400 else Green400,
                     modifier = Modifier.weight(1f),
-                    subtitle = "$pendingCedolini cedolini aperti",
+                    subtitle = "$pendingCedolini avvisi aperti",
                     onClick = { if (pendingCedolini > 0) showOpenCedoliniSheet = true }
                 )
             }
         }
 
         // ─── Spese per Categoria ────────────────────────────────
-        item { SectionHeader("Spese per Categoria") }
+        item { SectionHeader("Spese per categoria immobile") }
 
         if (expensesByCategory.isNotEmpty()) {
             item {
@@ -133,7 +133,7 @@ fun DashboardScreen(viewModel: RentViewModel) {
         }
 
         // ─── Ultime Spese ───────────────────────────────────────
-        item { SectionHeader("Ultime Spese") }
+        item { SectionHeader("Ultime spese di manutenzione") }
 
         val recentExpenses = expenses.take(5)
         items(recentExpenses) { expense ->
@@ -155,7 +155,7 @@ fun DashboardScreen(viewModel: RentViewModel) {
         }
 
         // ─── Ultimi Pagamenti ───────────────────────────────────
-        item { SectionHeader("Ultimi Pagamenti") }
+        item { SectionHeader("Ultimi affitti incassati") }
 
         val recentPayments = payments.take(5)
         items(recentPayments) { payment ->
@@ -231,12 +231,12 @@ private fun OpenCedoliniSheet(
             Spacer(Modifier.width(8.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    "Quote da Incassare",
+                    "Affitti da Incassare",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
                     color = TextPrimary
                 )
                 Text(
-                    "${openCedolini.size} cedolini aperti · ${byUnit.size} condomini",
+                    "${openCedolini.size} avvisi aperti · ${byUnit.size} inquilini",
                     style = MaterialTheme.typography.bodySmall,
                     color = TextMuted
                 )
@@ -269,9 +269,9 @@ private fun OpenCedoliniSheet(
                 val ownerLabel = unit?.let {
                     buildString {
                         if (it.scala.isNotBlank()) append("${it.scala} · ")
-                        append("Int. ${it.number} — ${it.ownerName}")
+                        append("${it.ownerName} — ${it.number}")
                     }
-                } ?: "Unità sconosciuta"
+                } ?: "Inquilino sconosciuto"
                 val unitTotal = ceds.sumOf { it.cedolino.total }
 
                 item(key = "sheet_unit_$unitId") {
