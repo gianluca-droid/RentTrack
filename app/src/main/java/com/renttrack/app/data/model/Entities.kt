@@ -3,7 +3,7 @@ package com.renttrack.app.data.model
 import androidx.room.*
 
 // â”€â”€â”€ Condominio â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-@Entity(tableName = "Proprietà")
+@Entity(tableName = "condomini")
 data class Condominio(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val nome: String,
@@ -83,7 +83,7 @@ data class Payment(
 
 // â”€â”€â”€ Cedolino â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @Entity(
-    tableName = "Affitti",
+    tableName = "cedolini",
     foreignKeys = [ForeignKey(
         entity = CondoUnit::class,
         parentColumns = ["id"], childColumns = ["unitId"],
