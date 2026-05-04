@@ -1,15 +1,15 @@
-plugins {
+﻿plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("com.google.devtools.ksp")
 }
 
 android {
-    namespace = "com.condogest.app"
+    namespace = "com.renttrack.app"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.condogest.app"
+        applicationId = "com.renttrack.app"
         minSdk = 26
         targetSdk = 35
         versionCode = 1
@@ -88,10 +88,11 @@ dependencies {
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
-    // Image loading (anteprima foto nei documenti) — Coil2 compatibile con compileSdk 34
+    // Image loading (anteprima foto nei documenti) â€” Coil2 compatibile con compileSdk 34
     implementation("io.coil-kt:coil-compose:2.6.0")
 
     // Debug
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
+

@@ -1,12 +1,12 @@
-<resources>
-    <string name="app_name">CondoGest</string>
+﻿<resources>
+    <string name="app_name">RentTrack</string>
     <string name="dashboard">Dashboard</string>
-    <string name="units">Unità</string>
+    <string name="units">UnitÃ </string>
     <string name="expenses">Spese</string>
     <string name="payments">Pagamenti</string>
     <string name="cedolini">Cedolini</string>
     <string name="reports">Report</string>
-    <string name="add_unit">Aggiungi Unità</string>
+    <string name="add_unit">Aggiungi UnitÃ </string>
     <string name="add_expense">Registra Spesa</string>
     <string name="add_payment">Registra Pagamento</string>
     <string name="generate_cedolino">Genera Cedolino</string>
@@ -20,5 +20,6 @@
     <string name="total_payments">Totale Incassi</string>
     <string name="balance">Saldo</string>
     <string name="pending">In Sospeso</string>
-    <string name="currency_symbol">€</string>
+    <string name="currency_symbol">â‚¬</string>
 </resources>
+
