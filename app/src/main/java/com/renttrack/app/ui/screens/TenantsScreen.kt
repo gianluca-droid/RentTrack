@@ -30,53 +30,27 @@ import com.renttrack.app.viewmodel.RentViewModel
 fun TenantsScreen(viewModel: RentViewModel) {
     val units by viewModel.units.collectAsState()
     val activeCondominioId by viewModel.activeCondominioId.collectAsState()
-    val collapsedScales by viewModel.collapsedScales.collectAsState()
     var showDialog by remember { mutableStateOf(false) }
     var editingUnit by remember { mutableStateOf<CondoUnit?>(null) }
     var deleteTarget by remember { mutableStateOf<CondoUnit?>(null) }
     var searchQuery by rememberSaveable { mutableStateOf("") }
 
-    // Unità filtrate dalla ricerca
     val filteredUnits = remember(units, searchQuery) {
         if (searchQuery.isBlank()) units
-        else units.filter { unit ->
-            unit.ownerName.contains(searchQuery, ignoreCase = true) ||
-            unit.number.contains(searchQuery, ignoreCase = true) ||
-            unit.scala.contains(searchQuery, ignoreCase = true)
+        else units.filter { u ->
+            u.ownerName.contains(searchQuery, ignoreCase = true) ||
+            u.number.contains(searchQuery, ignoreCase = true) ||
+            u.ownerEmail.contains(searchQuery, ignoreCase = true) ||
+            u.ownerPhone.contains(searchQuery, ignoreCase = true)
         }
     }
 
-    // Raggruppamento per scala, poi ordinamento per piano dentro ogni scala
-    // Unità senza scala vanno in un gruppo "—" posto alla fine
-    val groupedUnits = remember(filteredUnits) {
-        val withScala = filteredUnits
-            .filter { it.scala.isNotBlank() }
-            .groupBy { it.scala }
-            .toSortedMap()
-            .mapValues { (_, v) -> v.sortedBy { it.floor } }
-
-        val noScala = filteredUnits
-            .filter { it.scala.isBlank() }
-            .sortedBy { it.floor }
-
-        // Se tutte le unità non hanno scala → un solo gruppo senza etichetta
-        if (withScala.isEmpty()) {
-            if (noScala.isEmpty()) emptyMap() else mapOf("" to noScala)
-        } else {
-            val result = mutableMapOf<String, List<CondoUnit>>()
-            result.putAll(withScala)
-            if (noScala.isNotEmpty()) result["—"] = noScala
-            result
-        }
-    }
-
-    // Stato di espansione dal ViewModel (persiste tra navigazioni)
-
-    val totalMillesimi = units.sumOf { it.millesimi }
+    // Canone totale mensile = somma dei "millesimi" (riutilizzato come canone)
+    val totalMonthlyRent = units.sumOf { it.millesimi }
 
     Box(modifier = Modifier.fillMaxSize()) {
         if (units.isEmpty()) {
-            EmptyState("Nessuna unità registrata", Icons.Filled.Apartment)
+            EmptyState("Nessun inquilino registrato", Icons.Filled.Person)
         } else {
             LazyColumn(
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 96.dp),
@@ -85,11 +59,11 @@ fun TenantsScreen(viewModel: RentViewModel) {
                 // Summary card
                 item {
                     SummaryCard(
-                        title = "Totale Unità",
+                        title = "Inquilini attivi",
                         value = "${units.size}",
-                        icon = Icons.Filled.Apartment,
+                        icon = Icons.Filled.People,
                         accentColor = Cyan400,
-                        subtitle = "Millesimi: ${totalMillesimi.toInt()}/1000 · ${groupedUnits.keys.count { s -> s.isNotBlank() && s != "—" }} scale"
+                        subtitle = "Entrata mensile totale: ${Formatters.currency(totalMonthlyRent)}"
                     )
                 }
 
@@ -97,8 +71,8 @@ fun TenantsScreen(viewModel: RentViewModel) {
                 item {
                     OutlinedTextField(
                         value = searchQuery,
-                        onValueChange = { newValue -> searchQuery = newValue },
-                        placeholder = { Text("Cerca per proprietario, interno o scala…", style = MaterialTheme.typography.bodyMedium, color = TextMuted) },
+                        onValueChange = { searchQuery = it },
+                        placeholder = { Text("Cerca per nome, email o telefono…", style = MaterialTheme.typography.bodyMedium, color = TextMuted) },
                         leadingIcon = { Icon(Icons.Filled.Search, null, tint = TextMuted) },
                         trailingIcon = {
                             if (searchQuery.isNotBlank()) {
@@ -120,72 +94,38 @@ fun TenantsScreen(viewModel: RentViewModel) {
                     )
                 }
 
-                // Nessun risultato
                 if (filteredUnits.isEmpty() && searchQuery.isNotBlank()) {
                     item {
-                        Box(
-                            modifier = Modifier.fillMaxWidth().padding(32.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
+                        Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Icon(Icons.Filled.SearchOff, null, tint = TextMuted, modifier = Modifier.size(40.dp))
                                 Spacer(Modifier.height(8.dp))
-                                Text("Nessuna unità trovata per \"$searchQuery\"", color = TextMuted, style = MaterialTheme.typography.bodyMedium)
+                                Text("Nessun inquilino trovato per \"$searchQuery\"", color = TextMuted, style = MaterialTheme.typography.bodyMedium)
                             }
                         }
                     }
                 }
 
-                // Sezioni per scala
-                groupedUnits.forEach { (scala, unitsInScala) ->
-                    val isExpanded = scala !in collapsedScales
-                    val scalaMillesimi = unitsInScala.sumOf { it.millesimi }
-                    val hasLabel = scala.isNotBlank() && scala != "—" || scala == "—"
-
-                    // Header scala (solo se c'è più di un gruppo o il gruppo ha un nome)
-                    if (groupedUnits.size > 1 || (groupedUnits.size == 1 && hasLabel)) {
-                        item(key = "header_$scala") {
-                            ScalaHeader(
-                                scala = scala,
-                                unitCount = unitsInScala.size,
-                                millesimi = scalaMillesimi,
-                                isExpanded = scala !in collapsedScales,
-                                onToggle = { viewModel.toggleScala(scala) }
-                            )
-                        }
-                    }
-
-                    // Unità della scala (con animazione collasso)
-                    if (scala !in collapsedScales) {
-                        items(unitsInScala, key = { it.id }) { unit ->
-                            AnimatedVisibility(
-                                visible = true,
-                                enter = fadeIn() + expandVertically(),
-                                exit = fadeOut() + shrinkVertically()
-                            ) {
-                                UnitCard(
-                                    unit = unit,
-                                    showScalaBadge = groupedUnits.size == 1, // mostra scala nella card solo se unico gruppo
-                                    onEdit = { editingUnit = unit; showDialog = true },
-                                    onDelete = { deleteTarget = unit }
-                                )
-                            }
-                        }
-                    }
+                items(filteredUnits, key = { it.id }) { unit ->
+                    TenantCard(
+                        unit = unit,
+                        onEdit = { editingUnit = unit; showDialog = true },
+                        onDelete = { deleteTarget = unit }
+                    )
                 }
             }
         }
 
         GradientFab(
             icon = Icons.Filled.Add,
-            contentDescription = "Aggiungi unità",
+            contentDescription = "Aggiungi inquilino",
             onClick = { editingUnit = null; showDialog = true },
             modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)
         )
     }
 
     if (showDialog) {
-        UnitFormDialog(
+        TenantFormDialog(
             unit = editingUnit,
             condominioId = activeCondominioId,
             onDismiss = { showDialog = false; editingUnit = null },
@@ -198,202 +138,143 @@ fun TenantsScreen(viewModel: RentViewModel) {
 
     deleteTarget?.let { unit ->
         ConfirmDeleteDialog(
-            itemName = "Int. ${unit.number} - ${unit.ownerName}",
+            itemName = "${unit.ownerName} — ${unit.number}",
             onConfirm = { viewModel.deleteUnit(unit); deleteTarget = null },
             onDismiss = { deleteTarget = null }
         )
     }
 }
 
-// ─── Header collassabile per scala ───────────────────────────────────
+// ─── Card inquilino ───────────────────────────────────────────────────
 @Composable
-private fun ScalaHeader(
-    scala: String,
-    unitCount: Int,
-    millesimi: Double,
-    isExpanded: Boolean,
-    onToggle: () -> Unit
-) {
-    val displayName = when {
-        scala.isBlank() || scala == "—" -> "Unità senza raggruppamento"
-        else -> scala  // mostra esattamente ciò che l'admin ha scritto (A, Nord, Corpo B, ecc.)
-    }
-
-    Card(
-        onClick = onToggle,
-        colors = CardDefaults.cardColors(containerColor = DarkSurface),
-        shape = RoundedCornerShape(14.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Icona scala con lettera
+private fun TenantCard(unit: CondoUnit, onEdit: () -> Unit, onDelete: () -> Unit) {
+    val hasCanonemensile = unit.millesimi > 0
+    ItemCard(onEdit = onEdit, onDelete = onDelete) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            // Avatar iniziali
             Box(
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(44.dp)
                     .clip(CircleShape)
                     .background(
-                        Brush.radialGradient(listOf(Cyan500.copy(alpha = 0.3f), Cyan400.copy(alpha = 0.1f)))
+                        Brush.radialGradient(listOf(Cyan500.copy(alpha = 0.3f), Purple500.copy(alpha = 0.1f)))
                     ),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    if (scala.isBlank() || scala == "—") "?" else scala.take(1).uppercase(),
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    unit.ownerName.split(" ").take(2).mapNotNull { it.firstOrNull()?.toString() }.joinToString(""),
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, fontSize = 14.sp),
                     color = Cyan400
                 )
             }
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    displayName,
-                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                    color = TextPrimary
-                )
-                Text(
-                    "$unitCount ${if (unitCount == 1) "unità" else "unità"} · ${millesimi.toInt()} mill.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = TextMuted
-                )
-            }
-            Icon(
-                if (isExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                contentDescription = if (isExpanded) "Comprimi" else "Espandi",
-                tint = Cyan400
-            )
-        }
-    }
-}
-
-// ─── Card unità ───────────────────────────────────────────────────────
-@Composable
-private fun UnitCard(
-    unit: CondoUnit,
-    showScalaBadge: Boolean,
-    onEdit: () -> Unit,
-    onDelete: () -> Unit
-) {
-    ItemCard(onEdit = onEdit, onDelete = onDelete) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            // Piano indicator
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(DarkSurface),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        "P${unit.floor}",
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 11.sp),
-                        color = Cyan400
-                    )
-                }
-            }
-            Spacer(Modifier.width(10.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        "Int. ${unit.number}",
-                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                        color = TextPrimary
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    StatusBadge(unit.type)
-                    if (showScalaBadge && unit.scala.isNotBlank()) {
-                        Spacer(Modifier.width(4.dp))
-                        Surface(
-                            shape = RoundedCornerShape(4.dp),
-                            color = Cyan400.copy(alpha = 0.12f)
-                        ) {
-                            Text(
-                                unit.scala,   // valore libero: A, Nord, Corpo B...
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Cyan400,
-                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
-                            )
-                        }
-                    }
-                }
-                Text(unit.ownerName, style = MaterialTheme.typography.bodyMedium, color = TextPrimary)
+                Text(unit.ownerName, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = TextPrimary)
+                Text(unit.number, style = MaterialTheme.typography.bodySmall, color = TextSecondary)
                 if (unit.ownerPhone.isNotBlank()) {
-                    Text("📞 ${unit.ownerPhone}", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                    Text("📞 ${unit.ownerPhone}", style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                }
+                if (unit.ownerEmail.isNotBlank()) {
+                    Text("✉ ${unit.ownerEmail}", style = MaterialTheme.typography.labelSmall, color = TextMuted)
                 }
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    "${unit.areaMq.toInt()} m²",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = TextMuted
-                )
-                Text(
-                    "${unit.millesimi.toInt()} mill.",
-                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                    color = Purple400
-                )
+                if (hasCanonemensile) {
+                    Text(
+                        Formatters.currency(unit.millesimi),
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                        color = Green400
+                    )
+                    Text("/mese", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                }
+                if (unit.areaMq > 0) {
+                    Text("${unit.areaMq.toInt()} m²", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                }
             }
         }
     }
 }
 
-// ─── Form dialog ──────────────────────────────────────────────────────
+// ─── Form dialog inquilino ─────────────────────────────────────────────
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun UnitFormDialog(unit: CondoUnit?, condominioId: Long, onDismiss: () -> Unit, onSave: (CondoUnit) -> Unit) {
-    var number by remember { mutableStateOf(unit?.number ?: "") }
-    var scala by remember { mutableStateOf(unit?.scala ?: "") }
-    var floor by remember { mutableStateOf(unit?.floor?.toString() ?: "0") }
-    var type by remember { mutableStateOf(unit?.type ?: "Appartamento") }
-    var areaMq by remember { mutableStateOf(unit?.areaMq?.toString() ?: "") }
-    var millesimi by remember { mutableStateOf(unit?.millesimi?.toString() ?: "") }
-    var ownerName by remember { mutableStateOf(unit?.ownerName ?: "") }
-    var ownerEmail by remember { mutableStateOf(unit?.ownerEmail ?: "") }
-    var ownerPhone by remember { mutableStateOf(unit?.ownerPhone ?: "") }
-    var typeExpanded by remember { mutableStateOf(false) }
+private fun TenantFormDialog(unit: CondoUnit?, condominioId: Long, onDismiss: () -> Unit, onSave: (CondoUnit) -> Unit) {
+    var ownerName    by remember { mutableStateOf(unit?.ownerName ?: "") }
+    var ownerEmail   by remember { mutableStateOf(unit?.ownerEmail ?: "") }
+    var ownerPhone   by remember { mutableStateOf(unit?.ownerPhone ?: "") }
+    var number       by remember { mutableStateOf(unit?.number ?: "") }       // es. "Ap. 1", "Int. 2"
+    var canone       by remember { mutableStateOf(if ((unit?.millesimi ?: 0.0) > 0) unit!!.millesimi.toString() else "") }
+    var areaMq       by remember { mutableStateOf(if ((unit?.areaMq ?: 0.0) > 0) unit!!.areaMq.toString() else "") }
+    var tipo         by remember { mutableStateOf(unit?.type ?: "Appartamento") }
+    var tipoExpanded by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (unit != null) "Modifica inquilino" else "Nuovo inquilino") },
+        containerColor = DarkSurface,
+        title = {
+            Text(
+                if (unit != null) "Modifica inquilino" else "Nuovo inquilino",
+                color = TextPrimary, fontWeight = FontWeight.Bold
+            )
+        },
         text = {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+
+                // ── Dati personali ──
                 item {
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        OutlinedTextField(
-                            value = scala,
-                            onValueChange = { scala = it },  // libero: A, B, Nord, Corpo 1, Torre Est...
-                            label = { Text("Scala / Blocco / Corpo") },
-                            modifier = Modifier.weight(1f), singleLine = true,
-                            placeholder = { Text("es. A, Nord, Corpo 1", color = TextMuted) }
-                        )
-                        OutlinedTextField(
-                            value = number, onValueChange = { number = it },
-                            label = { Text("Interno") },
-                            modifier = Modifier.weight(1f), singleLine = true
-                        )
-                        OutlinedTextField(
-                            value = floor, onValueChange = { floor = it },
-                            label = { Text("Piano") },
-                            modifier = Modifier.weight(1f), singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                        )
-                    }
+                    Text("Dati inquilino", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold), color = Cyan400)
                 }
                 item {
-                    ExposedDropdownMenuBox(expanded = typeExpanded, onExpandedChange = { typeExpanded = it }) {
+                    OutlinedTextField(
+                        value = ownerName, onValueChange = { ownerName = it },
+                        label = { Text("Nome e cognome *") },
+                        leadingIcon = { Icon(Icons.Filled.Person, null, tint = TextMuted, modifier = Modifier.size(18.dp)) },
+                        modifier = Modifier.fillMaxWidth(), singleLine = true
+                    )
+                }
+                item {
+                    OutlinedTextField(
+                        value = ownerEmail, onValueChange = { ownerEmail = it },
+                        label = { Text("Email") },
+                        leadingIcon = { Icon(Icons.Filled.Email, null, tint = TextMuted, modifier = Modifier.size(18.dp)) },
+                        modifier = Modifier.fillMaxWidth(), singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
+                    )
+                }
+                item {
+                    OutlinedTextField(
+                        value = ownerPhone, onValueChange = { ownerPhone = it },
+                        label = { Text("Telefono") },
+                        leadingIcon = { Icon(Icons.Filled.Phone, null, tint = TextMuted, modifier = Modifier.size(18.dp)) },
+                        modifier = Modifier.fillMaxWidth(), singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
+                    )
+                }
+
+                // ── Dati appartamento ──
+                item { Spacer(Modifier.height(4.dp)) }
+                item {
+                    Text("Appartamento", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold), color = Cyan400)
+                }
+                item {
+                    OutlinedTextField(
+                        value = number, onValueChange = { number = it },
+                        label = { Text("Identificativo (es. Ap. 1, Piano 2)") },
+                        leadingIcon = { Icon(Icons.Filled.Home, null, tint = TextMuted, modifier = Modifier.size(18.dp)) },
+                        modifier = Modifier.fillMaxWidth(), singleLine = true
+                    )
+                }
+                item {
+                    ExposedDropdownMenuBox(expanded = tipoExpanded, onExpandedChange = { tipoExpanded = it }) {
                         OutlinedTextField(
-                            value = type, onValueChange = {}, readOnly = true,
-                            label = { Text("Tipo") },
+                            value = tipo, onValueChange = {}, readOnly = true,
+                            label = { Text("Tipo immobile") },
                             modifier = Modifier.fillMaxWidth().menuAnchor(),
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(typeExpanded) }
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(tipoExpanded) }
                         )
-                        ExposedDropdownMenu(expanded = typeExpanded, onDismissRequest = { typeExpanded = false }) {
+                        ExposedDropdownMenu(expanded = tipoExpanded, onDismissRequest = { tipoExpanded = false }) {
                             UnitTypes.types.forEach { t ->
-                                DropdownMenuItem(text = { Text(t) }, onClick = { type = t; typeExpanded = false })
+                                DropdownMenuItem(text = { Text(t, color = TextPrimary) }, onClick = { tipo = t; tipoExpanded = false })
                             }
                         }
                     }
@@ -401,57 +282,42 @@ private fun UnitFormDialog(unit: CondoUnit?, condominioId: Long, onDismiss: () -
                 item {
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         OutlinedTextField(
-                            value = areaMq, onValueChange = { areaMq = it },
-                            label = { Text("m²") }, modifier = Modifier.weight(1f), singleLine = true,
+                            value = canone, onValueChange = { canone = it },
+                            label = { Text("Canone mensile (€)") },
+                            modifier = Modifier.weight(1f), singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                         )
                         OutlinedTextField(
-                            value = millesimi, onValueChange = { millesimi = it },
-                            label = { Text("Quota %") }, modifier = Modifier.weight(1f), singleLine = true,
+                            value = areaMq, onValueChange = { areaMq = it },
+                            label = { Text("m² (opzionale)") },
+                            modifier = Modifier.weight(1f), singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                         )
                     }
                 }
-                item {
-                    OutlinedTextField(
-                        value = ownerName, onValueChange = { ownerName = it },
-                        label = { Text("Proprietario *") }, modifier = Modifier.fillMaxWidth(), singleLine = true
-                    )
-                }
-                item {
-                    OutlinedTextField(
-                        value = ownerEmail, onValueChange = { ownerEmail = it },
-                        label = { Text("Email") }, modifier = Modifier.fillMaxWidth(), singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
-                    )
-                }
-                item {
-                    OutlinedTextField(
-                        value = ownerPhone, onValueChange = { ownerPhone = it },
-                        label = { Text("Telefono") }, modifier = Modifier.fillMaxWidth(), singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
-                    )
-                }
             }
         },
         confirmButton = {
-            TextButton(
+            Button(
                 onClick = {
-                    val u = CondoUnit(
-                        id = unit?.id ?: 0,
+                    onSave(CondoUnit(
+                        id           = unit?.id ?: 0,
                         condominioId = unit?.condominioId ?: condominioId,
-                        number = number, floor = floor.toIntOrNull() ?: 0,
-                        type = type, areaMq = areaMq.toDoubleOrNull() ?: 0.0,
-                        millesimi = millesimi.toDoubleOrNull() ?: 0.0,
-                        ownerName = ownerName, ownerEmail = ownerEmail, ownerPhone = ownerPhone,
-                        scala = scala.trim()
-                    )
-                    onSave(u)
+                        number       = number.ifBlank { "Ap. 1" },
+                        floor        = 0,
+                        type         = tipo,
+                        areaMq       = areaMq.toDoubleOrNull() ?: 0.0,
+                        millesimi    = canone.toDoubleOrNull() ?: 0.0,  // canone mensile salvato qui
+                        ownerName    = ownerName,
+                        ownerEmail   = ownerEmail,
+                        ownerPhone   = ownerPhone,
+                        scala        = ""
+                    ))
                 },
-                enabled = number.isNotBlank() && ownerName.isNotBlank()
-            ) { Text("Salva") }
+                enabled = ownerName.isNotBlank(),
+                colors = ButtonDefaults.buttonColors(containerColor = Cyan500)
+            ) { Text("Salva", fontWeight = FontWeight.Bold) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Annulla") } },
-        containerColor = DarkSurface
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Annulla", color = TextSecondary) } }
     )
 }
