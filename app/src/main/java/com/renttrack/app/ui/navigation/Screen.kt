@@ -12,11 +12,11 @@ sealed class Screen(
     val selectedIcon: ImageVector,
     val unselectedIcon: ImageVector
 ) {
-    data object CondominioSelector : Screen("condominio_selector", "I tuoi Condomini", "Seleziona condominio", Icons.Filled.Business, Icons.Outlined.Business)
+    data object CondominioSelector : Screen("condominio_selector", "Le mie proprietà", "Seleziona immobile", Icons.Filled.Business, Icons.Outlined.Business)
     data object Dashboard  : Screen("dashboard",  "Dashboard",  "Panoramica generale",      Icons.Filled.Dashboard,    Icons.Outlined.Dashboard)
     data object Tenants      : Screen("units",       "Inquilini",  "Gestione inquilini",       Icons.Filled.Apartment,    Icons.Outlined.Apartment)
-    data object Expenses   : Screen("expenses",    "Spese",      "Registrazione spese",      Icons.Filled.Receipt,      Icons.Outlined.Receipt)
-    data object Payments   : Screen("payments",    "Pagamenti",  "Gestione pagamenti",       Icons.Filled.CreditCard,   Icons.Outlined.CreditCard)
+    data object Expenses   : Screen("expenses",    "Spese",      "Spese immobile",           Icons.Filled.Receipt,      Icons.Outlined.Receipt)
+    data object Payments   : Screen("payments",    "Incassi",   "Affitti incassati",        Icons.Filled.CreditCard,   Icons.Outlined.CreditCard)
     data object Affitti   : Screen("cedolini",    "Affitti",    "Avvisi affitto",           Icons.Filled.Description,  Icons.Outlined.Description)
     data object Documenti  : Screen("documenti",   "Documenti",  "Archivio documenti",       Icons.Filled.Folder,       Icons.Outlined.FolderOpen)
     data object Reports    : Screen("reports",     "Report",     "Statistiche e report",     Icons.Filled.BarChart,     Icons.Outlined.BarChart)

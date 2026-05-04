@@ -7,79 +7,132 @@ import java.util.Calendar
 object SampleData {
     suspend fun populateDatabase(repository: RentRepository): Long {
         fun daysAgo(d: Int): Long { val c = Calendar.getInstance(); c.add(Calendar.DAY_OF_YEAR, -d); return c.timeInMillis }
+        fun monthsAgo(m: Int): Long { val c = Calendar.getInstance(); c.add(Calendar.MONTH, -m); return c.timeInMillis }
 
-        // ── Condominio 1 (dati completi) ────────────────────────────
-        val condoId1 = repository.insertCondominio(
-            Condominio(nome = "Condominio Via Roma 12", indirizzo = "Via Roma 12", citta = "Milano", cf = "97654321000")
+        // ── Proprietà 1 — appartamento a Milano ─────────────────────
+        val prop1 = repository.insertCondominio(
+            Condominio(
+                nome     = "Via Roma 12 - Milano",
+                indirizzo = "Via Roma 12",
+                citta    = "Milano",
+                cf       = "",
+                note     = "Appartamento 3 locali, 2° piano"
+            )
         )
 
-        val units1 = listOf(
-            // Scala A
-            CondoUnit(condominioId = condoId1, number = "1", floor = 0, type = "Locale",       areaMq = 45.0,  millesimi = 55.0,  ownerName = "Mario Bianchi",    ownerEmail = "mario.bianchi@email.it",  ownerPhone = "333 1001001", scala = "A"),
-            CondoUnit(condominioId = condoId1, number = "2", floor = 1, type = "Appartamento", areaMq = 85.0,  millesimi = 125.0, ownerName = "Lucia Verdi",      ownerEmail = "lucia.verdi@email.it",    ownerPhone = "339 2002002", scala = "A"),
-            CondoUnit(condominioId = condoId1, number = "3", floor = 2, type = "Appartamento", areaMq = 70.0,  millesimi = 105.0, ownerName = "Giuseppe Russo",   ownerEmail = "g.russo@email.it",        ownerPhone = "347 3003003", scala = "A"),
-            CondoUnit(condominioId = condoId1, number = "4", floor = 3, type = "Appartamento", areaMq = 95.0,  millesimi = 140.0, ownerName = "Anna Ferrari",     ownerEmail = "anna.ferrari@email.it",   ownerPhone = "328 4004004", scala = "A"),
-            // Scala B
-            CondoUnit(condominioId = condoId1, number = "5", floor = 0, type = "Box",          areaMq = 18.0,  millesimi = 30.0,  ownerName = "Paolo Esposito",   ownerEmail = "p.esposito@email.it",     ownerPhone = "366 5005005", scala = "B"),
-            CondoUnit(condominioId = condoId1, number = "6", floor = 1, type = "Appartamento", areaMq = 80.0,  millesimi = 120.0, ownerName = "Francesca Romano", ownerEmail = "f.romano@email.it",       ownerPhone = "345 6006006", scala = "B"),
-            CondoUnit(condominioId = condoId1, number = "7", floor = 2, type = "Appartamento", areaMq = 110.0, millesimi = 160.0, ownerName = "Marco Colombo",    ownerEmail = "m.colombo@email.it",      ownerPhone = "320 7007007", scala = "B"),
-            CondoUnit(condominioId = condoId1, number = "8", floor = 3, type = "Appartamento", areaMq = 75.0,  millesimi = 110.0, ownerName = "Sara Ricci",       ownerEmail = "sara.ricci@email.it",     ownerPhone = "351 8008008", scala = "B")
+        // Ogni "CondoUnit" = un inquilino che affitta in quella proprietà
+        val unit1a = repository.insertUnit(
+            CondoUnit(condominioId = prop1, number = "Interno 1", floor = 2,
+                type = "Appartamento", areaMq = 85.0, millesimi = 1000.0,
+                ownerName = "Marco Rossi",
+                ownerEmail = "marco.rossi@gmail.com",
+                ownerPhone = "333 1234567", scala = "")
         )
-        val unitIds1 = units1.map { repository.insertUnit(it) }
+        val unit1b = repository.insertUnit(
+            CondoUnit(condominioId = prop1, number = "Interno 2", floor = 3,
+                type = "Appartamento", areaMq = 65.0, millesimi = 1000.0,
+                ownerName = "Giulia Bianchi",
+                ownerEmail = "giulia.b@gmail.com",
+                ownerPhone = "347 9876543", scala = "")
+        )
 
+        // Spese di manutenzione per la proprietà
         listOf(
-            Expense(condominioId = condoId1, date = daysAgo(150), category = "Pulizia",                    description = "Pulizia scale e androni - Gennaio", amount = 380.0,  notes = "Fatt. 012/2026"),
-            Expense(condominioId = condoId1, date = daysAgo(120), category = "Manutenzione Ordinaria",     description = "Riparazione portone ingresso",      amount = 450.0,  notes = "Fatt. 045/2026"),
-            Expense(condominioId = condoId1, date = daysAgo(110), category = "Acqua",                      description = "Bolletta acqua I trimestre",         amount = 1250.0),
-            Expense(condominioId = condoId1, date = daysAgo(80),  category = "Ascensore",                  description = "Manutenzione ordinaria ascensore",   amount = 320.0),
-            Expense(condominioId = condoId1, date = daysAgo(70),  category = "Assicurazione",              description = "Premio assicurazione annuale",        amount = 2800.0, notes = "Polizza n. 456789"),
-            Expense(condominioId = condoId1, date = daysAgo(45),  category = "Riscaldamento",              description = "Manutenzione caldaia centralizzata", amount = 680.0),
-            Expense(condominioId = condoId1, date = daysAgo(20),  category = "Amministrazione",            description = "Compenso amministratore II trimestre", amount = 1500.0),
-            Expense(condominioId = condoId1, date = daysAgo(5),   category = "Manutenzione Straordinaria", description = "Rifacimento impermeabilizzazione terrazzo", amount = 4500.0, notes = "Delibera assemblea 15/04")
+            Expense(condominioId = prop1, date = daysAgo(90),
+                category = "Manutenzione Ordinaria", description = "Riparazione infiltrazione bagno", amount = 320.0),
+            Expense(condominioId = prop1, date = daysAgo(45),
+                category = "Assicurazione", description = "Polizza annuale appartamento", amount = 450.0, notes = "Rinnovo 2026"),
+            Expense(condominioId = prop1, date = daysAgo(10),
+                category = "Amministrazione", description = "Quote condominiali 1° trimestre", amount = 280.0)
         ).forEach { repository.insertExpense(it) }
 
-        listOf(
-            Payment(unitId = unitIds1[0], amount = 350.0, date = daysAgo(100), method = "Bonifico", reference = "BON-2026-001"),
-            Payment(unitId = unitIds1[1], amount = 520.0, date = daysAgo(95),  method = "Contanti",  reference = "CED-2026-012"),
-            Payment(unitId = unitIds1[2], amount = 430.0, date = daysAgo(90),  method = "Bonifico", reference = "BON-2026-003"),
-            Payment(unitId = unitIds1[3], amount = 580.0, date = daysAgo(85),  method = "Bonifico", reference = "BON-2026-004"),
-            Payment(unitId = unitIds1[7], amount = 750.0, date = daysAgo(20),  method = "Contanti",  reference = "CED-2026-033")
-        ).forEach { repository.insertPayment(it) }
-
-        for (i in 0..3) {
-            val items = listOf(
-                CedolinoItem(cedolinoId = 0, description = "Pulizia scale",      amount = 380.0  * units1[i].millesimi / 1000),
-                CedolinoItem(cedolinoId = 0, description = "Manutenzione ord.",  amount = 450.0  * units1[i].millesimi / 1000),
-                CedolinoItem(cedolinoId = 0, description = "Acqua",              amount = 1250.0 * units1[i].millesimi / 1000),
-                CedolinoItem(cedolinoId = 0, description = "Ascensore",          amount = 320.0  * units1[i].millesimi / 1000)
-            )
+        // Avvisi affitto (cedolini = rate mensili)
+        // Marco Rossi — affitto 850€/mese, paga regolarmente
+        val months = listOf("Febbraio 2026", "Marzo 2026", "Aprile 2026")
+        months.forEachIndexed { i, mese ->
+            val paid = i < 2
+            val issDate = monthsAgo(3 - i)
+            val dueDate = monthsAgo(2 - i)
+            val items = listOf(CedolinoItem(cedolinoId = 0, description = "Affitto mensile", amount = 850.0))
             repository.insertCedolinoWithItems(
-                Cedolino(unitId = unitIds1[i], period = "I Trimestre 2026",
-                    issueDate = daysAgo(100), dueDate = daysAgo(70),
-                    total = items.sumOf { it.amount },
-                    status = if (i < 2) "Pagato" else "Emesso",
-                    paidAmount = if (i < 2) items.sumOf { it.amount } else 0.0,
-                    paidDate = if (i < 2) daysAgo(90) else null),
+                Cedolino(unitId = unit1a, period = mese,
+                    issueDate = issDate, dueDate = dueDate,
+                    total = 850.0, status = if (paid) "Pagato" else "Emesso",
+                    paidAmount = if (paid) 850.0 else 0.0,
+                    paidDate = if (paid) dueDate else null,
+                    sentToResident = true, sentAt = issDate),
                 items
             )
+            if (paid) {
+                repository.insertPayment(
+                    Payment(unitId = unit1a, amount = 850.0,
+                        date = dueDate, method = "Bonifico",
+                        reference = "BON-${2026}-${String.format("%02d", 2 + i)}")
+                )
+            }
         }
 
-        // ── Condominio 2 (dati minimali) ────────────────────────────
-        val condoId2 = repository.insertCondominio(
-            Condominio(nome = "Condominio Viale Europa 5", indirizzo = "Viale Europa 5", citta = "Roma")
+        // Giulia Bianchi — affitto 700€/mese, ha un mese arretrato
+        val monthsG = listOf("Marzo 2026", "Aprile 2026")
+        monthsG.forEachIndexed { i, mese ->
+            val paid = i == 0
+            val issDate = monthsAgo(2 - i)
+            val dueDate = monthsAgo(1 - i)
+            val items = listOf(CedolinoItem(cedolinoId = 0, description = "Affitto mensile", amount = 700.0))
+            repository.insertCedolinoWithItems(
+                Cedolino(unitId = unit1b, period = mese,
+                    issueDate = issDate, dueDate = dueDate,
+                    total = 700.0, status = if (paid) "Pagato" else "Scaduto",
+                    paidAmount = if (paid) 700.0 else 0.0,
+                    paidDate = if (paid) dueDate else null,
+                    sentToResident = true, sentAt = issDate),
+                items
+            )
+            if (paid) {
+                repository.insertPayment(
+                    Payment(unitId = unit1b, amount = 700.0,
+                        date = dueDate, method = "Contanti", reference = "")
+                )
+            }
+        }
+
+        // ── Proprietà 2 — monolocale a Torino ────────────────────────
+        val prop2 = repository.insertCondominio(
+            Condominio(
+                nome      = "Viale Garibaldi 8 - Torino",
+                indirizzo = "Viale Garibaldi 8",
+                citta     = "Torino",
+                note      = "Monolocale, 1° piano, arredato"
+            )
         )
-        listOf(
-            CondoUnit(condominioId = condoId2, number = "A", floor = 1, type = "Appartamento", areaMq = 90.0, millesimi = 300.0, ownerName = "Roberto Neri",    ownerEmail = "r.neri@email.it"),
-            CondoUnit(condominioId = condoId2, number = "B", floor = 1, type = "Appartamento", areaMq = 75.0, millesimi = 250.0, ownerName = "Carla Blu",       ownerEmail = "c.blu@email.it"),
-            CondoUnit(condominioId = condoId2, number = "C", floor = 2, type = "Appartamento", areaMq = 100.0,millesimi = 350.0, ownerName = "Gianni Gialli",   ownerEmail = "g.gialli@email.it"),
-            CondoUnit(condominioId = condoId2, number = "1", floor = 0, type = "Box",           areaMq = 15.0, millesimi = 100.0, ownerName = "Roberto Neri")
-        ).forEach { repository.insertUnit(it) }
+        val unit2a = repository.insertUnit(
+            CondoUnit(condominioId = prop2, number = "Ap. 1", floor = 1,
+                type = "Appartamento", areaMq = 38.0, millesimi = 1000.0,
+                ownerName = "Luca Esposito",
+                ownerEmail = "luca.esposito@outlook.com",
+                ownerPhone = "339 5554433", scala = "")
+        )
 
         listOf(
-            Expense(condominioId = condoId2, date = daysAgo(60), category = "Pulizia",       description = "Pulizia scale bimestrale", amount = 280.0),
-            Expense(condominioId = condoId2, date = daysAgo(30), category = "Illuminazione", description = "Sostituzione lampade",      amount = 120.0)
+            Expense(condominioId = prop2, date = daysAgo(30),
+                category = "Manutenzione Ordinaria", description = "Sostituzione serratura porta", amount = 180.0)
         ).forEach { repository.insertExpense(it) }
 
-        return condoId1
+        // Luca Esposito — affitto 550€/mese, tutto regolare
+        val itemsL = listOf(CedolinoItem(cedolinoId = 0, description = "Affitto mensile", amount = 550.0))
+        repository.insertCedolinoWithItems(
+            Cedolino(unitId = unit2a, period = "Aprile 2026",
+                issueDate = monthsAgo(1), dueDate = monthsAgo(0),
+                total = 550.0, status = "Pagato", paidAmount = 550.0,
+                paidDate = daysAgo(5),
+                sentToResident = true, sentAt = monthsAgo(1)),
+            itemsL
+        )
+        repository.insertPayment(
+            Payment(unitId = unit2a, amount = 550.0,
+                date = daysAgo(5), method = "Bonifico", reference = "BON-2026-04-LE")
+        )
+
+        return prop1
     }
 }
