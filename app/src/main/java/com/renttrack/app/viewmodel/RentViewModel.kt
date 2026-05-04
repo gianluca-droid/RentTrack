@@ -166,24 +166,24 @@ class RentViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setSelectedYear(year: Int) { _selectedYear.value = year }
 
-    val monthlyExpenses: StateFlow<List<com.condogest.app.data.dao.MonthTotal>> =
+    val monthlyExpenses: StateFlow<List<com.renttrack.app.data.dao.MonthTotal>> =
         combine(_activeCondominioId, _selectedYear) { condId, year -> condId to year }
             .filter { it.first > 0 }
             .flatMapLatest { (condId, year) -> repository.getMonthlyExpenses(condId, year) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val monthlyPayments: StateFlow<List<com.condogest.app.data.dao.MonthTotal>> =
+    val monthlyPayments: StateFlow<List<com.renttrack.app.data.dao.MonthTotal>> =
         combine(_activeCondominioId, _selectedYear) { condId, year -> condId to year }
             .filter { it.first > 0 }
             .flatMapLatest { (condId, year) -> repository.getMonthlyPayments(condId, year) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val yearlyExpenses: StateFlow<List<com.condogest.app.data.dao.YearTotal>> = _activeCondominioId
+    val yearlyExpenses: StateFlow<List<com.renttrack.app.data.dao.YearTotal>> = _activeCondominioId
         .filter { it > 0 }
         .flatMapLatest { repository.getYearlyExpenses(it) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val yearlyPayments: StateFlow<List<com.condogest.app.data.dao.YearTotal>> = _activeCondominioId
+    val yearlyPayments: StateFlow<List<com.renttrack.app.data.dao.YearTotal>> = _activeCondominioId
         .filter { it > 0 }
         .flatMapLatest { repository.getYearlyPayments(it) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -457,5 +457,6 @@ class RentViewModel(application: Application) : AndroidViewModel(application) {
     fun getUnitName(unitId: Long) =
         units.value.find { it.id == unitId }?.let { "Int. ${it.number} - ${it.ownerName}" } ?: "Sconosciuto"
 }
+
 
 

@@ -1,4 +1,4 @@
-﻿package com.renttrack.app
+package com.renttrack.app
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -34,7 +34,7 @@ class MainActivity : ComponentActivity() {
         crashPrefs.edit().remove("last_crash").apply()
 
         setContent {
-            CondoGestTheme {
+            RentTrackTheme {
                 if (lastCrash != null) {
                     CrashDialog(crashMessage = lastCrash)
                 }
@@ -173,7 +173,7 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
                         val selected = currentRoute == screen.route
                         // Badge count per schermata
                         val badgeCount = when (screen.route) {
-                            Screen.Cedolini.route -> unsentCedolini
+                            Screen.Affitti.route -> unsentCedolini
                             Screen.Payments.route -> pendingCedolini
                             else -> 0
                         }
@@ -234,10 +234,10 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
                 )
             }
             composable(Screen.Dashboard.route)  { DashboardScreen(viewModel) }
-            composable(Screen.Units.route)      { TenantsScreen(viewModel) }
+            composable(Screen.Tenants.route)      { TenantsScreen(viewModel) }
             composable(Screen.Expenses.route)   { ExpensesScreen(viewModel) }
             composable(Screen.Payments.route)   { PaymentsScreen(viewModel) }
-            composable(Screen.Cedolini.route)   { RentNoticesScreen(viewModel) }
+            composable(Screen.Affitti.route)   { RentNoticesScreen(viewModel) }
             composable(Screen.Documenti.route)  { DocumentiScreen(viewModel) }
             composable(Screen.Reports.route)    { ReportsScreen(viewModel) }
             // â”€â”€â”€ Lato Condomino â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

@@ -627,14 +627,14 @@ private fun CedolinoDetailDialog(cwi: CedolinoWithItems, unitName: String, onDis
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun QuotaDirectaDialog(
-    units: List<com.condogest.app.data.model.CondoUnit>,
+    units: List<com.renttrack.app.data.model.CondoUnit>,
     onDismiss: () -> Unit,
     onCreate: (unitId: Long, importo: Double, descrizione: String, categoria: String, periodo: String, dueDate: Long) -> Unit
 ) {
     var selectedUnit by remember { mutableStateOf(units.firstOrNull()) }
     var importo by remember { mutableStateOf("") }
     var descrizione by remember { mutableStateOf("") }
-    var categoria by remember { mutableStateOf(com.condogest.app.data.model.ExpenseCategories.categories.firstOrNull()?.first ?: "") }
+    var categoria by remember { mutableStateOf(com.renttrack.app.data.model.ExpenseCategories.categories.firstOrNull()?.first ?: "") }
     var periodo by remember {
         val cal = java.util.Calendar.getInstance()
         val mesi = listOf("Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno",
@@ -652,9 +652,9 @@ fun QuotaDirectaDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = com.condogest.app.ui.theme.DarkSurface,
+        containerColor = com.renttrack.app.ui.theme.DarkSurface,
         icon = { Icon(Icons.Filled.EuroSymbol, null, tint = Amber400) },
-        title = { Text("Addebita quota a unitÃ ", color = com.condogest.app.ui.theme.TextPrimary, fontWeight = FontWeight.Bold) },
+        title = { Text("Addebita quota a unitÃ ", color = com.renttrack.app.ui.theme.TextPrimary, fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 // Selezione unitÃ 
@@ -668,7 +668,7 @@ fun QuotaDirectaDialog(
                     ExposedDropdownMenu(expanded = unitExpanded, onDismissRequest = { unitExpanded = false }) {
                         units.sortedBy { it.number }.forEach { unit ->
                             DropdownMenuItem(
-                                text = { Text("Int. ${unit.number} â€” ${unit.ownerName}", color = com.condogest.app.ui.theme.TextPrimary) },
+                                text = { Text("Int. ${unit.number} â€” ${unit.ownerName}", color = com.renttrack.app.ui.theme.TextPrimary) },
                                 onClick = { selectedUnit = unit; unitExpanded = false }
                             )
                         }
@@ -682,9 +682,9 @@ fun QuotaDirectaDialog(
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(catExpanded) }
                     )
                     ExposedDropdownMenu(expanded = catExpanded, onDismissRequest = { catExpanded = false }) {
-                        com.condogest.app.data.model.ExpenseCategories.categories.forEach { (name, icon) ->
+                        com.renttrack.app.data.model.ExpenseCategories.categories.forEach { (name, icon) ->
                             DropdownMenuItem(
-                                text = { Text("$icon  $name", color = com.condogest.app.ui.theme.TextPrimary) },
+                                text = { Text("$icon  $name", color = com.renttrack.app.ui.theme.TextPrimary) },
                                 onClick = { categoria = name; catExpanded = false }
                             )
                         }
@@ -706,11 +706,11 @@ fun QuotaDirectaDialog(
                     val imp = importo.toDoubleOrNull() ?: return@Button
                     onCreate(unit.id, imp, descrizione.trim().ifBlank { "Quota" }, categoria, periodo.trim(), defaultDue)
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = Amber400, contentColor = com.condogest.app.ui.theme.DarkBg),
+                colors = ButtonDefaults.buttonColors(containerColor = Amber400, contentColor = com.renttrack.app.ui.theme.DarkBg),
                 enabled = selectedUnit != null && (importo.toDoubleOrNull() ?: 0.0) > 0
             ) { Text("Addebita", fontWeight = FontWeight.Bold) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Annulla", color = com.condogest.app.ui.theme.TextSecondary) } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Annulla", color = com.renttrack.app.ui.theme.TextSecondary) } }
     )
 }
 
@@ -718,12 +718,12 @@ fun QuotaDirectaDialog(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegistraPagamentoDialog(
-    cedolino: com.condogest.app.data.model.Cedolino,
+    cedolino: com.renttrack.app.data.model.Cedolino,
     unitName: String,
     onDismiss: () -> Unit,
     onConfirm: (method: String, reference: String) -> Unit
 ) {
-    var selectedMethod by remember { mutableStateOf(com.condogest.app.data.model.PaymentMethods.methods.first()) }
+    var selectedMethod by remember { mutableStateOf(com.renttrack.app.data.model.PaymentMethods.methods.first()) }
     var reference by remember { mutableStateOf("") }
     var methodExpanded by remember { mutableStateOf(false) }
 
@@ -737,9 +737,9 @@ fun RegistraPagamentoDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = com.condogest.app.ui.theme.DarkSurface,
+        containerColor = com.renttrack.app.ui.theme.DarkSurface,
         icon = { Icon(Icons.Filled.CheckCircle, null, tint = Green400) },
-        title = { Text("Registra pagamento", color = com.condogest.app.ui.theme.TextPrimary, fontWeight = FontWeight.Bold) },
+        title = { Text("Registra pagamento", color = com.renttrack.app.ui.theme.TextPrimary, fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 // Riepilogo cedolino
@@ -750,8 +750,8 @@ fun RegistraPagamentoDialog(
                         .padding(12.dp)
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text(unitName, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold), color = com.condogest.app.ui.theme.TextPrimary)
-                        Text("Periodo: ${cedolino.period}", style = MaterialTheme.typography.bodySmall, color = com.condogest.app.ui.theme.TextSecondary)
+                        Text(unitName, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold), color = com.renttrack.app.ui.theme.TextPrimary)
+                        Text("Periodo: ${cedolino.period}", style = MaterialTheme.typography.bodySmall, color = com.renttrack.app.ui.theme.TextSecondary)
                         Text(
                             Formatters.currency(cedolino.total),
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
@@ -768,9 +768,9 @@ fun RegistraPagamentoDialog(
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(methodExpanded) }
                     )
                     ExposedDropdownMenu(expanded = methodExpanded, onDismissRequest = { methodExpanded = false }) {
-                        com.condogest.app.data.model.PaymentMethods.methods.forEach { method ->
+                        com.renttrack.app.data.model.PaymentMethods.methods.forEach { method ->
                             DropdownMenuItem(
-                                text = { Text("${methodIcons[method] ?: "ðŸ’³"} $method", color = com.condogest.app.ui.theme.TextPrimary) },
+                                text = { Text("${methodIcons[method] ?: "ðŸ’³"} $method", color = com.renttrack.app.ui.theme.TextPrimary) },
                                 onClick = { selectedMethod = method; methodExpanded = false }
                             )
                         }
@@ -780,7 +780,7 @@ fun RegistraPagamentoDialog(
                 OutlinedTextField(
                     reference, { reference = it },
                     label = { Text("Riferimento (opzionale)") },
-                    placeholder = { Text("es. CRO, nÂ° bollettino...", color = com.condogest.app.ui.theme.TextMuted) },
+                    placeholder = { Text("es. CRO, nÂ° bollettino...", color = com.renttrack.app.ui.theme.TextMuted) },
                     modifier = Modifier.fillMaxWidth(), singleLine = true
                 )
             }
@@ -795,8 +795,9 @@ fun RegistraPagamentoDialog(
                 Text("Conferma pagamento", fontWeight = FontWeight.Bold)
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Annulla", color = com.condogest.app.ui.theme.TextSecondary) } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Annulla", color = com.renttrack.app.ui.theme.TextSecondary) } }
     )
 }
+
 
 

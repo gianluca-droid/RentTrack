@@ -232,7 +232,7 @@ fun DocumentiScreen(viewModel: RentViewModel) {
 @Composable
 fun DocumentCard(
     documento: Documento,
-    units: List<com.condogest.app.data.model.CondoUnit> = emptyList(),
+    units: List<com.renttrack.app.data.model.CondoUnit> = emptyList(),
     onOpen: () -> Unit,
     onEdit: () -> Unit = {},
     onDelete: () -> Unit
@@ -369,7 +369,7 @@ fun DocumentCard(
 fun AddDocumentoSheet(
     uri: Uri,
     mimeType: String,
-    units: List<com.condogest.app.data.model.CondoUnit> = emptyList(),
+    units: List<com.renttrack.app.data.model.CondoUnit> = emptyList(),
     onDismiss: () -> Unit,
     onConfirm: (titolo: String, categoria: String, note: String, sommario: String, visibilita: String, destinatariIds: String) -> Unit
 ) {
@@ -611,7 +611,7 @@ fun formatFileSize(bytes: Long): String = when {
 @Composable
 fun EditDocumentoSheet(
     documento: Documento,
-    units: List<com.condogest.app.data.model.CondoUnit> = emptyList(),
+    units: List<com.renttrack.app.data.model.CondoUnit> = emptyList(),
     onDismiss: () -> Unit,
     onConfirm: (titolo: String, categoria: String, note: String, sommario: String, visibilita: String, destinatariIds: String) -> Unit
 ) {
@@ -768,5 +768,6 @@ fun EditDocumentoSheet(
         }
     }
 }
+
 
 

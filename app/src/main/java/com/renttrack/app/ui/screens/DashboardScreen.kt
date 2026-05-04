@@ -202,7 +202,7 @@ fun DashboardScreen(viewModel: RentViewModel) {
 private fun OpenCedoliniSheet(
     openCedolini: List<CedolinoWithItems>,
     totalOpen: Double,
-    units: List<com.condogest.app.data.model.CondoUnit>,
+    units: List<com.renttrack.app.data.model.CondoUnit>,
     viewModel: RentViewModel
 ) {
     // Raggruppa per unitÃ 
@@ -366,5 +366,6 @@ private fun OpenCedoliniSheet(
         }
     }
 }
+
 
 

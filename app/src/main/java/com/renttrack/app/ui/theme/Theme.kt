@@ -1,4 +1,4 @@
-﻿package com.renttrack.app.ui.theme
+package com.renttrack.app.ui.theme
 
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -28,7 +28,7 @@ private val DarkColorScheme = darkColorScheme(
 )
 
 @Composable
-fun CondoGestTheme(content: @Composable () -> Unit) {
+fun RentTrackTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = DarkColorScheme,
         typography = AppTypography,

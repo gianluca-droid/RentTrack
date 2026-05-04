@@ -142,7 +142,7 @@ fun TenantDashboardScreen(
 
 // â”€â”€â”€ TAB 1: Il mio appartamento â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 @Composable
-private fun AppartamentoTab(viewModel: RentViewModel, unit: com.condogest.app.data.model.CondoUnit?) {
+private fun AppartamentoTab(viewModel: RentViewModel, unit: com.renttrack.app.data.model.CondoUnit?) {
     val activeCondominio by viewModel.activeCondominio.collectAsState()
     val expenses by viewModel.expenses.collectAsState()
     val allUnits by viewModel.units.collectAsState()
@@ -406,11 +406,11 @@ private fun DocumentiCondominioTab(viewModel: RentViewModel) {
             ) {
                 Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(com.condogest.app.data.model.FileTypes.getIcon(doc.fileType), fontSize = 20.sp)
+                        Text(com.renttrack.app.data.model.FileTypes.getIcon(doc.fileType), fontSize = 20.sp)
                         Spacer(Modifier.width(8.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(doc.titolo, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = TextPrimary, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                            Text("${doc.categoria} Â· ${com.condogest.app.ui.components.Formatters.date(doc.dataInserimento)}", style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                            Text("${doc.categoria} Â· ${com.renttrack.app.ui.components.Formatters.date(doc.dataInserimento)}", style = MaterialTheme.typography.bodySmall, color = TextMuted)
                         }
                     }
 
@@ -486,5 +486,6 @@ private fun ResidentStatCard(title: String, value: String, color: Color, modifie
         }
     }
 }
+
 
 
