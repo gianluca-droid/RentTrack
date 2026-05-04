@@ -1,4 +1,4 @@
-﻿package com.renttrack.app
+package com.renttrack.app
 
 import android.content.Context
 

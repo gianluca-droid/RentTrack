@@ -1,4 +1,4 @@
-﻿package com.renttrack.app.ui.screens
+package com.renttrack.app.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn

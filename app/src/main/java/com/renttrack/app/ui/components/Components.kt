@@ -1,4 +1,4 @@
-﻿package com.renttrack.app.ui.components
+package com.renttrack.app.ui.components
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.background

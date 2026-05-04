@@ -1,4 +1,4 @@
-﻿package com.renttrack.app.ui.theme
+package com.renttrack.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
 

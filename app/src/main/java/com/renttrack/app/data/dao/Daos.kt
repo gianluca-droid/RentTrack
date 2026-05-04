@@ -1,4 +1,4 @@
-﻿package com.renttrack.app.data.dao
+package com.renttrack.app.data.dao
 
 import androidx.room.*
 import com.renttrack.app.data.model.*

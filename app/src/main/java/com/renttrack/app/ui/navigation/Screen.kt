@@ -1,4 +1,4 @@
-﻿package com.renttrack.app.ui.navigation
+package com.renttrack.app.ui.navigation
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*

@@ -1,4 +1,4 @@
-﻿package com.renttrack.app.ui.screens
+package com.renttrack.app.ui.screens
 
 import android.app.Activity
 import android.content.Intent

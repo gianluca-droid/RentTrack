@@ -1,4 +1,4 @@
-﻿package com.renttrack.app.data
+package com.renttrack.app.data
 
 import com.renttrack.app.data.model.*
 import com.renttrack.app.data.repository.RentRepository

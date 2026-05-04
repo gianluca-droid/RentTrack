@@ -1,4 +1,4 @@
-﻿package com.renttrack.app.data.database
+package com.renttrack.app.data.database
 
 import android.content.Context
 import androidx.room.Database

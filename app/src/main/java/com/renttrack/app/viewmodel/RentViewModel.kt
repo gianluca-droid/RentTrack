@@ -1,4 +1,4 @@
-﻿package com.renttrack.app.viewmodel
+package com.renttrack.app.viewmodel
 
 import android.app.Application
 import android.net.Uri
