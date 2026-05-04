@@ -26,7 +26,7 @@ import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CedoliniScreen(viewModel: RentViewModel) {
+fun RentNoticesScreen(viewModel: RentViewModel) {
     val cedolini by viewModel.cedolini.collectAsState()
     val cedoliniWithItems by viewModel.cedoliniWithItems.collectAsState()
     val pendingCount by viewModel.pendingCedolini.collectAsState()

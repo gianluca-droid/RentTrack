@@ -32,7 +32,7 @@ private val condoGradients = listOf(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CondominioSelectorScreen(
+fun PropertySelectorScreen(
     viewModel: RentViewModel,
     onCondominioSelected: (Long) -> Unit,
     onResidentAccess: () -> Unit = {}

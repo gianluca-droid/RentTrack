@@ -34,7 +34,7 @@ import com.renttrack.app.viewmodel.RentViewModel
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ResidentDashboardScreen(
+fun TenantDashboardScreen(
     viewModel: RentViewModel,
     onLogout: () -> Unit
 ) {

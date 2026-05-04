@@ -29,7 +29,7 @@ import com.renttrack.app.viewmodel.RentViewModel
  * In produzione sarà sostituita da un login Supabase.
  */
 @Composable
-fun ResidentLoginScreen(
+fun TenantLoginScreen(
     viewModel: RentViewModel,
     onLogin: () -> Unit,
     onBackToAdmin: () -> Unit

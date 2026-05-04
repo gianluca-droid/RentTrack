@@ -14,10 +14,10 @@ sealed class Screen(
 ) {
     data object CondominioSelector : Screen("condominio_selector", "I tuoi Condomini", "Seleziona condominio", Icons.Filled.Business, Icons.Outlined.Business)
     data object Dashboard  : Screen("dashboard",  "Dashboard",  "Panoramica generale",      Icons.Filled.Dashboard,    Icons.Outlined.Dashboard)
-    data object Units      : Screen("units",       "Unità",      "Gestione condòmini",       Icons.Filled.Apartment,    Icons.Outlined.Apartment)
+    data object Tenants      : Screen("units",       "Unità",      "Gestione condòmini",       Icons.Filled.Apartment,    Icons.Outlined.Apartment)
     data object Expenses   : Screen("expenses",    "Spese",      "Registrazione spese",      Icons.Filled.Receipt,      Icons.Outlined.Receipt)
     data object Payments   : Screen("payments",    "Pagamenti",  "Gestione pagamenti",       Icons.Filled.CreditCard,   Icons.Outlined.CreditCard)
-    data object Cedolini   : Screen("cedolini",    "Cedolini",   "Cedolini di pagamento",    Icons.Filled.Description,  Icons.Outlined.Description)
+    data object Affitti   : Screen("cedolini",    "Cedolini",   "Cedolini di pagamento",    Icons.Filled.Description,  Icons.Outlined.Description)
     data object Documenti  : Screen("documenti",   "Documenti",  "Archivio documenti",       Icons.Filled.Folder,       Icons.Outlined.FolderOpen)
     data object Reports    : Screen("reports",     "Report",     "Statistiche e report",     Icons.Filled.BarChart,     Icons.Outlined.BarChart)
     // ─── Lato Condomino ───────────────────────────────────────────────

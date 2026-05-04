@@ -27,7 +27,7 @@ import com.renttrack.app.ui.theme.*
 import com.renttrack.app.viewmodel.RentViewModel
 
 @Composable
-fun UnitsScreen(viewModel: RentViewModel) {
+fun TenantsScreen(viewModel: RentViewModel) {
     val units by viewModel.units.collectAsState()
     val activeCondominioId by viewModel.activeCondominioId.collectAsState()
     val collapsedScales by viewModel.collapsedScales.collectAsState()
