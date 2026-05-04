@@ -245,13 +245,13 @@ fun DocumentCard(
 
     // Calcola etichetta destinatari
     val destinatariLabel = remember(documento, units) {
-        if (documento.visibilita == "Tutti") "🌐 Tutto il condominio"
+        if (documento.visibilita == "Tutti") "🌐 Tutti gli inquilini"
         else {
             val ids = documento.destinatariUnitIds.split(",").mapNotNull { it.trim().toLongOrNull() }
-            if (ids.isEmpty()) "🌐 Tutto il condominio"
+            if (ids.isEmpty()) "🌐 Tutti gli inquilini"
             else {
                 val nomi = ids.mapNotNull { id -> units.find { it.id == id }?.let { "Int.${it.number}" } }
-                "👥 ${nomi.joinToString(", ").ifBlank { "${ids.size} unità" }}"
+                "👥 ${nomi.joinToString(", ").ifBlank { "${ids.size} inquilini" }}"
             }
         }
     }
@@ -444,11 +444,11 @@ fun AddDocumentoSheet(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Filled.Notes, null, tint = Amber400, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Sintesi per il condomino",
+                        Text("Note per l'inquilino",
                             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
                             color = Amber400)
                     }
-                    Text("Il condomino vedrà questa sintesi prima di aprire il documento",
+                    Text("L'inquilino vedrà questo riepilogo prima di aprire il documento",
                         style = MaterialTheme.typography.labelSmall, color = TextMuted)
                     OutlinedTextField(
                         sommario, { sommario = it },
@@ -463,7 +463,7 @@ fun AddDocumentoSheet(
 
             // Note interne (per l'admin)
             item {
-                OutlinedTextField(note, { note = it }, label = { Text("Note interne (solo admin)") },
+                OutlinedTextField(note, { note = it }, label = { Text("Note interne (solo proprietario)") },
                     modifier = Modifier.fillMaxWidth(), minLines = 2, maxLines = 3, colors = condoTextFieldColors())
             }
 
@@ -480,7 +480,7 @@ fun AddDocumentoSheet(
 
                     // Radio: Tutti / Singoli
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        listOf("Tutti" to "🌐 Tutto il condominio", "Singoli" to "👥 Unità specifiche").forEach { (value, label) ->
+                        listOf("Tutti" to "🌐 Tutti gli inquilini", "Singoli" to "👥 Inquilini specifici").forEach { (value, label) ->
                             Surface(
                                 onClick = {
                                     visibilita = value
@@ -512,7 +512,7 @@ fun AddDocumentoSheet(
                     // Lista unità selezionabili (solo se "Singoli")
                     AnimatedVisibility(visible = visibilita == "Singoli" && units.isNotEmpty()) {
                         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text("Seleziona le unità destinatarie:",
+                            Text("Seleziona gli inquilini destinatari:",
                                 style = MaterialTheme.typography.bodySmall, color = TextSecondary)
                             val unitsByScala = units.groupBy { it.scala.ifBlank { "—" } }.toSortedMap()
                             unitsByScala.forEach { (scala, scalaUnits) ->
@@ -548,12 +548,12 @@ fun AddDocumentoSheet(
                                             )
                                             Spacer(Modifier.width(6.dp))
                                             Text(
-                                                "Int. ${unit.number} — ${unit.ownerName}",
+                                                "${unit.ownerName} — ${unit.number}",
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = if (isChecked) TextPrimary else TextSecondary
                                             )
                                             Spacer(Modifier.weight(1f))
-                                            Text("P${unit.floor}", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                                            
                                         }
                                     }
                                 }
@@ -686,7 +686,7 @@ fun EditDocumentoSheet(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Filled.Notes, null, tint = Amber400, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Sintesi per il condomino", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold), color = Amber400)
+                        Text("Note per l'inquilino", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold), color = Amber400)
                     }
                     OutlinedTextField(sommario, { sommario = it }, label = { Text("Sintesi (opzionale)") },
                         modifier = Modifier.fillMaxWidth(), minLines = 2, maxLines = 4, colors = condoTextFieldColors())
@@ -694,7 +694,7 @@ fun EditDocumentoSheet(
             }
 
             item {
-                OutlinedTextField(note, { note = it }, label = { Text("Note interne (solo admin)") },
+                OutlinedTextField(note, { note = it }, label = { Text("Note interne (solo proprietario)") },
                     modifier = Modifier.fillMaxWidth(), minLines = 2, maxLines = 3, colors = condoTextFieldColors())
             }
 
@@ -707,7 +707,7 @@ fun EditDocumentoSheet(
                         Text("Destinatari", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold), color = Purple400)
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        listOf("Tutti" to "🌐 Tutto il condominio", "Singoli" to "👥 Unità specifiche").forEach { (value, label) ->
+                        listOf("Tutti" to "🌐 Tutti gli inquilini", "Singoli" to "👥 Inquilini specifici").forEach { (value, label) ->
                             Surface(
                                 onClick = { visibilita = value; if (value == "Tutti") selectedUnitIds = emptySet() },
                                 shape = RoundedCornerShape(10.dp),
@@ -735,7 +735,7 @@ fun EditDocumentoSheet(
                                 Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                                     Checkbox(checked = isChecked, onCheckedChange = null, colors = CheckboxDefaults.colors(checkedColor = Purple400))
                                     Spacer(Modifier.width(6.dp))
-                                    Text("Int. ${unit.number} — ${unit.ownerName}", style = MaterialTheme.typography.bodySmall, color = if (isChecked) TextPrimary else TextSecondary)
+                                    Text("${unit.ownerName} — ${unit.number}", style = MaterialTheme.typography.bodySmall, color = if (isChecked) TextPrimary else TextSecondary)
                                 }
                             }
                         }

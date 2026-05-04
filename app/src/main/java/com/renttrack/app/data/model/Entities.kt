@@ -198,15 +198,15 @@ object UnitTypes { val types = listOf("Appartamento", "Locale", "Box", "Negozio"
 object DocumentCategories {
     data class DocCategory(val name: String, val icon: String, val colorHex: String)
     val categories = listOf(
-        DocCategory("Verbali di assemblea",  "📋", "#6C63FF"),
-        DocCategory("Bilanci e preventivi",  "💰", "#00C896"),
-        DocCategory("Ordini del giorno",     "📄", "#FF9F43"),
-        DocCategory("Preventivi fornitori",  "🔧", "#54A0FF"),
-        DocCategory("Contratti",             "📜", "#FF6B9D"),
-        DocCategory("Pratiche condominiali", "🏛️", "#A29BFE"),
-        DocCategory("Segnalazioni danni",    "⚠️", "#FF6B6B"),
-        DocCategory("Avanzamento lavori",    "🏗️", "#F7B731"),
-        DocCategory("Altro",                "📁", "#636E72")
+        DocCategory("Contratti affitto",    "📜", "#6C63FF"),
+        DocCategory("Ricevute affitto",     "🧾", "#00C896"),
+        DocCategory("Manutenzioni",         "🔧", "#54A0FF"),
+        DocCategory("Assicurazioni",        "🛡️", "#FF9F43"),
+        DocCategory("Documenti inquilino",  "👤", "#A29BFE"),
+        DocCategory("Segnalazioni danni",   "⚠️", "#FF6B6B"),
+        DocCategory("Foto appartamento",    "📷", "#00D4FF"),
+        DocCategory("Corrispondenza",       "📧", "#F7B731"),
+        DocCategory("Altro",               "📁", "#636E72")
     )
     val names = categories.map { it.name }
     fun getIcon(categoria: String) = categories.find { it.name == categoria }?.icon ?: "📁"
