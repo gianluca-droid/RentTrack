@@ -24,12 +24,12 @@ import com.renttrack.app.ui.theme.*
 import com.renttrack.app.viewmodel.RentViewModel
 
 /**
- * Schermata di accesso lato condomino (modalitÃ  MOCK).
- * L'utente seleziona il condominio e poi la propria unitÃ .
- * In produzione sarÃ  sostituita da un login Supabase.
+ * Schermata di accesso lato condomino (modalità MOCK).
+ * L'utente seleziona il condominio e poi la propria unità.
+ * In produzione sarà sostituita da un login Supabase.
  */
 @Composable
-fun TenantLoginScreen(
+fun ResidentLoginScreen(
     viewModel: RentViewModel,
     onLogin: () -> Unit,
     onBackToAdmin: () -> Unit
@@ -38,11 +38,11 @@ fun TenantLoginScreen(
     var selectedCondo by remember { mutableStateOf<Condominio?>(null) }
     var condoExpanded by remember { mutableStateOf(false) }
 
-    // UnitÃ  del condominio selezionato: dobbiamo caricarle temporaneamente
-    // In mock usiamo le unitÃ  giÃ  in memoria (se il condo Ã¨ quello attivo) o la lista globale
+    // Unità del condominio selezionato: dobbiamo caricarle temporaneamente
+    // In mock usiamo le unità già in memoria (se il condo è quello attivo) o la lista globale
     val allUnits by viewModel.units.collectAsState()
 
-    // Se l'utente seleziona un condo diverso da quello attivo, le unitÃ  potrebbero non essere caricate.
+    // Se l'utente seleziona un condo diverso da quello attivo, le unità potrebbero non essere caricate.
     // Per il mock, forziamo la selezione dello stesso condo attivo oppure mostriamo avviso.
     val activeCondoId by viewModel.activeCondominioId.collectAsState()
     val unitsForSelected = remember(selectedCondo, allUnits, activeCondoId) {
@@ -98,7 +98,7 @@ fun TenantLoginScreen(
                         ) {
                             Icon(Icons.Filled.Science, null, tint = Amber400, modifier = Modifier.size(14.dp))
                             Spacer(Modifier.width(4.dp))
-                            Text("ModalitÃ  Demo", style = MaterialTheme.typography.labelSmall, color = Amber400)
+                            Text("Modalità Demo", style = MaterialTheme.typography.labelSmall, color = Amber400)
                         }
                     }
                 }
@@ -157,7 +157,7 @@ fun TenantLoginScreen(
                 }
             }
 
-            // Selezione unitÃ  (visibile solo dopo aver scelto il condominio)
+            // Selezione unità (visibile solo dopo aver scelto il condominio)
             if (selectedCondo != null) {
                 item {
                     Card(
@@ -172,12 +172,12 @@ fun TenantLoginScreen(
                             )
                             if (unitsForSelected.isEmpty()) {
                                 Text(
-                                    "Nessuna unitÃ  trovata.\nAssicurati che il condominio selezionato sia quello attivo nell'app amministratore.",
+                                    "Nessuna unità trovata.\nAssicurati che il condominio selezionato sia quello attivo nell'app amministratore.",
                                     color = TextMuted, style = MaterialTheme.typography.bodySmall
                                 )
                             } else {
                                 val unitGroups = unitsForSelected
-                                    .groupBy { if (it.scala.isNotBlank()) "Scala ${it.scala}" else "UnitÃ " }
+                                    .groupBy { if (it.scala.isNotBlank()) "Scala ${it.scala}" else "Unità" }
                                     .toSortedMap()
 
                                 unitGroups.forEach { (scalaLabel, scalaUnits) ->
@@ -246,12 +246,12 @@ private fun UnitSelectCard(unit: CondoUnit, onSelect: () -> Unit) {
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    "Int. ${unit.number} â€” ${unit.ownerName}",
+                    "Int. ${unit.number} — ${unit.ownerName}",
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                     color = TextPrimary
                 )
                 Text(
-                    "${unit.type} Â· ${unit.areaMq.toInt()} mÂ² Â· ${unit.millesimi.toInt()} mill.",
+                    "${unit.type} · ${unit.areaMq.toInt()} m² · ${unit.millesimi.toInt()} mill.",
                     style = MaterialTheme.typography.bodySmall,
                     color = TextMuted
                 )
@@ -260,5 +260,3 @@ private fun UnitSelectCard(unit: CondoUnit, onSelect: () -> Unit) {
         }
     }
 }
-
-

@@ -67,7 +67,7 @@ fun PaymentsScreen(viewModel: RentViewModel) {
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 96.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // â”€â”€ Summary â”€â”€
+            // ── Summary ──
             item {
                 SummaryCard(
                     title = "Totale Incassato",
@@ -78,11 +78,11 @@ fun PaymentsScreen(viewModel: RentViewModel) {
                 )
             }
 
-            // â”€â”€ Ricerca â”€â”€
+            // ── Ricerca ──
             item {
                 OutlinedTextField(
                     value = searchQuery, onValueChange = { searchQuery = it },
-                    placeholder = { Text("Cerca proprietario, riferimentoâ€¦", style = MaterialTheme.typography.bodySmall, color = TextMuted) },
+                    placeholder = { Text("Cerca proprietario, riferimento…", style = MaterialTheme.typography.bodySmall, color = TextMuted) },
                     leadingIcon = { Icon(Icons.Filled.Search, null, tint = TextMuted, modifier = Modifier.size(20.dp)) },
                     trailingIcon = {
                         if (searchQuery.isNotBlank()) IconButton(onClick = { searchQuery = "" }, modifier = Modifier.size(20.dp)) {
@@ -98,7 +98,7 @@ fun PaymentsScreen(viewModel: RentViewModel) {
                 )
             }
 
-            // â”€â”€ Filtri compatti su un'unica riga scrollabile â”€â”€
+            // ── Filtri compatti su un'unica riga scrollabile ──
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
@@ -108,7 +108,7 @@ fun PaymentsScreen(viewModel: RentViewModel) {
                     // Toggle vista
                     Surface(shape = RoundedCornerShape(10.dp), color = DarkSurface) {
                         Row(modifier = Modifier.padding(2.dp)) {
-                            listOf(0 to "ðŸ  UnitÃ ", 1 to "ðŸ“… Mese").forEach { (idx, label) ->
+                            listOf(0 to "🏠 Unità", 1 to "📅 Mese").forEach { (idx, label) ->
                                 Surface(
                                     onClick = { viewModel.setPaymentsView(idx) },
                                     shape = RoundedCornerShape(8.dp),
@@ -153,7 +153,7 @@ fun PaymentsScreen(viewModel: RentViewModel) {
             if (filteredPayments.isEmpty() && units.isEmpty()) {
                 item { EmptyState("Nessun pagamento registrato", Icons.Filled.CreditCard) }
             } else if (activeView == 0) {
-                // â”€â”€ VISTA PER UNITÃ€ â€” Posizione contabile â”€â”€
+                // ── VISTA PER UNITÀ — Posizione contabile ──
                 val sortedUnits = units.sortedBy { "${it.scala}_${it.number}" }
                 sortedUnits.forEach { unit ->
                     val unitPayments = filteredPayments.filter { it.unitId == unit.id }
@@ -176,7 +176,7 @@ fun PaymentsScreen(viewModel: RentViewModel) {
                 }
 
             } else {
-                // â”€â”€ VISTA PER MESE â”€â”€
+                // ── VISTA PER MESE ──
                 val monthNames = listOf("Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno",
                     "Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre")
                 val grouped = filteredPayments
@@ -224,7 +224,7 @@ fun PaymentsScreen(viewModel: RentViewModel) {
     }
 }
 
-// â”€â”€â”€ Card posizione contabile per unitÃ  â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Card posizione contabile per unità ───────────────────────────────────────
 @Composable
 private fun UnitAccountCard(
     unit: CondoUnit,
@@ -235,7 +235,7 @@ private fun UnitAccountCard(
     payments: List<Payment>,
     onAddPayment: () -> Unit
 ) {
-    var expanded by remember { mutableStateOf(saldo > 0.01) } // auto-espande se c'Ã¨ saldo
+    var expanded by remember { mutableStateOf(saldo > 0.01) } // auto-espande se c'è saldo
     val saldoColor = when {
         saldo <= 0.01 -> Green400
         saldo < addebitato * 0.5 -> Amber400
@@ -249,7 +249,7 @@ private fun UnitAccountCard(
         border = androidx.compose.foundation.BorderStroke(1.dp, saldoColor.copy(alpha = 0.3f))
     ) {
         Column {
-            // Header unitÃ 
+            // Header unità
             Row(
                 modifier = Modifier.fillMaxWidth().padding(14.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -265,7 +265,7 @@ private fun UnitAccountCard(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         buildString {
-                            if (unit.scala.isNotBlank()) append("Sc.${unit.scala} Â· ")
+                            if (unit.scala.isNotBlank()) append("Sc.${unit.scala} · ")
                             append("Int. ${unit.number}")
                         },
                         style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
@@ -297,7 +297,7 @@ private fun UnitAccountCard(
 
                         // Cedolini
                         if (cedolini.isNotEmpty()) {
-                            Text("ðŸ“‹ Cedolini", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold), color = Cyan400)
+                            Text("📋 Cedolini", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold), color = Cyan400)
                             cedolini.sortedByDescending { it.issueDate }.forEach { c ->
                                 Row(modifier = Modifier.fillMaxWidth()
                                     .background(DarkBg, RoundedCornerShape(8.dp))
@@ -318,7 +318,7 @@ private fun UnitAccountCard(
                         // Pagamenti
                         if (payments.isNotEmpty()) {
                             Spacer(Modifier.height(2.dp))
-                            Text("âœ… Pagamenti ricevuti", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold), color = Green400)
+                            Text("✅ Pagamenti ricevuti", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold), color = Green400)
                             payments.sortedByDescending { it.date }.forEach { p ->
                                 Row(modifier = Modifier.fillMaxWidth()
                                     .background(DarkBg, RoundedCornerShape(8.dp))
@@ -370,7 +370,7 @@ private fun AccountStat(label: String, value: Double, color: Color, modifier: Mo
     }
 }
 
-// â”€â”€â”€ Header gruppo mese â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Header gruppo mese ───────────────────────────────────────────────
 @Composable
 private fun PaymentGroupHeader(label: String, count: Int, total: Double, icon: androidx.compose.ui.graphics.vector.ImageVector) {
     Card(colors = CardDefaults.cardColors(containerColor = DarkSurface), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) {
@@ -404,7 +404,7 @@ private fun PaymentRow(payment: Payment, showUnit: Boolean, unitName: String, on
     }
 }
 
-// â”€â”€â”€ Form dialog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Form dialog ──────────────────────────────────────────────────────
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PaymentFormDialog(payment: Payment?, units: List<CondoUnit>, onDismiss: () -> Unit, onSave: (Payment) -> Unit) {
@@ -416,7 +416,7 @@ private fun PaymentFormDialog(payment: Payment?, units: List<CondoUnit>, onDismi
     var unitExpanded  by remember { mutableStateOf(false) }
     var methodExpanded by remember { mutableStateOf(false) }
 
-    val methodIcons = mapOf("Contanti" to "ðŸ’µ","Bonifico" to "ðŸ¦","Bollettino Postale" to "ðŸ“®","RID / Addebito diretto" to "ðŸ”„","Assegno" to "ðŸ“")
+    val methodIcons = mapOf("Contanti" to "💵","Bonifico" to "🏦","Bollettino Postale" to "📮","RID / Addebito diretto" to "🔄","Assegno" to "📝")
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -426,36 +426,36 @@ private fun PaymentFormDialog(payment: Payment?, units: List<CondoUnit>, onDismi
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 ExposedDropdownMenuBox(expanded = unitExpanded, onExpandedChange = { unitExpanded = it }) {
                     OutlinedTextField(
-                        value = buildString { if (selectedUnit.scala.isNotBlank()) append("Sc.${selectedUnit.scala} Â· "); append("Int. ${selectedUnit.number} - ${selectedUnit.ownerName}") },
-                        onValueChange = {}, readOnly = true, label = { Text("UnitÃ ") },
+                        value = buildString { if (selectedUnit.scala.isNotBlank()) append("Sc.${selectedUnit.scala} · "); append("Int. ${selectedUnit.number} - ${selectedUnit.ownerName}") },
+                        onValueChange = {}, readOnly = true, label = { Text("Unità") },
                         modifier = Modifier.fillMaxWidth().menuAnchor(),
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(unitExpanded) }
                     )
                     ExposedDropdownMenu(expanded = unitExpanded, onDismissRequest = { unitExpanded = false }) {
                         units.sortedBy { "${it.scala}_${it.number}" }.forEach { u ->
                             DropdownMenuItem(
-                                text = { Text(buildString { if (u.scala.isNotBlank()) append("Sc.${u.scala} Â· "); append("Int. ${u.number} - ${u.ownerName}") }, color = TextPrimary) },
+                                text = { Text(buildString { if (u.scala.isNotBlank()) append("Sc.${u.scala} · "); append("Int. ${u.number} - ${u.ownerName}") }, color = TextPrimary) },
                                 onClick = { selectedUnit = u; unitExpanded = false })
                         }
                     }
                 }
-                OutlinedTextField(value = amount, onValueChange = { amount = it }, label = { Text("Importo (â‚¬)") },
+                OutlinedTextField(value = amount, onValueChange = { amount = it }, label = { Text("Importo (€)") },
                     modifier = Modifier.fillMaxWidth(), singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
                 ExposedDropdownMenuBox(expanded = methodExpanded, onExpandedChange = { methodExpanded = it }) {
-                    OutlinedTextField(value = "${methodIcons[method] ?: "ðŸ’³"} $method", onValueChange = {},
+                    OutlinedTextField(value = "${methodIcons[method] ?: "💳"} $method", onValueChange = {},
                         readOnly = true, label = { Text("Metodo") },
                         modifier = Modifier.fillMaxWidth().menuAnchor(),
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(methodExpanded) })
                     ExposedDropdownMenu(expanded = methodExpanded, onDismissRequest = { methodExpanded = false }) {
                         PaymentMethods.methods.forEach { m ->
-                            DropdownMenuItem(text = { Text("${methodIcons[m] ?: "ðŸ’³"} $m", color = TextPrimary) },
+                            DropdownMenuItem(text = { Text("${methodIcons[m] ?: "💳"} $m", color = TextPrimary) },
                                 onClick = { method = m; methodExpanded = false })
                         }
                     }
                 }
                 OutlinedTextField(value = reference, onValueChange = { reference = it },
-                    label = { Text("Riferimento (es. CRO, nÂ° bollettino)") },
+                    label = { Text("Riferimento (es. CRO, n° bollettino)") },
                     modifier = Modifier.fillMaxWidth(), singleLine = true)
                 OutlinedTextField(value = notes, onValueChange = { notes = it },
                     label = { Text("Note") }, modifier = Modifier.fillMaxWidth(), maxLines = 2)
@@ -471,5 +471,3 @@ private fun PaymentFormDialog(payment: Payment?, units: List<CondoUnit>, onDismi
         dismissButton = { TextButton(onClick = onDismiss) { Text("Annulla", color = TextSecondary) } }
     )
 }
-
-

@@ -24,7 +24,7 @@ import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.*
 
-// â”€â”€â”€ Formatters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Formatters ─────────────────────────────────────────────────────
 object Formatters {
     private val currencyFormat = NumberFormat.getCurrencyInstance(Locale.ITALY)
     private val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.ITALY)
@@ -35,7 +35,7 @@ object Formatters {
     fun shortDate(timestamp: Long): String = shortDateFormat.format(Date(timestamp))
 }
 
-// â”€â”€â”€ Summary Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Summary Card ───────────────────────────────────────────────────
 @Composable
 fun SummaryCard(
     title: String,
@@ -75,7 +75,7 @@ fun SummaryCard(
     }
 }
 
-// â”€â”€â”€ Clickable Summary Card (con freccia) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Clickable Summary Card (con freccia) ─────────────────────────────
 @Composable
 fun ClickableSummaryCard(
     title: String,
@@ -113,7 +113,7 @@ fun ClickableSummaryCard(
                     Text(subtitle, style = MaterialTheme.typography.bodySmall, color = TextMuted)
                 }
             }
-            // Freccia â†’ indica che Ã¨ cliccabile
+            // Freccia → indica che è cliccabile
             Icon(
                 imageVector = Icons.Filled.ArrowForward,
                 contentDescription = null,
@@ -125,7 +125,7 @@ fun ClickableSummaryCard(
 }
 
 
-// â”€â”€â”€ Section Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Section Header ─────────────────────────────────────────────────
 @Composable
 fun SectionHeader(title: String, action: String? = null, onAction: (() -> Unit)? = null) {
     Row(
@@ -142,7 +142,7 @@ fun SectionHeader(title: String, action: String? = null, onAction: (() -> Unit)?
     }
 }
 
-// â”€â”€â”€ Status Badge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Status Badge ───────────────────────────────────────────────────
 @Composable
 fun StatusBadge(status: String) {
     val (bgColor, textColor) = when (status) {
@@ -165,7 +165,7 @@ fun StatusBadge(status: String) {
     }
 }
 
-// â”€â”€â”€ Category Chip â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Category Chip ──────────────────────────────────────────────────
 @Composable
 fun CategoryChip(category: String, icon: String) {
     val color = CategoryColors[category] ?: TextSecondary
@@ -178,7 +178,7 @@ fun CategoryChip(category: String, icon: String) {
     }
 }
 
-// â”€â”€â”€ Item Card (for lists) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Item Card (for lists) ──────────────────────────────────────────
 @Composable
 fun ItemCard(
     modifier: Modifier = Modifier,
@@ -226,7 +226,7 @@ fun ItemCard(
     }
 }
 
-// â”€â”€â”€ Empty State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Empty State ────────────────────────────────────────────────────
 @Composable
 fun EmptyState(message: String, icon: ImageVector) {
     Column(
@@ -239,7 +239,7 @@ fun EmptyState(message: String, icon: ImageVector) {
     }
 }
 
-// â”€â”€â”€ Confirm Delete Dialog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Confirm Delete Dialog ──────────────────────────────────────────
 @Composable
 fun ConfirmDeleteDialog(
     itemName: String,
@@ -249,7 +249,7 @@ fun ConfirmDeleteDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Conferma eliminazione") },
-        text = { Text("Sei sicuro di voler eliminare \"$itemName\"? Questa azione non puÃ² essere annullata.") },
+        text = { Text("Sei sicuro di voler eliminare \"$itemName\"? Questa azione non può essere annullata.") },
         confirmButton = {
             TextButton(onClick = onConfirm) { Text("Elimina", color = Red400) }
         },
@@ -260,7 +260,7 @@ fun ConfirmDeleteDialog(
     )
 }
 
-// â”€â”€â”€ Gradient FAB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Gradient FAB ───────────────────────────────────────────────────
 @Composable
 fun GradientFab(
     icon: ImageVector,
@@ -279,7 +279,7 @@ fun GradientFab(
     }
 }
 
-// â”€â”€â”€ TextField Colors (stile dark) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── TextField Colors (stile dark) ──────────────────────────────────
 @Composable
 fun condoTextFieldColors() = OutlinedTextFieldDefaults.colors(
     focusedTextColor = TextPrimary,
@@ -293,7 +293,7 @@ fun condoTextFieldColors() = OutlinedTextFieldDefaults.colors(
     unfocusedContainerColor = Color.Transparent
 )
 
-// â”€â”€â”€ Category Chip per filtri documenti â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Category Chip per filtri documenti ─────────────────────────────
 @Composable
 fun CategoryChip(
     label: String,
@@ -339,5 +339,3 @@ fun CategoryChip(
         }
     }
 }
-
-

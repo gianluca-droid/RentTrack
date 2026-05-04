@@ -2,7 +2,7 @@ package com.renttrack.app.data.model
 
 import androidx.room.*
 
-// â”€â”€â”€ Condominio â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Condominio ──────────────────────────────────────────────────────
 @Entity(tableName = "condomini")
 data class Condominio(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -14,7 +14,7 @@ data class Condominio(
     val createdAt: Long = System.currentTimeMillis()
 )
 
-// â”€â”€â”€ UnitÃ  Condominiale â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Unità Condominiale ─────────────────────────────────────────────
 @Entity(
     tableName = "units",
     foreignKeys = [ForeignKey(
@@ -35,10 +35,10 @@ data class CondoUnit(
     val ownerName: String,
     val ownerEmail: String = "",
     val ownerPhone: String = "",
-    val scala: String = ""    // es. "A", "B", "1", "2" â€” vuoto = nessuna scala
+    val scala: String = ""    // es. "A", "B", "1", "2" — vuoto = nessuna scala
 )
 
-// â”€â”€â”€ Spesa Condominiale â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Spesa Condominiale ─────────────────────────────────────────────
 @Entity(
     tableName = "expenses",
     foreignKeys = [ForeignKey(
@@ -59,7 +59,7 @@ data class Expense(
     val createdAt: Long = System.currentTimeMillis()
 )
 
-// â”€â”€â”€ Pagamento â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Pagamento ──────────────────────────────────────────────────────
 @Entity(
     tableName = "payments",
     foreignKeys = [ForeignKey(
@@ -81,7 +81,7 @@ data class Payment(
     val createdAt: Long = System.currentTimeMillis()
 )
 
-// â”€â”€â”€ Cedolino â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Cedolino ───────────────────────────────────────────────────────
 @Entity(
     tableName = "cedolini",
     foreignKeys = [ForeignKey(
@@ -106,7 +106,7 @@ data class Cedolino(
     val createdAt: Long = System.currentTimeMillis()
 )
 
-// â”€â”€â”€ Voce Cedolino â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Voce Cedolino ──────────────────────────────────────────────────
 @Entity(
     tableName = "cedolino_items",
     foreignKeys = [ForeignKey(
@@ -123,7 +123,7 @@ data class CedolinoItem(
     val amount: Double
 )
 
-// â”€â”€â”€ Documento â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Documento ───────────────────────────────────────────────────────
 @Entity(
     tableName = "documents",
     foreignKeys = [ForeignKey(
@@ -144,16 +144,16 @@ data class Documento(
     val fileSize: Long = 0L,
     val dataInserimento: Long = System.currentTimeMillis(),
     val note: String = "",
-    // â”€â”€â”€ Nuovi campi v6 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Nuovi campi v6 ───────────────────────────────────────────────
     /** Sintesi/riassunto del documento leggibile dal condomino prima di aprire il file */
     val sommario: String = "",
-    /** "Tutti" = visibile a tutto il condominio | "Singoli" = solo alle unitÃ  in destinatariUnitIds */
+    /** "Tutti" = visibile a tutto il condominio | "Singoli" = solo alle unità in destinatariUnitIds */
     val visibilita: String = "Tutti",
-    /** ID unitÃ  destinatarie separati da virgola, es. "1,3,7". Usato solo se visibilita="Singoli" */
+    /** ID unità destinatarie separati da virgola, es. "1,3,7". Usato solo se visibilita="Singoli" */
     val destinatariUnitIds: String = ""
 )
 
-// â”€â”€â”€ Relazioni â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Relazioni ──────────────────────────────────────────────────────
 data class CedolinoWithItems(
     @Embedded val cedolino: Cedolino,
     @Relation(parentColumn = "id", entityColumn = "cedolinoId")
@@ -172,15 +172,15 @@ data class UnitWithCedolini(
     val cedolini: List<Cedolino>
 )
 
-// â”€â”€â”€ Costanti â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Costanti ────────────────────────────────────────────────────────
 object ExpenseCategories {
     val categories = listOf(
-        "Manutenzione Ordinaria" to "ðŸ”§", "Manutenzione Straordinaria" to "ðŸ—ï¸",
-        "Pulizia" to "ðŸ§¹", "Ascensore" to "ðŸ›—", "Illuminazione" to "ðŸ’¡",
-        "Acqua" to "ðŸ’§", "Riscaldamento" to "ðŸ”¥", "Assicurazione" to "ðŸ›¡ï¸",
-        "Amministrazione" to "ðŸ“‹", "Giardinaggio" to "ðŸŒ¿", "Altro" to "ðŸ“¦"
+        "Manutenzione Ordinaria" to "🔧", "Manutenzione Straordinaria" to "🏗️",
+        "Pulizia" to "🧹", "Ascensore" to "🛗", "Illuminazione" to "💡",
+        "Acqua" to "💧", "Riscaldamento" to "🔥", "Assicurazione" to "🛡️",
+        "Amministrazione" to "📋", "Giardinaggio" to "🌿", "Altro" to "📦"
     )
-    fun getIcon(category: String) = categories.find { it.first == category }?.second ?: "ðŸ“¦"
+    fun getIcon(category: String) = categories.find { it.first == category }?.second ?: "📦"
 }
 
 object PaymentMethods {
@@ -198,33 +198,33 @@ object UnitTypes { val types = listOf("Appartamento", "Locale", "Box", "Negozio"
 object DocumentCategories {
     data class DocCategory(val name: String, val icon: String, val colorHex: String)
     val categories = listOf(
-        DocCategory("Verbali di assemblea",  "ðŸ“‹", "#6C63FF"),
-        DocCategory("Bilanci e preventivi",  "ðŸ’°", "#00C896"),
-        DocCategory("Ordini del giorno",     "ðŸ“„", "#FF9F43"),
-        DocCategory("Preventivi fornitori",  "ðŸ”§", "#54A0FF"),
-        DocCategory("Contratti",             "ðŸ“œ", "#FF6B9D"),
-        DocCategory("Pratiche condominiali", "ðŸ›ï¸", "#A29BFE"),
-        DocCategory("Segnalazioni danni",    "âš ï¸", "#FF6B6B"),
-        DocCategory("Avanzamento lavori",    "ðŸ—ï¸", "#F7B731"),
-        DocCategory("Altro",                "ðŸ“", "#636E72")
+        DocCategory("Verbali di assemblea",  "📋", "#6C63FF"),
+        DocCategory("Bilanci e preventivi",  "💰", "#00C896"),
+        DocCategory("Ordini del giorno",     "📄", "#FF9F43"),
+        DocCategory("Preventivi fornitori",  "🔧", "#54A0FF"),
+        DocCategory("Contratti",             "📜", "#FF6B9D"),
+        DocCategory("Pratiche condominiali", "🏛️", "#A29BFE"),
+        DocCategory("Segnalazioni danni",    "⚠️", "#FF6B6B"),
+        DocCategory("Avanzamento lavori",    "🏗️", "#F7B731"),
+        DocCategory("Altro",                "📁", "#636E72")
     )
     val names = categories.map { it.name }
-    fun getIcon(categoria: String) = categories.find { it.name == categoria }?.icon ?: "ðŸ“"
+    fun getIcon(categoria: String) = categories.find { it.name == categoria }?.icon ?: "📁"
     fun getColorHex(categoria: String) = categories.find { it.name == categoria }?.colorHex ?: "#636E72"
 }
 
 object FileTypes {
     data class FileType(val name: String, val icon: String, val colorHex: String, val mimeTypes: List<String>)
     val supported = listOf(
-        FileType("PDF",  "ðŸ“„", "#FF6B6B", listOf("application/pdf")),
-        FileType("Word", "ðŸ“", "#54A0FF", listOf(
+        FileType("PDF",  "📄", "#FF6B6B", listOf("application/pdf")),
+        FileType("Word", "📝", "#54A0FF", listOf(
             "application/msword",
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         )),
-        FileType("Foto", "ðŸ“·", "#00C896", listOf("image/jpeg", "image/png", "image/heic", "image/webp"))
+        FileType("Foto", "📷", "#00C896", listOf("image/jpeg", "image/png", "image/heic", "image/webp"))
     )
     val allMimeTypes: Array<String> get() = supported.flatMap { it.mimeTypes }.toTypedArray()
-    fun getIcon(fileType: String) = supported.find { it.name == fileType }?.icon ?: "ðŸ“Ž"
+    fun getIcon(fileType: String) = supported.find { it.name == fileType }?.icon ?: "📎"
     fun getColorHex(fileType: String) = supported.find { it.name == fileType }?.colorHex ?: "#636E72"
     fun fromMimeType(mimeType: String): String = when {
         mimeType == "application/pdf" -> "PDF"
@@ -233,5 +233,3 @@ object FileTypes {
         else -> "Altro"
     }
 }
-
-

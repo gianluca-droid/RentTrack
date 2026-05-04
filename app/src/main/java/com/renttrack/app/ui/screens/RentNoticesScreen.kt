@@ -26,7 +26,7 @@ import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RentNoticesScreen(viewModel: RentViewModel) {
+fun CedoliniScreen(viewModel: RentViewModel) {
     val cedolini by viewModel.cedolini.collectAsState()
     val cedoliniWithItems by viewModel.cedoliniWithItems.collectAsState()
     val pendingCount by viewModel.pendingCedolini.collectAsState()
@@ -74,7 +74,7 @@ fun RentNoticesScreen(viewModel: RentViewModel) {
                 ) {
                     Icon(Icons.Filled.AutoAwesome, null, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("Genera per tutte le unitÃ ")
+                    Text("Genera per tutte le unità")
                 }
             }
         } else {
@@ -123,7 +123,7 @@ fun RentNoticesScreen(viewModel: RentViewModel) {
 
                 items(filtered, key = { it.id }) { cedolino ->
                     ItemCard(onDelete = { deleteTarget = cedolino }) {
-                        // Header: unitÃ  + badge invio
+                        // Header: unità + badge invio
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
@@ -199,11 +199,11 @@ fun RentNoticesScreen(viewModel: RentViewModel) {
                             val shareText = buildString {
                                 val unitName = viewModel.getUnitName(cedolino.unitId)
                                 val cwi2 = cedoliniWithItems.find { it.cedolino.id == cedolino.id }
-                                appendLine("ðŸ“‹ Cedolino Condominio")
+                                appendLine("📋 Cedolino Condominio")
                                 appendLine("Intestato a: $unitName")
                                 appendLine("Periodo: ${cedolino.period}")
-                                cwi2?.items?.forEach { appendLine("â€¢ ${it.description}: ${Formatters.currency(it.amount)}") }
-                                appendLine("â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€")
+                                cwi2?.items?.forEach { appendLine("• ${it.description}: ${Formatters.currency(it.amount)}") }
+                                appendLine("─────────────────")
                                 appendLine("TOTALE: ${Formatters.currency(cedolino.total)}")
                                 appendLine("Scadenza: ${Formatters.date(cedolino.dueDate)}")
                                 appendLine("Stato: ${cedolino.status}")
@@ -224,7 +224,7 @@ fun RentNoticesScreen(viewModel: RentViewModel) {
                                 Spacer(Modifier.width(4.dp))
                                 Text("Condividi", style = MaterialTheme.typography.labelSmall)
                             }
-                            // Conferma Invio (solo se non giÃ  inviato)
+                            // Conferma Invio (solo se non già inviato)
                             if (!cedolino.sentToResident) {
                                 Button(
                                     onClick = { showConfirmSendDialog = cedolino },
@@ -236,7 +236,7 @@ fun RentNoticesScreen(viewModel: RentViewModel) {
                                     Text("Invia", style = MaterialTheme.typography.labelSmall)
                                 }
                             }
-                            // Segna Pagato â†’ apre dialog con scelta metodo
+                            // Segna Pagato → apre dialog con scelta metodo
                             if (cedolino.status != "Pagato") {
                                 Button(
                                     onClick = { showPagamentoDialog = cedolino },
@@ -261,13 +261,13 @@ fun RentNoticesScreen(viewModel: RentViewModel) {
             horizontalAlignment = Alignment.End,
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // FAB: addebita quota diretta a singola unitÃ 
+            // FAB: addebita quota diretta a singola unità
             SmallFloatingActionButton(
                 onClick = { showQuotaDialog = true },
                 containerColor = Amber400.copy(alpha = 0.9f),
                 contentColor = DarkBg
             ) {
-                Icon(Icons.Filled.EuroSymbol, "Addebita quota a unitÃ ")
+                Icon(Icons.Filled.EuroSymbol, "Addebita quota a unità")
             }
             // FAB secondario: singolo condomino (con millesimi)
             SmallFloatingActionButton(
@@ -281,7 +281,7 @@ fun RentNoticesScreen(viewModel: RentViewModel) {
             @Suppress("DEPRECATION")
             GradientFab(
                 icon = Icons.Filled.NoteAdd,
-                contentDescription = "Genera cedolini per tutte le unitÃ ",
+                contentDescription = "Genera cedolini per tutte le unità",
                 onClick = { showGenerateDialog = true }
             )
         }
@@ -299,7 +299,7 @@ fun RentNoticesScreen(viewModel: RentViewModel) {
         )
     }
 
-    // Dialog: addebita quota diretta a singola unitÃ 
+    // Dialog: addebita quota diretta a singola unità
     if (showQuotaDialog && units.isNotEmpty()) {
         QuotaDirectaDialog(
             units = units,
@@ -311,7 +311,7 @@ fun RentNoticesScreen(viewModel: RentViewModel) {
         )
     }
 
-    // Dialog: genera per tutte le unitÃ 
+    // Dialog: genera per tutte le unità
     if (showGenerateDialog) {
         GenerateCedoliniDialog(
             onDismiss = { showGenerateDialog = false },
@@ -354,7 +354,7 @@ fun RentNoticesScreen(viewModel: RentViewModel) {
                     )
                     HorizontalDivider(color = TextMuted.copy(alpha = 0.2f))
                     Text(
-                        "Una volta inviato, sarÃ  visibile al condomino nella sua area personale.",
+                        "Una volta inviato, sarà visibile al condomino nella sua area personale.",
                         style = MaterialTheme.typography.bodySmall, color = TextMuted
                     )
                 }
@@ -398,7 +398,7 @@ fun RentNoticesScreen(viewModel: RentViewModel) {
     }
 }
 
-// â”€â”€â”€ Dialog: Cedolino per singolo condomino â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Dialog: Cedolino per singolo condomino ──────────────────────────
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SingleCedolinoDialog(
@@ -416,19 +416,19 @@ private fun SingleCedolinoDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Nuovo Cedolino â€” Singolo Condomino") },
+        title = { Text("Nuovo Cedolino — Singolo Condomino") },
         text = {
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
                 modifier = Modifier.heightIn(max = 480.dp)
             ) {
-                // Selezione unitÃ 
+                // Selezione unità
                 item {
                     ExposedDropdownMenuBox(expanded = unitExpanded, onExpandedChange = { unitExpanded = it }) {
                         OutlinedTextField(
                             value = "Int. ${selectedUnit.number} - ${selectedUnit.ownerName}",
                             onValueChange = {}, readOnly = true,
-                            label = { Text("UnitÃ  / Condomino") },
+                            label = { Text("Unità / Condomino") },
                             modifier = Modifier.fillMaxWidth().menuAnchor(),
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(unitExpanded) }
                         )
@@ -491,7 +491,7 @@ private fun SingleCedolinoDialog(
                             onValueChange = { amt ->
                                 items = items.toMutableList().also { it[idx] = it[idx].copy(second = amt) }
                             },
-                            label = { Text("â‚¬") },
+                            label = { Text("€") },
                             modifier = Modifier.weight(1f),
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
@@ -544,7 +544,7 @@ private fun SingleCedolinoDialog(
     )
 }
 
-// â”€â”€â”€ Dialog: Genera per tutte le unitÃ  â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Dialog: Genera per tutte le unità ──────────────────────────────
 @Composable
 private fun GenerateCedoliniDialog(onDismiss: () -> Unit, onGenerate: (String, Long) -> Unit) {
     var period by remember { mutableStateOf("") }
@@ -553,11 +553,11 @@ private fun GenerateCedoliniDialog(onDismiss: () -> Unit, onGenerate: (String, L
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Genera Cedolini â€” Tutte le UnitÃ ") },
+        title = { Text("Genera Cedolini — Tutte le Unità") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    "Verranno generati cedolini per tutte le unitÃ  con ripartizione millesimale automatica sulle spese registrate.",
+                    "Verranno generati cedolini per tutte le unità con ripartizione millesimale automatica sulle spese registrate.",
                     style = MaterialTheme.typography.bodyMedium, color = TextSecondary
                 )
                 OutlinedTextField(
@@ -576,12 +576,12 @@ private fun GenerateCedoliniDialog(onDismiss: () -> Unit, onGenerate: (String, L
     )
 }
 
-// â”€â”€â”€ Dialog: Dettaglio cedolino â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Dialog: Dettaglio cedolino ──────────────────────────────────────
 @Composable
 private fun CedolinoDetailDialog(cwi: CedolinoWithItems, unitName: String, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Cedolino â€” ${cwi.cedolino.period}") },
+        title = { Text("Cedolino — ${cwi.cedolino.period}") },
         text = {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 item {
@@ -623,7 +623,7 @@ private fun CedolinoDetailDialog(cwi: CedolinoWithItems, unitName: String, onDis
     )
 }
 
-// â”€â”€â”€ Dialog: Quota Diretta a Singola UnitÃ  â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Dialog: Quota Diretta a Singola Unità ───────────────────────────────────
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun QuotaDirectaDialog(
@@ -654,21 +654,21 @@ fun QuotaDirectaDialog(
         onDismissRequest = onDismiss,
         containerColor = com.renttrack.app.ui.theme.DarkSurface,
         icon = { Icon(Icons.Filled.EuroSymbol, null, tint = Amber400) },
-        title = { Text("Addebita quota a unitÃ ", color = com.renttrack.app.ui.theme.TextPrimary, fontWeight = FontWeight.Bold) },
+        title = { Text("Addebita quota a unità", color = com.renttrack.app.ui.theme.TextPrimary, fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                // Selezione unitÃ 
+                // Selezione unità
                 ExposedDropdownMenuBox(expanded = unitExpanded, onExpandedChange = { unitExpanded = it }) {
                     OutlinedTextField(
-                        value = selectedUnit?.let { "Int. ${it.number} - ${it.ownerName}" } ?: "Seleziona unitÃ ",
-                        onValueChange = {}, readOnly = true, label = { Text("UnitÃ ") },
+                        value = selectedUnit?.let { "Int. ${it.number} - ${it.ownerName}" } ?: "Seleziona unità",
+                        onValueChange = {}, readOnly = true, label = { Text("Unità") },
                         modifier = Modifier.fillMaxWidth().menuAnchor(),
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(unitExpanded) }
                     )
                     ExposedDropdownMenu(expanded = unitExpanded, onDismissRequest = { unitExpanded = false }) {
                         units.sortedBy { it.number }.forEach { unit ->
                             DropdownMenuItem(
-                                text = { Text("Int. ${unit.number} â€” ${unit.ownerName}", color = com.renttrack.app.ui.theme.TextPrimary) },
+                                text = { Text("Int. ${unit.number} — ${unit.ownerName}", color = com.renttrack.app.ui.theme.TextPrimary) },
                                 onClick = { selectedUnit = unit; unitExpanded = false }
                             )
                         }
@@ -692,7 +692,7 @@ fun QuotaDirectaDialog(
                 }
                 OutlinedTextField(descrizione, { descrizione = it }, label = { Text("Descrizione") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
                 OutlinedTextField(
-                    importo, { importo = it }, label = { Text("Importo (â‚¬)") },
+                    importo, { importo = it }, label = { Text("Importo (€)") },
                     modifier = Modifier.fillMaxWidth(), singleLine = true,
                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal)
                 )
@@ -714,7 +714,7 @@ fun QuotaDirectaDialog(
     )
 }
 
-// â”€â”€â”€ Dialog: Registra Pagamento con Metodo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Dialog: Registra Pagamento con Metodo ───────────────────────────────────
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegistraPagamentoDialog(
@@ -728,11 +728,11 @@ fun RegistraPagamentoDialog(
     var methodExpanded by remember { mutableStateOf(false) }
 
     val methodIcons = mapOf(
-        "Contanti" to "ðŸ’µ",
-        "Bonifico" to "ðŸ¦",
-        "Bollettino Postale" to "ðŸ“®",
-        "RID / Addebito diretto" to "ðŸ”„",
-        "Assegno" to "ðŸ“"
+        "Contanti" to "💵",
+        "Bonifico" to "🏦",
+        "Bollettino Postale" to "📮",
+        "RID / Addebito diretto" to "🔄",
+        "Assegno" to "📝"
     )
 
     AlertDialog(
@@ -762,7 +762,7 @@ fun RegistraPagamentoDialog(
                 // Metodo di pagamento
                 ExposedDropdownMenuBox(expanded = methodExpanded, onExpandedChange = { methodExpanded = it }) {
                     OutlinedTextField(
-                        value = "${methodIcons[selectedMethod] ?: "ðŸ’³"} $selectedMethod",
+                        value = "${methodIcons[selectedMethod] ?: "💳"} $selectedMethod",
                         onValueChange = {}, readOnly = true, label = { Text("Metodo di pagamento") },
                         modifier = Modifier.fillMaxWidth().menuAnchor(),
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(methodExpanded) }
@@ -770,7 +770,7 @@ fun RegistraPagamentoDialog(
                     ExposedDropdownMenu(expanded = methodExpanded, onDismissRequest = { methodExpanded = false }) {
                         com.renttrack.app.data.model.PaymentMethods.methods.forEach { method ->
                             DropdownMenuItem(
-                                text = { Text("${methodIcons[method] ?: "ðŸ’³"} $method", color = com.renttrack.app.ui.theme.TextPrimary) },
+                                text = { Text("${methodIcons[method] ?: "💳"} $method", color = com.renttrack.app.ui.theme.TextPrimary) },
                                 onClick = { selectedMethod = method; methodExpanded = false }
                             )
                         }
@@ -780,7 +780,7 @@ fun RegistraPagamentoDialog(
                 OutlinedTextField(
                     reference, { reference = it },
                     label = { Text("Riferimento (opzionale)") },
-                    placeholder = { Text("es. CRO, nÂ° bollettino...", color = com.renttrack.app.ui.theme.TextMuted) },
+                    placeholder = { Text("es. CRO, n° bollettino...", color = com.renttrack.app.ui.theme.TextMuted) },
                     modifier = Modifier.fillMaxWidth(), singleLine = true
                 )
             }
@@ -798,6 +798,3 @@ fun RegistraPagamentoDialog(
         dismissButton = { TextButton(onClick = onDismiss) { Text("Annulla", color = com.renttrack.app.ui.theme.TextSecondary) } }
     )
 }
-
-
-

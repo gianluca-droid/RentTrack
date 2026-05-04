@@ -24,5 +24,3 @@ object PropertyManager {
             .edit().remove(KEY_ACTIVE_CONDO).apply()
     }
 }
-
-

@@ -33,10 +33,10 @@ private val MONTHS = listOf("Gen","Feb","Mar","Apr","Mag","Giu","Lug","Ago","Set
 @Composable
 fun ReportsScreen(viewModel: RentViewModel) {
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("ðŸ“Š Panoramica", "ðŸ“… Mensile", "ðŸ“ Archivio")
+    val tabs = listOf("📊 Panoramica", "📅 Mensile", "📁 Archivio")
 
     Column(modifier = Modifier.fillMaxSize().background(DarkBg)) {
-        // â”€â”€ Tab Row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── Tab Row ──────────────────────────────────────────────────
         TabRow(
             selectedTabIndex = selectedTab,
             containerColor = DarkSurface,
@@ -79,7 +79,7 @@ fun ReportsScreen(viewModel: RentViewModel) {
     }
 }
 
-// â”€â”€â”€ TAB 1: Panoramica â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── TAB 1: Panoramica ───────────────────────────────────────────────
 @Composable
 private fun PanoramicaTab(viewModel: RentViewModel) {
     val expenses by viewModel.expenses.collectAsState()
@@ -156,10 +156,10 @@ private fun PanoramicaTab(viewModel: RentViewModel) {
         item {
             StatGrid(
                 listOf(
-                    "NÂ° Spese" to "${expenses.size}",
-                    "NÂ° Pagamenti" to "${payments.size}",
-                    "NÂ° UnitÃ " to "${units.size}",
-                    "Media Spesa" to if (expenses.isEmpty()) "â€”" else Formatters.currency(totalExpenses / expenses.size)
+                    "N° Spese" to "${expenses.size}",
+                    "N° Pagamenti" to "${payments.size}",
+                    "N° Unità" to "${units.size}",
+                    "Media Spesa" to if (expenses.isEmpty()) "—" else Formatters.currency(totalExpenses / expenses.size)
                 )
             )
         }
@@ -167,7 +167,7 @@ private fun PanoramicaTab(viewModel: RentViewModel) {
     }
 }
 
-// â”€â”€â”€ TAB 2: Mensile â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── TAB 2: Mensile ──────────────────────────────────────────────────
 @Composable
 private fun MensileTab(viewModel: RentViewModel) {
     val selectedYear by viewModel.selectedYear.collectAsState()
@@ -254,7 +254,7 @@ private fun MensileTab(viewModel: RentViewModel) {
     }
 }
 
-// â”€â”€â”€ TAB 3: Archivio â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── TAB 3: Archivio ─────────────────────────────────────────────────
 @Composable
 private fun ArchivioTab(viewModel: RentViewModel, onViewMensile: (Int) -> Unit) {
     val yearlyExp by viewModel.yearlyExpenses.collectAsState()
@@ -309,7 +309,7 @@ private fun ArchivioTab(viewModel: RentViewModel, onViewMensile: (Int) -> Unit) 
     }
 }
 
-// â”€â”€â”€ Componenti locali â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Componenti locali ───────────────────────────────────────────────
 
 @Composable
 private fun CategoryBar(category: String, total: Double, maxVal: Double) {
@@ -440,7 +440,7 @@ private fun YearCard(year: Int, expenses: Double, expCount: Int, payments: Doubl
                         }
                     }
                     Text(
-                        "$expCount spese Â· $payCount pagamenti",
+                        "$expCount spese · $payCount pagamenti",
                         style = MaterialTheme.typography.bodySmall,
                         color = TextMuted
                     )
@@ -483,5 +483,3 @@ private fun LabeledAmount(label: String, amount: Double, color: Color) {
         Text(Formatters.currency(amount), style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = color)
     }
 }
-
-

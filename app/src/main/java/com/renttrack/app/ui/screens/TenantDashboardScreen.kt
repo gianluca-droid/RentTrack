@@ -27,14 +27,14 @@ import com.renttrack.app.viewmodel.RentViewModel
 
 /**
  * Dashboard lato condomino con 4 tab:
- * - Appartamento: dati della propria unitÃ 
+ * - Appartamento: dati della propria unità
  * - Cedolini: cedolini ricevuti (sentToResident = true)
  * - Pagamenti: storico pagamenti effettuati
  * - Documenti: documenti del condominio
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TenantDashboardScreen(
+fun ResidentDashboardScreen(
     viewModel: RentViewModel,
     onLogout: () -> Unit
 ) {
@@ -44,19 +44,19 @@ fun TenantDashboardScreen(
     val documenti by viewModel.documenti.collectAsState()
     val activeCondominio by viewModel.activeCondominio.collectAsState()
 
-    // UnitÃ  del condomino â€” cerca nelle unitÃ  caricate
+    // Unità del condomino — cerca nelle unità caricate
     val allUnits by viewModel.units.collectAsState()
     val myUnit = remember(residentUnitId, allUnits) { allUnits.find { it.id == residentUnitId } }
 
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("ðŸ  Appartamento", "ðŸ“„ Cedolini", "ðŸ’³ Pagamenti", "ðŸ“ Documenti")
+    val tabs = listOf("🏠 Appartamento", "📄 Cedolini", "💳 Pagamenti", "📁 Documenti")
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(DarkBg)
     ) {
-        // â”€â”€ Header condomino â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── Header condomino ──────────────────────────────────────────
         Surface(color = DarkSurface) {
             Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -73,17 +73,17 @@ fun TenantDashboardScreen(
                     Spacer(Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            myUnit?.ownerName ?: "Inquilino",
+                            myUnit?.ownerName ?: "Condomino",
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                             color = TextPrimary
                         )
                         Text(
                             buildString {
                                 myUnit?.let {
-                                    if (it.scala.isNotBlank()) append("Sc.${it.scala} Â· ")
+                                    if (it.scala.isNotBlank()) append("Sc.${it.scala} · ")
                                     append("Int. ${it.number}")
                                 }
-                                activeCondominio?.let { append(" â€” ${it.nome}") }
+                                activeCondominio?.let { append(" — ${it.nome}") }
                             },
                             style = MaterialTheme.typography.bodySmall,
                             color = Cyan400
@@ -100,7 +100,7 @@ fun TenantDashboardScreen(
             }
         }
 
-        // â”€â”€ Tab Row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── Tab Row ───────────────────────────────────────────────────
         ScrollableTabRow(
             selectedTabIndex = selectedTab,
             containerColor = DarkSurface,
@@ -128,7 +128,7 @@ fun TenantDashboardScreen(
             }
         }
 
-        // â”€â”€ Contenuto Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── Contenuto Tab ─────────────────────────────────────────────
         AnimatedContent(targetState = selectedTab, label = "resident_tabs") { tab ->
             when (tab) {
                 0 -> AppartamentoTab(viewModel, myUnit)
@@ -140,7 +140,7 @@ fun TenantDashboardScreen(
     }
 }
 
-// â”€â”€â”€ TAB 1: Il mio appartamento â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── TAB 1: Il mio appartamento ──────────────────────────────────────
 @Composable
 private fun AppartamentoTab(viewModel: RentViewModel, unit: com.renttrack.app.data.model.CondoUnit?) {
     val activeCondominio by viewModel.activeCondominio.collectAsState()
@@ -149,7 +149,7 @@ private fun AppartamentoTab(viewModel: RentViewModel, unit: com.renttrack.app.da
 
     if (unit == null) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("Nessuna unitÃ  selezionata", color = TextMuted)
+            Text("Nessuna unità selezionata", color = TextMuted)
         }
         return
     }
@@ -177,12 +177,12 @@ private fun AppartamentoTab(viewModel: RentViewModel, unit: com.renttrack.app.da
                     }
                     HorizontalDivider(color = TextMuted.copy(alpha = 0.2f))
                     InfoRow("Proprietario", unit.ownerName)
-                    InfoRow("UnitÃ ", "Int. ${unit.number}")
+                    InfoRow("Unità", "Int. ${unit.number}")
                     if (unit.scala.isNotBlank()) InfoRow("Scala", unit.scala)
                     InfoRow("Piano", "Piano ${unit.floor}")
                     InfoRow("Tipo", unit.type)
-                    InfoRow("Superficie", "${unit.areaMq.toInt()} mÂ²")
-                    InfoRow("Quota %", "${unit.millesimi.toInt()}/1000")
+                    InfoRow("Superficie", "${unit.areaMq.toInt()} m²")
+                    InfoRow("Millesimi", "${unit.millesimi.toInt()}/1000")
                     if (unit.ownerEmail.isNotBlank()) InfoRow("Email", unit.ownerEmail)
                     if (unit.ownerPhone.isNotBlank()) InfoRow("Telefono", unit.ownerPhone)
                 }
@@ -236,7 +236,7 @@ private fun AppartamentoTab(viewModel: RentViewModel, unit: com.renttrack.app.da
     }
 }
 
-// â”€â”€â”€ TAB 2: Cedolini ricevuti â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── TAB 2: Cedolini ricevuti ─────────────────────────────────────────
 @Composable
 private fun CedoliniRicevutiTab(cedolini: List<CedolinoWithItems>) {
     if (cedolini.isEmpty()) {
@@ -300,7 +300,7 @@ private fun CedoliniRicevutiTab(cedolini: List<CedolinoWithItems>) {
     }
 }
 
-// â”€â”€â”€ TAB 3: I miei pagamenti â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── TAB 3: I miei pagamenti ─────────────────────────────────────────
 @Composable
 private fun MieiPagamentiTab(payments: List<Payment>) {
     if (payments.isEmpty()) {
@@ -364,13 +364,13 @@ private fun MieiPagamentiTab(payments: List<Payment>) {
     }
 }
 
-// â”€â”€â”€ TAB 4: Documenti condominio â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── TAB 4: Documenti condominio ──────────────────────────────────────
 @Composable
 private fun DocumentiCondominioTab(viewModel: RentViewModel) {
     val documenti by viewModel.documenti.collectAsState()
     val residentUnitId by viewModel.residentUnitId.collectAsState()
 
-    // Filtra per destinatario: mostra solo "Tutti" o quelli indirizzati all'unitÃ  del residente
+    // Filtra per destinatario: mostra solo "Tutti" o quelli indirizzati all'unità del residente
     val miei = remember(documenti, residentUnitId) {
         documenti.filter { doc ->
             doc.visibilita == "Tutti" ||
@@ -410,7 +410,7 @@ private fun DocumentiCondominioTab(viewModel: RentViewModel) {
                         Spacer(Modifier.width(8.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(doc.titolo, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = TextPrimary, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                            Text("${doc.categoria} Â· ${com.renttrack.app.ui.components.Formatters.date(doc.dataInserimento)}", style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                            Text("${doc.categoria} · ${com.renttrack.app.ui.components.Formatters.date(doc.dataInserimento)}", style = MaterialTheme.typography.bodySmall, color = TextMuted)
                         }
                     }
 
@@ -464,7 +464,7 @@ private fun DocumentiCondominioTab(viewModel: RentViewModel) {
     }
 }
 
-// â”€â”€â”€ Componenti helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Componenti helpers ───────────────────────────────────────────────
 @Composable
 private fun InfoRow(label: String, value: String) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -486,6 +486,3 @@ private fun ResidentStatCard(title: String, value: String, color: Color, modifie
         }
     }
 }
-
-
-

@@ -63,7 +63,7 @@ fun ExpensesScreen(viewModel: RentViewModel) {
                             color = Red400
                         )
                         if (expense.notes.isNotBlank()) {
-                            Text("ðŸ“ ${expense.notes}", style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                            Text("📝 ${expense.notes}", style = MaterialTheme.typography.bodySmall, color = TextMuted)
                         }
                     }
                 }
@@ -130,7 +130,7 @@ private fun ExpenseFormDialog(expense: Expense?, condominioId: Long, onDismiss: 
                     }
                 }
                 OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Descrizione") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-                OutlinedTextField(value = amount, onValueChange = { amount = it }, label = { Text("Importo (â‚¬)") }, modifier = Modifier.fillMaxWidth(), singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
+                OutlinedTextField(value = amount, onValueChange = { amount = it }, label = { Text("Importo (€)") }, modifier = Modifier.fillMaxWidth(), singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
                 OutlinedTextField(value = notes, onValueChange = { notes = it }, label = { Text("Note (opzionale)") }, modifier = Modifier.fillMaxWidth(), maxLines = 3)
             }
         },
@@ -153,5 +153,3 @@ private fun ExpenseFormDialog(expense: Expense?, condominioId: Long, onDismiss: 
         containerColor = DarkSurface
     )
 }
-
-

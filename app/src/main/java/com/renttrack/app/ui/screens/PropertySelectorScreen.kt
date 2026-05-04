@@ -32,7 +32,7 @@ private val condoGradients = listOf(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PropertySelectorScreen(
+fun CondominioSelectorScreen(
     viewModel: RentViewModel,
     onCondominioSelected: (Long) -> Unit,
     onResidentAccess: () -> Unit = {}
@@ -46,7 +46,7 @@ fun PropertySelectorScreen(
     Box(modifier = Modifier.fillMaxSize().background(DarkBg)) {
         Column(modifier = Modifier.fillMaxSize()) {
 
-            // â”€â”€ Hero Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // ── Hero Header ──────────────────────────────────────────
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -56,7 +56,7 @@ fun PropertySelectorScreen(
                     .padding(horizontal = 24.dp, vertical = 32.dp)
             ) {
                 Column {
-                    Text("ðŸ¢", fontSize = 40.sp)
+                    Text("🏢", fontSize = 40.sp)
                     Spacer(Modifier.height(8.dp))
                     Text(
                         "I tuoi Condomini",
@@ -80,7 +80,7 @@ fun PropertySelectorScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        Text("ðŸ—ï¸", fontSize = 56.sp)
+                        Text("🏗️", fontSize = 56.sp)
                         Text("Nessun condominio ancora", color = TextMuted,
                             style = MaterialTheme.typography.bodyLarge)
                         Button(
@@ -101,9 +101,9 @@ fun PropertySelectorScreen(
                     itemsIndexed(condomini) { index, condo ->
                         // Calcola stats per questa card
                         val condoUnits = viewModel.allCondomini.collectAsState().value
-                        val unitCount = units.count()   // units Ã¨ giÃ  filtered per activeCondominio, usiamo allUnits
-                        // Otteniamo le info dai flow globali: per semplicitÃ  usiamo conteggi da cedolini in memoria
-                        val pendingForThis = 0   // placeholder â€” i dati vengono caricati solo per il condominio attivo
+                        val unitCount = units.count()   // units è già filtered per activeCondominio, usiamo allUnits
+                        // Otteniamo le info dai flow globali: per semplicità usiamo conteggi da cedolini in memoria
+                        val pendingForThis = 0   // placeholder — i dati vengono caricati solo per il condominio attivo
                         CondominioCard(
                             condominio = condo,
                             gradient = condoGradients[index % condoGradients.size],
@@ -170,7 +170,7 @@ fun PropertySelectorScreen(
             icon = { Icon(Icons.Filled.DeleteForever, null, tint = Color(0xFFFF6B6B)) },
             title = { Text("Elimina condominio", color = TextPrimary, fontWeight = FontWeight.Bold) },
             text = {
-                Text("Eliminare \"${condo.nome}\"?\nTutti i dati (unitÃ , spese, documenti) verranno eliminati definitivamente.",
+                Text("Eliminare \"${condo.nome}\"?\nTutti i dati (unità, spese, documenti) verranno eliminati definitivamente.",
                     color = TextSecondary)
             },
             confirmButton = {
@@ -308,7 +308,7 @@ fun AddCondominioSheet(
                 modifier = Modifier.fillMaxWidth(), singleLine = true, colors = condoTextFieldColors())
             OutlinedTextField(indirizzo, { indirizzo = it }, label = { Text("Indirizzo *") },
                 modifier = Modifier.fillMaxWidth(), singleLine = true, colors = condoTextFieldColors())
-            OutlinedTextField(citta, { citta = it }, label = { Text("CittÃ  *") },
+            OutlinedTextField(citta, { citta = it }, label = { Text("Città *") },
                 modifier = Modifier.fillMaxWidth(), singleLine = true, colors = condoTextFieldColors())
             OutlinedTextField(cf, { cf = it }, label = { Text("Codice fiscale condominio") },
                 modifier = Modifier.fillMaxWidth(), singleLine = true, colors = condoTextFieldColors())
@@ -333,5 +333,3 @@ fun AddCondominioSheet(
         }
     }
 }
-
-

@@ -7,7 +7,7 @@ class RentTrackApp : Application() {
     override fun onCreate() {
         super.onCreate()
 
-        // â”€â”€ Crash handler: salva l'errore in SharedPreferences â”€â”€â”€â”€â”€â”€
+        // ── Crash handler: salva l'errore in SharedPreferences ──────
         val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
             try {
@@ -23,5 +23,3 @@ class RentTrackApp : Application() {
         }
     }
 }
-
-

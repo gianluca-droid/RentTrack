@@ -89,7 +89,7 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
     val unsentCedolini by viewModel.unsentCedoliniCount.collectAsState()
     val pendingCedolini by viewModel.pendingCedolini.collectAsState()
 
-    // â”€â”€ Loading screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Loading screen ──────────────────────────────────────────────
     if (isLoading) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -101,7 +101,7 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
         return
     }
 
-    // â”€â”€ Dopo il loading: scegli startDestination in base al condominio attivo â”€â”€
+    // ── Dopo il loading: scegli startDestination in base al condominio attivo ──
     val startDestination = if (activeCondominioId > 0L) Screen.Dashboard.route
                            else Screen.CondominioSelector.route
 
@@ -123,7 +123,7 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
                             // Nome condominio attivo
                             activeCondominio?.let {
                                 Text(
-                                    "ðŸ¢ ${it.nome}",
+                                    "🏢 ${it.nome}",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = Cyan400
                                 )
@@ -145,7 +145,7 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
                         ) {
                             Icon(Icons.Filled.Business, null, tint = TextSecondary, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(4.dp))
-                            Text("Proprietà", color = TextSecondary, style = MaterialTheme.typography.labelMedium)
+                            Text("Condomini", color = TextSecondary, style = MaterialTheme.typography.labelMedium)
                         }
                         // Reports
                         if (currentRoute != Screen.Reports.route) {
@@ -240,7 +240,7 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
             composable(Screen.Affitti.route)   { RentNoticesScreen(viewModel) }
             composable(Screen.Documenti.route)  { DocumentiScreen(viewModel) }
             composable(Screen.Reports.route)    { ReportsScreen(viewModel) }
-            // â”€â”€â”€ Lato Condomino â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // ─── Lato Condomino ───────────────────────────────────────────────
             composable(Screen.ResidentLogin.route) {
                 TenantLoginScreen(
                     viewModel = viewModel,
@@ -269,5 +269,3 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
         }
     }
 }
-
-

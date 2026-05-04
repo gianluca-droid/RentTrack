@@ -82,7 +82,7 @@ fun DocumentiScreen(viewModel: RentViewModel) {
     Box(modifier = Modifier.fillMaxSize().background(DarkBg)) {
         Column(modifier = Modifier.fillMaxSize()) {
 
-            // â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // ── Header ───────────────────────────────────────────────
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -107,13 +107,13 @@ fun DocumentiScreen(viewModel: RentViewModel) {
                 }
             }
 
-            // â”€â”€ Filtro Categorie â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // ── Filtro Categorie ──────────────────────────────────────
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp)
             ) {
                 item {
-                    CategoryChip("Tutti", "ðŸ“‚", selectedCategoria == null, documenti.size, "#636E72") { selectedCategoria = null }
+                    CategoryChip("Tutti", "📂", selectedCategoria == null, documenti.size, "#636E72") { selectedCategoria = null }
                 }
                 items(DocumentCategories.categories) { cat ->
                     CategoryChip(cat.name, cat.icon, selectedCategoria == cat.name,
@@ -125,11 +125,11 @@ fun DocumentiScreen(viewModel: RentViewModel) {
 
             HorizontalDivider(color = DarkSurface, thickness = 1.dp)
 
-            // â”€â”€ Lista â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // ── Lista ──────────────────────────────────────────────────
             if (documentiFiltrati.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text("ðŸ“", fontSize = 48.sp)
+                        Text("📁", fontSize = 48.sp)
                         Text(
                             if (selectedCategoria == null) "Nessun documento ancora" else "Nessun documento in questa categoria",
                             color = TextMuted, style = MaterialTheme.typography.bodyMedium
@@ -218,7 +218,7 @@ fun DocumentiScreen(viewModel: RentViewModel) {
             containerColor = DarkSurface,
             icon = { Icon(Icons.Filled.DeleteForever, null, tint = Color(0xFFFF6B6B)) },
             title = { Text("Elimina documento", color = TextPrimary, fontWeight = FontWeight.Bold) },
-            text = { Text("Eliminare \"${doc.titolo}\"?\nIl file verrÃ  rimosso definitivamente.", color = TextSecondary) },
+            text = { Text("Eliminare \"${doc.titolo}\"?\nIl file verrà rimosso definitivamente.", color = TextSecondary) },
             confirmButton = {
                 TextButton(onClick = { viewModel.deleteDocumento(doc); documentoToDelete = null }) {
                     Text("Elimina", color = Color(0xFFFF6B6B), fontWeight = FontWeight.Bold)
@@ -245,13 +245,13 @@ fun DocumentCard(
 
     // Calcola etichetta destinatari
     val destinatariLabel = remember(documento, units) {
-        if (documento.visibilita == "Tutti") "ðŸŒ Tutto il condominio"
+        if (documento.visibilita == "Tutti") "🌐 Tutto il condominio"
         else {
             val ids = documento.destinatariUnitIds.split(",").mapNotNull { it.trim().toLongOrNull() }
-            if (ids.isEmpty()) "ðŸŒ Tutto il condominio"
+            if (ids.isEmpty()) "🌐 Tutto il condominio"
             else {
                 val nomi = ids.mapNotNull { id -> units.find { it.id == id }?.let { "Int.${it.number}" } }
-                "ðŸ‘¥ ${nomi.joinToString(", ").ifBlank { "${ids.size} unitÃ " }}"
+                "👥 ${nomi.joinToString(", ").ifBlank { "${ids.size} unità" }}"
             }
         }
     }
@@ -296,7 +296,7 @@ fun DocumentCard(
                     Text(documento.categoria, style = MaterialTheme.typography.labelSmall, color = catColor)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text(dateStr, style = MaterialTheme.typography.labelSmall, color = TextMuted)
-                        Text("â€¢", color = TextMuted, fontSize = 8.sp)
+                        Text("•", color = TextMuted, fontSize = 8.sp)
                         Text(formatFileSize(documento.fileSize), style = MaterialTheme.typography.labelSmall, color = TextMuted)
                     }
                     // Badge destinatari
@@ -448,7 +448,7 @@ fun AddDocumentoSheet(
                             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
                             color = Amber400)
                     }
-                    Text("Il condomino vedrÃ  questa sintesi prima di aprire il documento",
+                    Text("Il condomino vedrà questa sintesi prima di aprire il documento",
                         style = MaterialTheme.typography.labelSmall, color = TextMuted)
                     OutlinedTextField(
                         sommario, { sommario = it },
@@ -467,7 +467,7 @@ fun AddDocumentoSheet(
                     modifier = Modifier.fillMaxWidth(), minLines = 2, maxLines = 3, colors = condoTextFieldColors())
             }
 
-            // â”€â”€ DESTINATARI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // ── DESTINATARI ───────────────────────────────────────────
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -480,7 +480,7 @@ fun AddDocumentoSheet(
 
                     // Radio: Tutti / Singoli
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        listOf("Tutti" to "ðŸŒ Tutto il condominio", "Singoli" to "ðŸ‘¥ UnitÃ  specifiche").forEach { (value, label) ->
+                        listOf("Tutti" to "🌐 Tutto il condominio", "Singoli" to "👥 Unità specifiche").forEach { (value, label) ->
                             Surface(
                                 onClick = {
                                     visibilita = value
@@ -509,16 +509,16 @@ fun AddDocumentoSheet(
                         }
                     }
 
-                    // Lista unitÃ  selezionabili (solo se "Singoli")
+                    // Lista unità selezionabili (solo se "Singoli")
                     AnimatedVisibility(visible = visibilita == "Singoli" && units.isNotEmpty()) {
                         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text("Seleziona le unitÃ  destinatarie:",
+                            Text("Seleziona le unità destinatarie:",
                                 style = MaterialTheme.typography.bodySmall, color = TextSecondary)
-                            val unitsByScala = units.groupBy { it.scala.ifBlank { "â€”" } }.toSortedMap()
+                            val unitsByScala = units.groupBy { it.scala.ifBlank { "—" } }.toSortedMap()
                             unitsByScala.forEach { (scala, scalaUnits) ->
                                 if (unitsByScala.size > 1) {
                                     Text(
-                                        if (scala == "â€”") "Senza scala" else scala,
+                                        if (scala == "—") "Senza scala" else scala,
                                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                                         color = Cyan400,
                                         modifier = Modifier.padding(top = 4.dp)
@@ -548,7 +548,7 @@ fun AddDocumentoSheet(
                                             )
                                             Spacer(Modifier.width(6.dp))
                                             Text(
-                                                "Int. ${unit.number} â€” ${unit.ownerName}",
+                                                "Int. ${unit.number} — ${unit.ownerName}",
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = if (isChecked) TextPrimary else TextSecondary
                                             )
@@ -606,7 +606,7 @@ fun formatFileSize(bytes: Long): String = when {
     else -> String.format("%.1f MB", bytes / (1024.0 * 1024.0))
 }
 
-// â”€â”€â”€ Sheet Modifica Documento â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Sheet Modifica Documento ──────────────────────────────────────────
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditDocumentoSheet(
@@ -707,7 +707,7 @@ fun EditDocumentoSheet(
                         Text("Destinatari", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold), color = Purple400)
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        listOf("Tutti" to "ðŸŒ Tutto il condominio", "Singoli" to "ðŸ‘¥ UnitÃ  specifiche").forEach { (value, label) ->
+                        listOf("Tutti" to "🌐 Tutto il condominio", "Singoli" to "👥 Unità specifiche").forEach { (value, label) ->
                             Surface(
                                 onClick = { visibilita = value; if (value == "Tutti") selectedUnitIds = emptySet() },
                                 shape = RoundedCornerShape(10.dp),
@@ -735,7 +735,7 @@ fun EditDocumentoSheet(
                                 Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                                     Checkbox(checked = isChecked, onCheckedChange = null, colors = CheckboxDefaults.colors(checkedColor = Purple400))
                                     Spacer(Modifier.width(6.dp))
-                                    Text("Int. ${unit.number} â€” ${unit.ownerName}", style = MaterialTheme.typography.bodySmall, color = if (isChecked) TextPrimary else TextSecondary)
+                                    Text("Int. ${unit.number} — ${unit.ownerName}", style = MaterialTheme.typography.bodySmall, color = if (isChecked) TextPrimary else TextSecondary)
                                 }
                             }
                         }
@@ -768,6 +768,3 @@ fun EditDocumentoSheet(
         }
     }
 }
-
-
-

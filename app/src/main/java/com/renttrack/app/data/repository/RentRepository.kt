@@ -12,7 +12,7 @@ class RentRepository(
     private val cedolinoDao: CedolinoDao,
     private val documentoDao: DocumentoDao
 ) {
-    // â”€â”€â”€ Condomini â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Condomini ───────────────────────────────────────────────
     val allCondomini: Flow<List<Condominio>> = condominioDao.getAllCondomini()
     val condominioCount: Flow<Int> = condominioDao.getCondominioCount()
 
@@ -21,7 +21,7 @@ class RentRepository(
     suspend fun deleteCondominio(c: Condominio) = condominioDao.deleteCondominio(c)
     suspend fun getCondominioById(id: Long) = condominioDao.getCondominioById(id)
 
-    // â”€â”€â”€ UnitÃ  â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Unità ───────────────────────────────────────────────────
     fun getUnitsByCondominio(condId: Long) = unitDao.getUnitsByCondominio(condId)
     fun getUnitCount(condId: Long) = unitDao.getUnitCount(condId)
     fun getTotalMillesimi(condId: Long) = unitDao.getTotalMillesimi(condId)
@@ -31,7 +31,7 @@ class RentRepository(
     suspend fun updateUnit(unit: CondoUnit) = unitDao.updateUnit(unit)
     suspend fun deleteUnit(unit: CondoUnit) = unitDao.deleteUnit(unit)
 
-    // â”€â”€â”€ Spese â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Spese ───────────────────────────────────────────────────
     fun getExpensesByCondominio(condId: Long) = expenseDao.getExpensesByCondominio(condId)
     fun getTotalExpenses(condId: Long) = expenseDao.getTotalExpenses(condId)
     fun getExpensesByGroupedCategory(condId: Long) = expenseDao.getExpensesByGroupedCategory(condId)
@@ -44,7 +44,7 @@ class RentRepository(
     suspend fun updateExpense(expense: Expense) = expenseDao.updateExpense(expense)
     suspend fun deleteExpense(expense: Expense) = expenseDao.deleteExpense(expense)
 
-    // â”€â”€â”€ Pagamenti â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Pagamenti ────────────────────────────────────────────────
     fun getPaymentsByCondominio(condId: Long) = paymentDao.getPaymentsByCondominio(condId)
     fun getTotalPayments(condId: Long) = paymentDao.getTotalPayments(condId)
     fun getPaymentsByUnit(unitId: Long) = paymentDao.getPaymentsByUnit(unitId)
@@ -56,7 +56,7 @@ class RentRepository(
     suspend fun updatePayment(payment: Payment) = paymentDao.updatePayment(payment)
     suspend fun deletePayment(payment: Payment) = paymentDao.deletePayment(payment)
 
-    // â”€â”€â”€ Cedolini â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Cedolini ────────────────────────────────────────────────
     fun getAllCedolini(condId: Long) = cedolinoDao.getAllCedolini(condId)
     fun getAllCedoliniWithItems(condId: Long) = cedolinoDao.getAllCedoliniWithItems(condId)
     fun getPendingCedoliniCount(condId: Long) = cedolinoDao.getPendingCedoliniCount(condId)
@@ -66,7 +66,7 @@ class RentRepository(
     suspend fun updateCedolino(c: Cedolino) = cedolinoDao.updateCedolino(c)
     suspend fun deleteCedolino(c: Cedolino) = cedolinoDao.deleteCedolino(c)
 
-    // â”€â”€â”€ Documenti â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Documenti ────────────────────────────────────────────────
     fun getDocumentiByCondominio(condId: Long) = documentoDao.getDocumentiByCondominio(condId)
     fun getDocumentCount(condId: Long) = documentoDao.getDocumentCount(condId)
     fun getDocumentiByCategoria(condId: Long, categoria: String) = documentoDao.getDocumentiByCategoria(condId, categoria)
@@ -74,5 +74,3 @@ class RentRepository(
     suspend fun updateDocumento(doc: Documento) = documentoDao.updateDocumento(doc)
     suspend fun deleteDocumento(doc: Documento) = documentoDao.deleteDocumento(doc)
 }
-
-

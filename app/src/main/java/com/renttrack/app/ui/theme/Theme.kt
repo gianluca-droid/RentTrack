@@ -35,5 +35,3 @@ fun RentTrackTheme(content: @Composable () -> Unit) {
         content = content
     )
 }
-
-

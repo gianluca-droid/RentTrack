@@ -45,7 +45,7 @@ fun DashboardScreen(viewModel: RentViewModel) {
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // â”€â”€â”€ Summary Cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ─── Summary Cards ──────────────────────────────────────
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 SummaryCard(
@@ -75,7 +75,7 @@ fun DashboardScreen(viewModel: RentViewModel) {
                     modifier = Modifier.weight(1f),
                     subtitle = if (balance >= 0) "In positivo" else "In negativo"
                 )
-                // â”€â”€ Cedolini Aperti â€” cliccabile â”€â”€
+                // ── Cedolini Aperti — cliccabile ──
                 ClickableSummaryCard(
                     title = "Da Incassare",
                     value = Formatters.currency(totalOpen),
@@ -88,7 +88,7 @@ fun DashboardScreen(viewModel: RentViewModel) {
             }
         }
 
-        // â”€â”€â”€ Spese per Categoria â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ─── Spese per Categoria ────────────────────────────────
         item { SectionHeader("Spese per Categoria") }
 
         if (expensesByCategory.isNotEmpty()) {
@@ -132,7 +132,7 @@ fun DashboardScreen(viewModel: RentViewModel) {
             }
         }
 
-        // â”€â”€â”€ Ultime Spese â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ─── Ultime Spese ───────────────────────────────────────
         item { SectionHeader("Ultime Spese") }
 
         val recentExpenses = expenses.take(5)
@@ -154,7 +154,7 @@ fun DashboardScreen(viewModel: RentViewModel) {
             }
         }
 
-        // â”€â”€â”€ Ultimi Pagamenti â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ─── Ultimi Pagamenti ───────────────────────────────────
         item { SectionHeader("Ultimi Pagamenti") }
 
         val recentPayments = payments.take(5)
@@ -180,7 +180,7 @@ fun DashboardScreen(viewModel: RentViewModel) {
         item { Spacer(Modifier.height(80.dp)) }
     }
 
-    // â”€â”€ Bottom Sheet: Riepilogo cedolini aperti â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Bottom Sheet: Riepilogo cedolini aperti ──────────────────
     if (showOpenCedoliniSheet) {
         ModalBottomSheet(
             onDismissRequest = { showOpenCedoliniSheet = false },
@@ -197,7 +197,7 @@ fun DashboardScreen(viewModel: RentViewModel) {
     }
 }
 
-// â”€â”€â”€ Bottom Sheet content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Bottom Sheet content ─────────────────────────────────────────────
 @Composable
 private fun OpenCedoliniSheet(
     openCedolini: List<CedolinoWithItems>,
@@ -205,7 +205,7 @@ private fun OpenCedoliniSheet(
     units: List<com.renttrack.app.data.model.CondoUnit>,
     viewModel: RentViewModel
 ) {
-    // Raggruppa per unitÃ 
+    // Raggruppa per unità
     val byUnit = remember(openCedolini) {
         openCedolini
             .groupBy { it.cedolino.unitId }
@@ -236,7 +236,7 @@ private fun OpenCedoliniSheet(
                     color = TextPrimary
                 )
                 Text(
-                    "${openCedolini.size} cedolini aperti Â· ${byUnit.size} condomini",
+                    "${openCedolini.size} cedolini aperti · ${byUnit.size} condomini",
                     style = MaterialTheme.typography.bodySmall,
                     color = TextMuted
                 )
@@ -268,10 +268,10 @@ private fun OpenCedoliniSheet(
                 val unit = units.find { it.id == unitId }
                 val ownerLabel = unit?.let {
                     buildString {
-                        if (it.scala.isNotBlank()) append("${it.scala} Â· ")
-                        append("Int. ${it.number} â€” ${it.ownerName}")
+                        if (it.scala.isNotBlank()) append("${it.scala} · ")
+                        append("Int. ${it.number} — ${it.ownerName}")
                     }
-                } ?: "UnitÃ  sconosciuta"
+                } ?: "Unità sconosciuta"
                 val unitTotal = ceds.sumOf { it.cedolino.total }
 
                 item(key = "sheet_unit_$unitId") {
@@ -366,6 +366,3 @@ private fun OpenCedoliniSheet(
         }
     }
 }
-
-
-

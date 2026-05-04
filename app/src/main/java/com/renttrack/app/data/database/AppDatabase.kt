@@ -33,7 +33,7 @@ abstract class AppDatabase : RoomDatabase() {
     companion object {
         @Volatile private var INSTANCE: AppDatabase? = null
 
-        // â”€â”€â”€ Migrazione 5 â†’ 6: aggiunge sommario, visibilita, destinatariUnitIds â”€â”€â”€
+        // ─── Migrazione 5 → 6: aggiunge sommario, visibilita, destinatariUnitIds ───
         private val MIGRATION_5_6 = object : Migration(5, 6) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE documents ADD COLUMN sommario TEXT NOT NULL DEFAULT ''")
@@ -56,5 +56,3 @@ abstract class AppDatabase : RoomDatabase() {
         }
     }
 }
-
-

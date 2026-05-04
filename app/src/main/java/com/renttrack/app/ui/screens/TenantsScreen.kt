@@ -27,7 +27,7 @@ import com.renttrack.app.ui.theme.*
 import com.renttrack.app.viewmodel.RentViewModel
 
 @Composable
-fun TenantsScreen(viewModel: RentViewModel) {
+fun UnitsScreen(viewModel: RentViewModel) {
     val units by viewModel.units.collectAsState()
     val activeCondominioId by viewModel.activeCondominioId.collectAsState()
     val collapsedScales by viewModel.collapsedScales.collectAsState()
@@ -36,7 +36,7 @@ fun TenantsScreen(viewModel: RentViewModel) {
     var deleteTarget by remember { mutableStateOf<CondoUnit?>(null) }
     var searchQuery by rememberSaveable { mutableStateOf("") }
 
-    // UnitÃ  filtrate dalla ricerca
+    // Unità filtrate dalla ricerca
     val filteredUnits = remember(units, searchQuery) {
         if (searchQuery.isBlank()) units
         else units.filter { unit ->
@@ -47,7 +47,7 @@ fun TenantsScreen(viewModel: RentViewModel) {
     }
 
     // Raggruppamento per scala, poi ordinamento per piano dentro ogni scala
-    // UnitÃ  senza scala vanno in un gruppo "â€”" posto alla fine
+    // Unità senza scala vanno in un gruppo "—" posto alla fine
     val groupedUnits = remember(filteredUnits) {
         val withScala = filteredUnits
             .filter { it.scala.isNotBlank() }
@@ -59,13 +59,13 @@ fun TenantsScreen(viewModel: RentViewModel) {
             .filter { it.scala.isBlank() }
             .sortedBy { it.floor }
 
-        // Se tutte le unitÃ  non hanno scala â†’ un solo gruppo senza etichetta
+        // Se tutte le unità non hanno scala → un solo gruppo senza etichetta
         if (withScala.isEmpty()) {
             if (noScala.isEmpty()) emptyMap() else mapOf("" to noScala)
         } else {
             val result = mutableMapOf<String, List<CondoUnit>>()
             result.putAll(withScala)
-            if (noScala.isNotEmpty()) result["â€”"] = noScala
+            if (noScala.isNotEmpty()) result["—"] = noScala
             result
         }
     }
@@ -76,7 +76,7 @@ fun TenantsScreen(viewModel: RentViewModel) {
 
     Box(modifier = Modifier.fillMaxSize()) {
         if (units.isEmpty()) {
-            EmptyState("Nessuna unitÃ  registrata", Icons.Filled.Apartment)
+            EmptyState("Nessuna unità registrata", Icons.Filled.Apartment)
         } else {
             LazyColumn(
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 96.dp),
@@ -85,11 +85,11 @@ fun TenantsScreen(viewModel: RentViewModel) {
                 // Summary card
                 item {
                     SummaryCard(
-                        title = "Totale UnitÃ ",
+                        title = "Totale Unità",
                         value = "${units.size}",
                         icon = Icons.Filled.Apartment,
                         accentColor = Cyan400,
-                        subtitle = "Millesimi: ${totalMillesimi.toInt()}/1000 Â· ${groupedUnits.keys.count { s -> s.isNotBlank() && s != "â€”" }} scale"
+                        subtitle = "Millesimi: ${totalMillesimi.toInt()}/1000 · ${groupedUnits.keys.count { s -> s.isNotBlank() && s != "—" }} scale"
                     )
                 }
 
@@ -98,7 +98,7 @@ fun TenantsScreen(viewModel: RentViewModel) {
                     OutlinedTextField(
                         value = searchQuery,
                         onValueChange = { newValue -> searchQuery = newValue },
-                        placeholder = { Text("Cerca per proprietario, interno o scalaâ€¦", style = MaterialTheme.typography.bodyMedium, color = TextMuted) },
+                        placeholder = { Text("Cerca per proprietario, interno o scala…", style = MaterialTheme.typography.bodyMedium, color = TextMuted) },
                         leadingIcon = { Icon(Icons.Filled.Search, null, tint = TextMuted) },
                         trailingIcon = {
                             if (searchQuery.isNotBlank()) {
@@ -130,7 +130,7 @@ fun TenantsScreen(viewModel: RentViewModel) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Icon(Icons.Filled.SearchOff, null, tint = TextMuted, modifier = Modifier.size(40.dp))
                                 Spacer(Modifier.height(8.dp))
-                                Text("Nessuna unitÃ  trovata per \"$searchQuery\"", color = TextMuted, style = MaterialTheme.typography.bodyMedium)
+                                Text("Nessuna unità trovata per \"$searchQuery\"", color = TextMuted, style = MaterialTheme.typography.bodyMedium)
                             }
                         }
                     }
@@ -140,9 +140,9 @@ fun TenantsScreen(viewModel: RentViewModel) {
                 groupedUnits.forEach { (scala, unitsInScala) ->
                     val isExpanded = scala !in collapsedScales
                     val scalaMillesimi = unitsInScala.sumOf { it.millesimi }
-                    val hasLabel = scala.isNotBlank() && scala != "â€”" || scala == "â€”"
+                    val hasLabel = scala.isNotBlank() && scala != "—" || scala == "—"
 
-                    // Header scala (solo se c'Ã¨ piÃ¹ di un gruppo o il gruppo ha un nome)
+                    // Header scala (solo se c'è più di un gruppo o il gruppo ha un nome)
                     if (groupedUnits.size > 1 || (groupedUnits.size == 1 && hasLabel)) {
                         item(key = "header_$scala") {
                             ScalaHeader(
@@ -155,7 +155,7 @@ fun TenantsScreen(viewModel: RentViewModel) {
                         }
                     }
 
-                    // UnitÃ  della scala (con animazione collasso)
+                    // Unità della scala (con animazione collasso)
                     if (scala !in collapsedScales) {
                         items(unitsInScala, key = { it.id }) { unit ->
                             AnimatedVisibility(
@@ -178,7 +178,7 @@ fun TenantsScreen(viewModel: RentViewModel) {
 
         GradientFab(
             icon = Icons.Filled.Add,
-            contentDescription = "Aggiungi unitÃ ",
+            contentDescription = "Aggiungi unità",
             onClick = { editingUnit = null; showDialog = true },
             modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)
         )
@@ -205,7 +205,7 @@ fun TenantsScreen(viewModel: RentViewModel) {
     }
 }
 
-// â”€â”€â”€ Header collassabile per scala â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Header collassabile per scala ───────────────────────────────────
 @Composable
 private fun ScalaHeader(
     scala: String,
@@ -215,8 +215,8 @@ private fun ScalaHeader(
     onToggle: () -> Unit
 ) {
     val displayName = when {
-        scala.isBlank() || scala == "â€”" -> "UnitÃ  senza raggruppamento"
-        else -> scala  // mostra esattamente ciÃ² che l'admin ha scritto (A, Nord, Corpo B, ecc.)
+        scala.isBlank() || scala == "—" -> "Unità senza raggruppamento"
+        else -> scala  // mostra esattamente ciò che l'admin ha scritto (A, Nord, Corpo B, ecc.)
     }
 
     Card(
@@ -242,7 +242,7 @@ private fun ScalaHeader(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    if (scala.isBlank() || scala == "â€”") "?" else scala.take(1).uppercase(),
+                    if (scala.isBlank() || scala == "—") "?" else scala.take(1).uppercase(),
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                     color = Cyan400
                 )
@@ -255,7 +255,7 @@ private fun ScalaHeader(
                     color = TextPrimary
                 )
                 Text(
-                    "$unitCount ${if (unitCount == 1) "unitÃ " else "unitÃ "} Â· ${millesimi.toInt()} mill.",
+                    "$unitCount ${if (unitCount == 1) "unità" else "unità"} · ${millesimi.toInt()} mill.",
                     style = MaterialTheme.typography.bodySmall,
                     color = TextMuted
                 )
@@ -269,7 +269,7 @@ private fun ScalaHeader(
     }
 }
 
-// â”€â”€â”€ Card unitÃ  â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Card unità ───────────────────────────────────────────────────────
 @Composable
 private fun UnitCard(
     unit: CondoUnit,
@@ -322,12 +322,12 @@ private fun UnitCard(
                 }
                 Text(unit.ownerName, style = MaterialTheme.typography.bodyMedium, color = TextPrimary)
                 if (unit.ownerPhone.isNotBlank()) {
-                    Text("ðŸ“ž ${unit.ownerPhone}", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                    Text("📞 ${unit.ownerPhone}", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
                 }
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    "${unit.areaMq.toInt()} mÂ²",
+                    "${unit.areaMq.toInt()} m²",
                     style = MaterialTheme.typography.bodySmall,
                     color = TextMuted
                 )
@@ -341,7 +341,7 @@ private fun UnitCard(
     }
 }
 
-// â”€â”€â”€ Form dialog â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Form dialog ──────────────────────────────────────────────────────
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun UnitFormDialog(unit: CondoUnit?, condominioId: Long, onDismiss: () -> Unit, onSave: (CondoUnit) -> Unit) {
@@ -358,7 +358,7 @@ private fun UnitFormDialog(unit: CondoUnit?, condominioId: Long, onDismiss: () -
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (unit != null) "Modifica UnitÃ " else "Nuova UnitÃ ") },
+        title = { Text(if (unit != null) "Modifica Unità" else "Nuova Unità") },
         text = {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 item {
@@ -402,12 +402,12 @@ private fun UnitFormDialog(unit: CondoUnit?, condominioId: Long, onDismiss: () -
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         OutlinedTextField(
                             value = areaMq, onValueChange = { areaMq = it },
-                            label = { Text("mÂ²") }, modifier = Modifier.weight(1f), singleLine = true,
+                            label = { Text("m²") }, modifier = Modifier.weight(1f), singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                         )
                         OutlinedTextField(
                             value = millesimi, onValueChange = { millesimi = it },
-                            label = { Text("Quota %") }, modifier = Modifier.weight(1f), singleLine = true,
+                            label = { Text("Millesimi") }, modifier = Modifier.weight(1f), singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                         )
                     }
@@ -455,5 +455,3 @@ private fun UnitFormDialog(unit: CondoUnit?, condominioId: Long, onDismiss: () -
         containerColor = DarkSurface
     )
 }
-
-

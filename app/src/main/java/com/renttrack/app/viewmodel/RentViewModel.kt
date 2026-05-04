@@ -26,7 +26,7 @@ class RentViewModel(application: Application) : AndroidViewModel(application) {
         db.paymentDao(), db.cedolinoDao(), db.documentoDao()
     )
 
-    // â”€â”€â”€ Condominio Attivo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Condominio Attivo ───────────────────────────────────────
     private val _activeCondominioId = MutableStateFlow(
         PropertyManager.getActiveCondominioId(application)
     )
@@ -60,7 +60,7 @@ class RentViewModel(application: Application) : AndroidViewModel(application) {
         _paymentsFilterScala.value = null
     }
 
-    // â”€â”€â”€ ModalitÃ  Condomino (Mock) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Modalità Condomino (Mock) ────────────────────────────────
     // In produzione questi dati arriveranno da Supabase auth
     private val _residentUnitId = MutableStateFlow<Long>(-1L)
     val residentUnitId: StateFlow<Long> = _residentUnitId
@@ -94,11 +94,11 @@ class RentViewModel(application: Application) : AndroidViewModel(application) {
         }}
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    /** UnitÃ  del condomino corrente */
+    /** Unità del condomino corrente */
     fun getResidentUnit(): CondoUnit? = units.value.find { it.id == _residentUnitId.value }
-        ?: allCondomini.value.let { null }  // fallback se unitÃ  non nel condominio attivo
+        ?: allCondomini.value.let { null }  // fallback se unità non nel condominio attivo
 
-    // â”€â”€â”€ State Flows (dipendono dal condominio attivo) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── State Flows (dipendono dal condominio attivo) ───────────
     val units: StateFlow<List<CondoUnit>> = _activeCondominioId
         .filter { it > 0 }
         .flatMapLatest { repository.getUnitsByCondominio(it) }
@@ -139,7 +139,7 @@ class RentViewModel(application: Application) : AndroidViewModel(application) {
         .flatMapLatest { repository.getPendingCedoliniCount(it) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
-    /** Cedolini NON ancora inviati al condomino â€” usato per badge nella bottom bar */
+    /** Cedolini NON ancora inviati al condomino — usato per badge nella bottom bar */
     val unsentCedoliniCount: StateFlow<Int> = _activeCondominioId
         .filter { it > 0 }
         .flatMapLatest { repository.getUnsentCedoliniCount(it) }
@@ -160,7 +160,7 @@ class RentViewModel(application: Application) : AndroidViewModel(application) {
         .flatMapLatest { repository.getDocumentCount(it) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
-    // â”€â”€â”€ Anno selezionato (per ripartizione mensile) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Anno selezionato (per ripartizione mensile) ──────────────
     private val _selectedYear = MutableStateFlow(Calendar.getInstance().get(Calendar.YEAR))
     val selectedYear: StateFlow<Int> = _selectedYear
 
@@ -198,7 +198,7 @@ class RentViewModel(application: Application) : AndroidViewModel(application) {
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // â”€â”€â”€ UI State persistente: UnitÃ  â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── UI State persistente: Unità ─────────────────────────────
     // Set delle scale COLLASSATE (default = tutte espanse = set vuoto)
     private val _collapsedScales = MutableStateFlow<Set<String>>(emptySet())
     val collapsedScales: StateFlow<Set<String>> = _collapsedScales
@@ -211,8 +211,8 @@ class RentViewModel(application: Application) : AndroidViewModel(application) {
 
     fun isScalaExpanded(scala: String): Boolean = scala !in _collapsedScales.value
 
-    // â”€â”€â”€ UI State persistente: Pagamenti â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    // 0 = per unitÃ , 1 = per mese
+    // ─── UI State persistente: Pagamenti ─────────────────────────
+    // 0 = per unità, 1 = per mese
     private val _paymentsView = MutableStateFlow(0)
     val paymentsView: StateFlow<Int> = _paymentsView
     fun setPaymentsView(v: Int) { _paymentsView.value = v }
@@ -244,7 +244,7 @@ class RentViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // â”€â”€â”€ Condominio CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Condominio CRUD ─────────────────────────────────────────
     fun addCondominio(condominio: Condominio, andSelect: Boolean = false) =
         viewModelScope.launch {
             val id = repository.insertCondominio(condominio)
@@ -260,22 +260,22 @@ class RentViewModel(application: Application) : AndroidViewModel(application) {
         if (_activeCondominioId.value == condominio.id) clearActiveCondominio()
     }
 
-    // â”€â”€â”€ Unit CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Unit CRUD ───────────────────────────────────────────────
     fun addUnit(unit: CondoUnit) = viewModelScope.launch { repository.insertUnit(unit) }
     fun updateUnit(unit: CondoUnit) = viewModelScope.launch { repository.updateUnit(unit) }
     fun deleteUnit(unit: CondoUnit) = viewModelScope.launch { repository.deleteUnit(unit) }
 
-    // â”€â”€â”€ Expense CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Expense CRUD ────────────────────────────────────────────
     fun addExpense(expense: Expense) = viewModelScope.launch { repository.insertExpense(expense) }
     fun updateExpense(expense: Expense) = viewModelScope.launch { repository.updateExpense(expense) }
     fun deleteExpense(expense: Expense) = viewModelScope.launch { repository.deleteExpense(expense) }
 
-    // â”€â”€â”€ Payment CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Payment CRUD ────────────────────────────────────────────
     fun addPayment(payment: Payment) = viewModelScope.launch { repository.insertPayment(payment) }
     fun updatePayment(payment: Payment) = viewModelScope.launch { repository.updatePayment(payment) }
     fun deletePayment(payment: Payment) = viewModelScope.launch { repository.deletePayment(payment) }
 
-    // â”€â”€â”€ Cedolino CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Cedolino CRUD ───────────────────────────────────────────
     fun addCedolinoWithItems(cedolino: Cedolino, items: List<CedolinoItem>) =
         viewModelScope.launch { repository.insertCedolinoWithItems(cedolino, items) }
 
@@ -322,8 +322,8 @@ class RentViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /**
-     * Crea una quota diretta per una singola unitÃ  senza passare
-     * dal calcolo millesimale â€” utile per addebiti specifici.
+     * Crea una quota diretta per una singola unità senza passare
+     * dal calcolo millesimale — utile per addebiti specifici.
      */
     fun addQuotaDirecta(
         unitId: Long,
@@ -341,8 +341,8 @@ class RentViewModel(application: Application) : AndroidViewModel(application) {
                 dueDate = dueDate,
                 total = importo,
                 status = "Emesso",
-                // Auto-inviato: l'admin crea la quota appositamente per quest'unitÃ 
-                // â†’ il condomino la vede subito nel suo tab Cedolini
+                // Auto-inviato: l'admin crea la quota appositamente per quest'unità
+                // → il condomino la vede subito nel suo tab Cedolini
                 sentToResident = true,
                 sentAt = System.currentTimeMillis()
             ),
@@ -377,7 +377,7 @@ class RentViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // â”€â”€â”€ Documento CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Documento CRUD ──────────────────────────────────────────
     fun addDocumento(
         uri: Uri,
         titolo: String,
@@ -417,7 +417,7 @@ class RentViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /** Aggiorna titolo, categoria, sommario, visibilita e destinatari di un documento giÃ  salvato */
+    /** Aggiorna titolo, categoria, sommario, visibilita e destinatari di un documento già salvato */
     fun updateDocumento(documento: Documento) = viewModelScope.launch {
         withContext(Dispatchers.IO) { repository.updateDocumento(documento) }
     }
@@ -425,7 +425,7 @@ class RentViewModel(application: Application) : AndroidViewModel(application) {
     /** Duplica un cedolino per il mese successivo (status Emesso, non inviato) */
     fun duplicateCedolino(cwi: CedolinoWithItems) = viewModelScope.launch {
         val nextPeriod = buildString {
-            // Prova a parsare il periodo come "Mese YYYY" â†’ incrementa
+            // Prova a parsare il periodo come "Mese YYYY" → incrementa
             val parts = cwi.cedolino.period.trim().split(" ")
             if (parts.size == 2) {
                 val mesi = listOf("Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno",
@@ -453,10 +453,7 @@ class RentViewModel(application: Application) : AndroidViewModel(application) {
         )
     }
 
-    // â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── Helpers ─────────────────────────────────────────────────
     fun getUnitName(unitId: Long) =
         units.value.find { it.id == unitId }?.let { "Int. ${it.number} - ${it.ownerName}" } ?: "Sconosciuto"
 }
-
-
-

@@ -4,7 +4,7 @@ import androidx.room.*
 import com.renttrack.app.data.model.*
 import kotlinx.coroutines.flow.Flow
 
-// â”€â”€â”€ Condominio DAO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Condominio DAO ─────────────────────────────────────────────────
 @Dao
 interface CondominioDao {
     @Query("SELECT * FROM condomini ORDER BY nome ASC")
@@ -26,7 +26,7 @@ interface CondominioDao {
     suspend fun deleteCondominio(condominio: Condominio)
 }
 
-// â”€â”€â”€ Unit DAO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Unit DAO ───────────────────────────────────────────────────────
 @Dao
 interface UnitDao {
     @Query("SELECT * FROM units WHERE condominioId = :condominioId ORDER BY number ASC")
@@ -55,7 +55,7 @@ interface UnitDao {
     fun getAllUnitsWithPayments(condominioId: Long): Flow<List<UnitWithPayments>>
 }
 
-// â”€â”€â”€ Expense DAO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Expense DAO ────────────────────────────────────────────────────
 @Dao
 interface ExpenseDao {
     @Query("SELECT * FROM expenses WHERE condominioId = :condominioId ORDER BY date DESC")
@@ -81,7 +81,7 @@ interface ExpenseDao {
 
     @Delete
     suspend fun deleteExpense(expense: Expense)
-    // â”€â”€ Mensile e annuale â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Mensile e annuale ─────────────────────────────────────────
     @Query("""
         SELECT CAST(strftime('%m', date / 1000, 'unixepoch') AS INTEGER) AS month, SUM(amount) AS total
         FROM expenses
@@ -110,7 +110,7 @@ data class CategoryTotal(val category: String, val total: Double)
 data class MonthTotal(val month: Int, val total: Double)
 data class YearTotal(val year: Int, val total: Double, val count: Int)
 
-// â”€â”€â”€ Payment DAO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Payment DAO ────────────────────────────────────────────────────
 @Dao
 interface PaymentDao {
     @Query("SELECT p.* FROM payments p JOIN units u ON p.unitId = u.id WHERE u.condominioId = :condominioId ORDER BY p.date DESC")
@@ -137,7 +137,7 @@ interface PaymentDao {
     @Delete
     suspend fun deletePayment(payment: Payment)
 
-    // â”€â”€ Mensile e annuale â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Mensile e annuale ─────────────────────────────────────────
     @Query("""
         SELECT CAST(strftime('%m', p.date / 1000, 'unixepoch') AS INTEGER) AS month, SUM(p.amount) AS total
         FROM payments p JOIN units u ON p.unitId = u.id
@@ -164,7 +164,7 @@ interface PaymentDao {
     fun getYearlyPayments(condominioId: Long): Flow<List<YearTotal>>
 }
 
-// â”€â”€â”€ Cedolino DAO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Cedolino DAO ───────────────────────────────────────────────────
 @Dao
 interface CedolinoDao {
     @Transaction
@@ -212,7 +212,7 @@ interface CedolinoDao {
     }
 }
 
-// â”€â”€â”€ Documento DAO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Documento DAO ──────────────────────────────────────────────────
 @Dao
 interface DocumentoDao {
     @Query("SELECT * FROM documents WHERE condominioId = :condominioId ORDER BY dataInserimento DESC")
@@ -233,5 +233,3 @@ interface DocumentoDao {
     @Delete
     suspend fun deleteDocumento(documento: Documento)
 }
-
-

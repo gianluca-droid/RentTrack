@@ -8,7 +8,7 @@ object SampleData {
     suspend fun populateDatabase(repository: RentRepository): Long {
         fun daysAgo(d: Int): Long { val c = Calendar.getInstance(); c.add(Calendar.DAY_OF_YEAR, -d); return c.timeInMillis }
 
-        // â”€â”€ Condominio 1 (dati completi) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── Condominio 1 (dati completi) ────────────────────────────
         val condoId1 = repository.insertCondominio(
             Condominio(nome = "Condominio Via Roma 12", indirizzo = "Via Roma 12", citta = "Milano", cf = "97654321000")
         )
@@ -64,7 +64,7 @@ object SampleData {
             )
         }
 
-        // â”€â”€ Condominio 2 (dati minimali) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── Condominio 2 (dati minimali) ────────────────────────────
         val condoId2 = repository.insertCondominio(
             Condominio(nome = "Condominio Viale Europa 5", indirizzo = "Viale Europa 5", citta = "Roma")
         )
@@ -83,5 +83,3 @@ object SampleData {
         return condoId1
     }
 }
-
-
