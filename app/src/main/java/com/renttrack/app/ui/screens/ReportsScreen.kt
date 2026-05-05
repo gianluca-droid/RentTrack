@@ -158,7 +158,7 @@ private fun PanoramicaTab(viewModel: RentViewModel) {
                 listOf(
                     "N° Spese" to "${expenses.size}",
                     "N° Pagamenti" to "${payments.size}",
-                    "N° Unità" to "${units.size}",
+                    "N° Inquilini" to "${units.size}",
                     "Media Spesa" to if (expenses.isEmpty()) "—" else Formatters.currency(totalExpenses / expenses.size)
                 )
             )

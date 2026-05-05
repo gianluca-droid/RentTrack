@@ -55,7 +55,7 @@ fun RentNoticesScreen(viewModel: RentViewModel) {
             ) {
                 Icon(Icons.Filled.Description, null, tint = TextMuted, modifier = Modifier.size(64.dp))
                 Spacer(Modifier.height(12.dp))
-                Text("Nessun cedolino generato", color = TextMuted, style = MaterialTheme.typography.bodyLarge)
+                Text("Nessun avviso affitto", color = TextMuted, style = MaterialTheme.typography.bodyLarge)
                 Spacer(Modifier.height(20.dp))
                 Button(
                     onClick = { showSingleDialog = true },
@@ -64,7 +64,7 @@ fun RentNoticesScreen(viewModel: RentViewModel) {
                 ) {
                     Icon(Icons.Filled.PersonAdd, null, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("Cedolino per singolo condomino")
+                    Text("Avviso per singolo inquilino")
                 }
                 Spacer(Modifier.height(8.dp))
                 OutlinedButton(
@@ -74,7 +74,7 @@ fun RentNoticesScreen(viewModel: RentViewModel) {
                 ) {
                     Icon(Icons.Filled.AutoAwesome, null, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("Genera per tutte le unità")
+                    Text("Genera per tutti gli inquilini")
                 }
             }
         } else {
@@ -199,7 +199,7 @@ fun RentNoticesScreen(viewModel: RentViewModel) {
                             val shareText = buildString {
                                 val unitName = viewModel.getUnitName(cedolino.unitId)
                                 val cwi2 = cedoliniWithItems.find { it.cedolino.id == cedolino.id }
-                                appendLine("📋 Cedolino Condominio")
+                                appendLine("📋 Avviso Affitto")
                                 appendLine("Intestato a: $unitName")
                                 appendLine("Periodo: ${cedolino.period}")
                                 cwi2?.items?.forEach { appendLine("• ${it.description}: ${Formatters.currency(it.amount)}") }
@@ -213,9 +213,9 @@ fun RentNoticesScreen(viewModel: RentViewModel) {
                                     val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
                                         type = "text/plain"
                                         putExtra(android.content.Intent.EXTRA_TEXT, shareText)
-                                        putExtra(android.content.Intent.EXTRA_SUBJECT, "Cedolino ${cedolino.period}")
+                                        putExtra(android.content.Intent.EXTRA_SUBJECT, "Avviso affitto ${cedolino.period}")
                                     }
-                                    context.startActivity(android.content.Intent.createChooser(intent, "Invia cedolino"))
+                                    context.startActivity(android.content.Intent.createChooser(intent, "Invia avviso"))
                                 },
                                 modifier = Modifier.weight(1f),
                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = Green400)
@@ -267,7 +267,7 @@ fun RentNoticesScreen(viewModel: RentViewModel) {
                 containerColor = Amber400.copy(alpha = 0.9f),
                 contentColor = DarkBg
             ) {
-                Icon(Icons.Filled.EuroSymbol, "Addebita quota a unità")
+                Icon(Icons.Filled.EuroSymbol, "Addebita importo a inquilino")
             }
             // FAB secondario: singolo condomino (con millesimi)
             SmallFloatingActionButton(
@@ -275,13 +275,13 @@ fun RentNoticesScreen(viewModel: RentViewModel) {
                 containerColor = DarkSurface,
                 contentColor = Cyan400
             ) {
-                Icon(Icons.Filled.PersonAdd, "Cedolino singolo")
+                Icon(Icons.Filled.PersonAdd, "Nuovo avviso")
             }
             // FAB principale: genera per tutti
             @Suppress("DEPRECATION")
             GradientFab(
                 icon = Icons.Filled.NoteAdd,
-                contentDescription = "Genera cedolini per tutte le unità",
+                contentDescription = "Genera avvisi affitto",
                 onClick = { showGenerateDialog = true }
             )
         }
@@ -340,7 +340,7 @@ fun RentNoticesScreen(viewModel: RentViewModel) {
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        "Stai per inviare il cedolino del periodo \"${cedolino.period}\" a:",
+                        "Stai per inviare l'avviso affitto del periodo \"${cedolino.period}\" a:",
                         style = MaterialTheme.typography.bodyMedium, color = TextSecondary
                     )
                     Text(
@@ -354,7 +354,7 @@ fun RentNoticesScreen(viewModel: RentViewModel) {
                     )
                     HorizontalDivider(color = TextMuted.copy(alpha = 0.2f))
                     Text(
-                        "Una volta inviato, sarà visibile al condomino nella sua area personale.",
+                        "Una volta inviato, sarà disponibile per l'inquilino.",
                         style = MaterialTheme.typography.bodySmall, color = TextMuted
                     )
                 }
@@ -391,7 +391,7 @@ fun RentNoticesScreen(viewModel: RentViewModel) {
     // Dialog: elimina
     deleteTarget?.let { cedolino ->
         ConfirmDeleteDialog(
-            itemName = "Cedolino ${cedolino.period} - ${viewModel.getUnitName(cedolino.unitId)}",
+            itemName = "Avviso ${cedolino.period} - ${viewModel.getUnitName(cedolino.unitId)}",
             onConfirm = { viewModel.deleteCedolino(cedolino); deleteTarget = null },
             onDismiss = { deleteTarget = null }
         )
@@ -416,7 +416,7 @@ private fun SingleCedolinoDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Nuovo Cedolino — Singolo Condomino") },
+        title = { Text("Nuovo Avviso Affitto") },
         text = {
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -426,16 +426,16 @@ private fun SingleCedolinoDialog(
                 item {
                     ExposedDropdownMenuBox(expanded = unitExpanded, onExpandedChange = { unitExpanded = it }) {
                         OutlinedTextField(
-                            value = "Int. ${selectedUnit.number} - ${selectedUnit.ownerName}",
+                            value = "${selectedUnit.ownerName} (${selectedUnit.number})",
                             onValueChange = {}, readOnly = true,
-                            label = { Text("Unità / Condomino") },
+                            label = { Text("Inquilino") },
                             modifier = Modifier.fillMaxWidth().menuAnchor(),
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(unitExpanded) }
                         )
                         ExposedDropdownMenu(expanded = unitExpanded, onDismissRequest = { unitExpanded = false }) {
                             units.forEach { u ->
                                 DropdownMenuItem(
-                                    text = { Text("Int. ${u.number} - ${u.ownerName}") },
+                                    text = { Text("${u.ownerName} (${u.number})") },
                                     onClick = { selectedUnit = u; unitExpanded = false }
                                 )
                             }
@@ -461,7 +461,7 @@ private fun SingleCedolinoDialog(
                 item {
                     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            "Voci di spesa",
+                            "Voci avviso",
                             style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
                             color = TextSecondary, modifier = Modifier.weight(1f)
                         )
@@ -537,7 +537,7 @@ private fun SingleCedolinoDialog(
                 },
                 enabled = isValid,
                 colors = ButtonDefaults.buttonColors(containerColor = Cyan500)
-            ) { Text("Crea Cedolino") }
+            ) { Text("Crea Avviso") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Annulla") } },
         containerColor = DarkSurface
@@ -553,11 +553,11 @@ private fun GenerateCedoliniDialog(onDismiss: () -> Unit, onGenerate: (String, L
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Genera Cedolini — Tutte le Unità") },
+        title = { Text("Genera Avvisi Affitto") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    "Verranno generati cedolini per tutte le unità con ripartizione millesimale automatica sulle spese registrate.",
+                    "Verrà generato un avviso di affitto per ogni inquilino registrato.",
                     style = MaterialTheme.typography.bodyMedium, color = TextSecondary
                 )
                 OutlinedTextField(
@@ -581,7 +581,7 @@ private fun GenerateCedoliniDialog(onDismiss: () -> Unit, onGenerate: (String, L
 private fun CedolinoDetailDialog(cwi: CedolinoWithItems, unitName: String, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Cedolino — ${cwi.cedolino.period}") },
+        title = { Text("Avviso Affitto — ${cwi.cedolino.period}") },
         text = {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 item {
@@ -597,7 +597,7 @@ private fun CedolinoDetailDialog(cwi: CedolinoWithItems, unitName: String, onDis
                         }
                     }
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = TextMuted.copy(alpha = 0.3f))
-                    Text("Voci di spesa", style = MaterialTheme.typography.labelLarge, color = TextSecondary)
+                    Text("Voci avviso", style = MaterialTheme.typography.labelLarge, color = TextSecondary)
                     Spacer(Modifier.height(4.dp))
                 }
                 items(cwi.items) { item ->
@@ -654,21 +654,21 @@ fun QuotaDirectaDialog(
         onDismissRequest = onDismiss,
         containerColor = com.renttrack.app.ui.theme.DarkSurface,
         icon = { Icon(Icons.Filled.EuroSymbol, null, tint = Amber400) },
-        title = { Text("Addebita quota a unità", color = com.renttrack.app.ui.theme.TextPrimary, fontWeight = FontWeight.Bold) },
+        title = { Text("Addebita importo a inquilino", color = com.renttrack.app.ui.theme.TextPrimary, fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 // Selezione unità
                 ExposedDropdownMenuBox(expanded = unitExpanded, onExpandedChange = { unitExpanded = it }) {
                     OutlinedTextField(
                         value = selectedUnit?.let { "Int. ${it.number} - ${it.ownerName}" } ?: "Seleziona unità",
-                        onValueChange = {}, readOnly = true, label = { Text("Unità") },
+                        onValueChange = {}, readOnly = true, label = { Text("Inquilino") },
                         modifier = Modifier.fillMaxWidth().menuAnchor(),
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(unitExpanded) }
                     )
                     ExposedDropdownMenu(expanded = unitExpanded, onDismissRequest = { unitExpanded = false }) {
                         units.sortedBy { it.number }.forEach { unit ->
                             DropdownMenuItem(
-                                text = { Text("Int. ${unit.number} — ${unit.ownerName}", color = com.renttrack.app.ui.theme.TextPrimary) },
+                                text = { Text("${unit.ownerName} — ${unit.number}", color = com.renttrack.app.ui.theme.TextPrimary) },
                                 onClick = { selectedUnit = unit; unitExpanded = false }
                             )
                         }

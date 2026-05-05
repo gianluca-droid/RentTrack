@@ -175,10 +175,15 @@ data class UnitWithCedolini(
 // ─── Costanti ────────────────────────────────────────────────────────
 object ExpenseCategories {
     val categories = listOf(
-        "Manutenzione Ordinaria" to "🔧", "Manutenzione Straordinaria" to "🏗️",
-        "Pulizia" to "🧹", "Ascensore" to "🛗", "Illuminazione" to "💡",
-        "Acqua" to "💧", "Riscaldamento" to "🔥", "Assicurazione" to "🛡️",
-        "Amministrazione" to "📋", "Giardinaggio" to "🌿", "Altro" to "📦"
+        "Manutenzione"       to "🔧",
+        "Ristrutturazione"   to "🏗️",
+        "IMU / Tasse"        to "🏛️",
+        "Mutuo"              to "🏦",
+        "Assicurazione"      to "🛡️",
+        "Utenze"             to "💡",
+        "Spese condominiali" to "🏢",
+        "Provvigioni"        to "💼",
+        "Altro"              to "📦"
     )
     fun getIcon(category: String) = categories.find { it.first == category }?.second ?: "📦"
 }
