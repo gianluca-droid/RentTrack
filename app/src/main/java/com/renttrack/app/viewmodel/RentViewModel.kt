@@ -422,22 +422,26 @@ class RentViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun generateCedoliniForAllUnits(period: String, dueDate: Long) = viewModelScope.launch {
-        val condId = _activeCondominioId.value.takeIf { it > 0 } ?: return@launch
-        val currentUnits = units.value
-        val currentExpenses = expenses.value
-        val totalMillesimi = currentUnits.sumOf { it.millesimi }
-        if (totalMillesimi <= 0 || currentExpenses.isEmpty()) return@launch
+        val currentUnits = units.value.filter { it.millesimi > 0 }  // millesimi = canone mensile
+        if (currentUnits.isEmpty()) return@launch
+        // Modello landlord: ogni inquilino riceve un avviso con il proprio canone fisso
         for (unit in currentUnits) {
-            val share = unit.millesimi / totalMillesimi
-            val items = currentExpenses.map { exp ->
-                CedolinoItem(cedolinoId = 0, description = "${exp.category}: ${exp.description}",
-                    amount = Math.round(exp.amount * share * 100.0) / 100.0)
-            }
             repository.insertCedolinoWithItems(
-                Cedolino(unitId = unit.id, period = period,
-                    issueDate = System.currentTimeMillis(), dueDate = dueDate,
-                    total = items.sumOf { it.amount }, status = "Emesso"),
-                items
+                Cedolino(
+                    unitId    = unit.id,
+                    period    = period,
+                    issueDate = System.currentTimeMillis(),
+                    dueDate   = dueDate,
+                    total     = unit.millesimi,   // canone mensile fisso dell'inquilino
+                    status    = "Emesso"
+                ),
+                listOf(
+                    CedolinoItem(
+                        cedolinoId  = 0,
+                        description = "Canone affitto $period",
+                        amount      = unit.millesimi
+                    )
+                )
             )
         }
     }
