@@ -12,21 +12,17 @@ sealed class Screen(
     val selectedIcon: ImageVector,
     val unselectedIcon: ImageVector
 ) {
-    data object CondominioSelector : Screen("condominio_selector", "Le mie proprietà", "Seleziona immobile", Icons.Filled.Business, Icons.Outlined.Business)
-    data object Dashboard  : Screen("dashboard",  "Dashboard",  "Panoramica generale",      Icons.Filled.Dashboard,    Icons.Outlined.Dashboard)
-    data object Tenants      : Screen("units",       "Inquilini",  "Gestione inquilini",       Icons.Filled.Apartment,    Icons.Outlined.Apartment)
-    data object Expenses   : Screen("expenses",    "Spese",      "Spese immobile",           Icons.Filled.Receipt,      Icons.Outlined.Receipt)
-    data object Payments   : Screen("payments",    "Incassi",   "Affitti incassati",        Icons.Filled.CreditCard,   Icons.Outlined.CreditCard)
-    data object Affitti   : Screen("cedolini",    "Affitti",    "Avvisi affitto",           Icons.Filled.Description,  Icons.Outlined.Description)
-    data object Documenti  : Screen("documenti",   "Documenti",  "Archivio documenti",       Icons.Filled.Folder,       Icons.Outlined.FolderOpen)
-    data object Reports    : Screen("reports",     "Report",     "Statistiche e report",     Icons.Filled.BarChart,     Icons.Outlined.BarChart)
-    // ─── Lato Condomino ───────────────────────────────────────────────
-    data object ResidentLogin     : Screen("resident_login",     "Accesso Inquilino",  "Accedi come inquilino", Icons.Filled.Person,  Icons.Outlined.Person)
-    data object ResidentDashboard : Screen("resident_dashboard", "La mia area",     "Visualizza i tuoi pagamenti",         Icons.Filled.Home,    Icons.Outlined.Home)
+    data object CondominioSelector : Screen("condominio_selector", "Le mie proprietà", "Seleziona immobile",    Icons.Filled.Business,     Icons.Outlined.Business)
+    data object Dashboard           : Screen("dashboard",           "Casa",             "Panoramica affitti",    Icons.Filled.Home,         Icons.Outlined.Home)
+    data object Tenants             : Screen("units",               "Inquilini",        "Gestione inquilini",    Icons.Filled.People,       Icons.Outlined.PeopleOutline)
+    data object Affitti             : Screen("cedolini",            "Affitti",          "Avvisi e pagamenti",    Icons.Filled.EuroSymbol,   Icons.Outlined.EuroSymbol)
+    data object Expenses            : Screen("expenses",            "Spese",            "Spese immobile",        Icons.Filled.Receipt,      Icons.Outlined.Receipt)
+    data object Documenti           : Screen("documenti",           "Archivio",         "Documenti e contratti", Icons.Filled.Folder,       Icons.Outlined.FolderOpen)
+    data object Reports             : Screen("reports",             "Report",           "Statistiche e report",  Icons.Filled.BarChart,     Icons.Outlined.BarChart)
 
     companion object {
-        val bottomNavItems    by lazy { listOf(Dashboard, Tenants, Expenses, Payments, Documenti) }
-        val residentNavItems  by lazy { listOf(ResidentDashboard) }
-        val allScreens        by lazy { listOf(CondominioSelector, Dashboard, Tenants, Expenses, Payments, Affitti, Documenti, Reports, ResidentLogin, ResidentDashboard) }
+        /** 5 tab nella bottom bar — Pagamenti rimosso, Affitti al suo posto */
+        val bottomNavItems by lazy { listOf(Dashboard, Tenants, Affitti, Expenses, Documenti) }
+        val allScreens     by lazy { listOf(CondominioSelector, Dashboard, Tenants, Affitti, Expenses, Documenti, Reports) }
     }
 }

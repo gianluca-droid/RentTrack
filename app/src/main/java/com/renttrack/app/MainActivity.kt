@@ -28,16 +28,13 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // Leggi eventuale crash precedente
         val crashPrefs = getSharedPreferences("crash_prefs", android.content.Context.MODE_PRIVATE)
         val lastCrash = crashPrefs.getString("last_crash", null)
         crashPrefs.edit().remove("last_crash").apply()
 
         setContent {
             RentTrackTheme {
-                if (lastCrash != null) {
-                    CrashDialog(crashMessage = lastCrash)
-                }
+                if (lastCrash != null) CrashDialog(crashMessage = lastCrash)
                 MainApp()
             }
         }
@@ -48,25 +45,20 @@ class MainActivity : ComponentActivity() {
 fun CrashDialog(crashMessage: String) {
     var show by remember { mutableStateOf(true) }
     if (!show) return
-    val scrollState = androidx.compose.foundation.rememberScrollState()
     AlertDialog(
         onDismissRequest = { show = false },
         containerColor = androidx.compose.ui.graphics.Color(0xFF1A1A2E),
         title = {
-            Text(
-                "\u274c Crash Rilevato",
+            Text("❌ Crash Rilevato",
                 color = androidx.compose.ui.graphics.Color(0xFFFF6B6B),
-                fontWeight = FontWeight.Bold
-            )
+                fontWeight = FontWeight.Bold)
         },
         text = {
-            Text(
-                crashMessage,
-                modifier = Modifier.verticalScroll(scrollState),
+            Text(crashMessage,
+                modifier = Modifier.verticalScroll(rememberScrollState()),
                 color = androidx.compose.ui.graphics.Color.White,
                 style = MaterialTheme.typography.bodySmall,
-                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
-            )
+                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
         },
         confirmButton = {
             TextButton(onClick = { show = false }) {
@@ -79,54 +71,45 @@ fun CrashDialog(crashMessage: String) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainApp(viewModel: RentViewModel = viewModel()) {
-    val navController = rememberNavController()
-    val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = navBackStackEntry?.destination?.route
-    val isLoading by viewModel.isLoading.collectAsState()
+    val navController       = rememberNavController()
+    val navBackStackEntry  by navController.currentBackStackEntryAsState()
+    val currentRoute        = navBackStackEntry?.destination?.route
+    val isLoading          by viewModel.isLoading.collectAsState()
     val activeCondominioId by viewModel.activeCondominioId.collectAsState()
-    val activeCondominio by viewModel.activeCondominio.collectAsState()
-    // Badge counts
-    val unsentCedolini by viewModel.unsentCedoliniCount.collectAsState()
-    val pendingCedolini by viewModel.pendingCedolini.collectAsState()
+    val activeCondominio   by viewModel.activeCondominio.collectAsState()
+    val pendingCedolini    by viewModel.pendingCedolini.collectAsState()
 
-    // ── Loading screen ──────────────────────────────────────────────
+    // ── Loading ──────────────────────────────────────────────────────────
     if (isLoading) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 CircularProgressIndicator(color = Cyan400)
                 Spacer(Modifier.height(16.dp))
-                Text("Caricamento...", color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
+                Text("Caricamento…", color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
             }
         }
         return
     }
 
-    // ── Dopo il loading: scegli startDestination in base al condominio attivo ──
     val startDestination = if (activeCondominioId > 0L) Screen.Dashboard.route
                            else Screen.CondominioSelector.route
 
-    val isInSelector  = currentRoute == Screen.CondominioSelector.route
-    val isInResident  = currentRoute == Screen.ResidentLogin.route || currentRoute == Screen.ResidentDashboard.route
-    val currentScreen = Screen.allScreens.find { it.route == currentRoute } ?: Screen.Dashboard
+    val isInSelector = currentRoute == Screen.CondominioSelector.route
 
     Scaffold(
         containerColor = DarkBg,
         topBar = {
-            if (!isInSelector && !isInResident) {
+            if (!isInSelector) {
+                val currentScreen = Screen.allScreens.find { it.route == currentRoute } ?: Screen.Dashboard
                 TopAppBar(
                     title = {
                         Column {
-                            Text(
-                                currentScreen.title,
-                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
-                            )
-                            // Nome condominio attivo
+                            Text(currentScreen.title,
+                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold))
                             activeCondominio?.let {
-                                Text(
-                                    "🏢 ${it.nome}",
+                                Text("🏠 ${it.nome}",
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = Cyan400
-                                )
+                                    color = Cyan400)
                             }
                         }
                     },
@@ -134,7 +117,7 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
                         containerColor = DarkBg, titleContentColor = TextPrimary
                     ),
                     actions = {
-                        // Cambia condominio
+                        // Cambia proprietà
                         TextButton(
                             onClick = {
                                 navController.navigate(Screen.CondominioSelector.route) {
@@ -147,7 +130,7 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
                             Spacer(Modifier.width(4.dp))
                             Text("Proprietà", color = TextSecondary, style = MaterialTheme.typography.labelMedium)
                         }
-                        // Reports
+                        // Report
                         if (currentRoute != Screen.Reports.route) {
                             TextButton(
                                 onClick = { navController.navigate(Screen.Reports.route) },
@@ -163,20 +146,15 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
             }
         },
         bottomBar = {
-            if (!isInSelector && !isInResident) {
+            if (!isInSelector) {
                 NavigationBar(
                     containerColor = DarkSurface,
                     contentColor = TextPrimary,
                     tonalElevation = 0.dp
                 ) {
                     Screen.bottomNavItems.forEach { screen ->
-                        val selected = currentRoute == screen.route
-                        // Badge count per schermata
-                        val badgeCount = when (screen.route) {
-                            Screen.Affitti.route -> unsentCedolini
-                            Screen.Payments.route -> pendingCedolini
-                            else -> 0
-                        }
+                        val selected   = currentRoute == screen.route
+                        val badgeCount = if (screen.route == Screen.Affitti.route) pendingCedolini else 0
                         NavigationBarItem(
                             selected = selected,
                             onClick = {
@@ -200,11 +178,11 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
                             },
                             label = { Text(screen.title, style = MaterialTheme.typography.labelSmall) },
                             colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = Cyan400,
-                                selectedTextColor = Cyan400,
+                                selectedIconColor   = Cyan400,
+                                selectedTextColor   = Cyan400,
                                 unselectedIconColor = TextMuted,
                                 unselectedTextColor = TextMuted,
-                                indicatorColor = Cyan400.copy(alpha = 0.12f)
+                                indicatorColor      = Cyan400.copy(alpha = 0.12f)
                             )
                         )
                     }
@@ -213,11 +191,11 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
         }
     ) { paddingValues ->
         NavHost(
-            navController = navController,
+            navController    = navController,
             startDestination = startDestination,
-            modifier = Modifier.padding(paddingValues),
-            enterTransition = { fadeIn() },
-            exitTransition = { fadeOut() }
+            modifier         = Modifier.padding(paddingValues),
+            enterTransition  = { fadeIn() },
+            exitTransition   = { fadeOut() }
         ) {
             composable(Screen.CondominioSelector.route) {
                 PropertySelectorScreen(
@@ -227,45 +205,15 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
                         navController.navigate(Screen.Dashboard.route) {
                             popUpTo(Screen.CondominioSelector.route) { inclusive = true }
                         }
-                    },
-                    onResidentAccess = {
-                        navController.navigate(Screen.ResidentLogin.route)
                     }
                 )
             }
             composable(Screen.Dashboard.route)  { DashboardScreen(viewModel) }
-            composable(Screen.Tenants.route)      { TenantsScreen(viewModel) }
+            composable(Screen.Tenants.route)    { TenantsScreen(viewModel) }
+            composable(Screen.Affitti.route)    { RentNoticesScreen(viewModel) }
             composable(Screen.Expenses.route)   { ExpensesScreen(viewModel) }
-            composable(Screen.Payments.route)   { PaymentsScreen(viewModel) }
-            composable(Screen.Affitti.route)   { RentNoticesScreen(viewModel) }
             composable(Screen.Documenti.route)  { DocumentiScreen(viewModel) }
             composable(Screen.Reports.route)    { ReportsScreen(viewModel) }
-            // ─── Lato Condomino ───────────────────────────────────────────────
-            composable(Screen.ResidentLogin.route) {
-                TenantLoginScreen(
-                    viewModel = viewModel,
-                    onLogin = {
-                        navController.navigate(Screen.ResidentDashboard.route) {
-                            popUpTo(Screen.ResidentLogin.route) { inclusive = true }
-                        }
-                    },
-                    onBackToAdmin = {
-                        navController.navigate(Screen.CondominioSelector.route) {
-                            popUpTo(Screen.ResidentLogin.route) { inclusive = true }
-                        }
-                    }
-                )
-            }
-            composable(Screen.ResidentDashboard.route) {
-                TenantDashboardScreen(
-                    viewModel = viewModel,
-                    onLogout = {
-                        navController.navigate(Screen.ResidentLogin.route) {
-                            popUpTo(Screen.ResidentDashboard.route) { inclusive = true }
-                        }
-                    }
-                )
-            }
         }
     }
 }

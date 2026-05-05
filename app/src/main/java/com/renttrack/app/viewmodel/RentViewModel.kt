@@ -1,4 +1,4 @@
-package com.renttrack.app.viewmodel
+﻿package com.renttrack.app.viewmodel
 
 import android.app.Application
 import android.net.Uri
@@ -63,9 +63,6 @@ class RentViewModel(application: Application) : AndroidViewModel(application) {
     /** Azzera tutto lo stato UI legato al condominio corrente */
     private fun resetUiState() {
         _collapsedScales.value = emptySet()
-        _paymentsView.value = 0
-        _paymentsFilterMethod.value = null
-        _paymentsFilterScala.value = null
     }
 
     // ─── Modalità Condomino (Mock) ────────────────────────────────
@@ -275,20 +272,6 @@ class RentViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun isScalaExpanded(scala: String): Boolean = scala !in _collapsedScales.value
-
-    // ─── UI State persistente: Pagamenti ─────────────────────────
-    // 0 = per unità, 1 = per mese
-    private val _paymentsView = MutableStateFlow(0)
-    val paymentsView: StateFlow<Int> = _paymentsView
-    fun setPaymentsView(v: Int) { _paymentsView.value = v }
-
-    private val _paymentsFilterMethod = MutableStateFlow<String?>(null)
-    val paymentsFilterMethod: StateFlow<String?> = _paymentsFilterMethod
-    fun setPaymentsFilterMethod(m: String?) { _paymentsFilterMethod.value = m }
-
-    private val _paymentsFilterScala = MutableStateFlow<String?>(null)
-    val paymentsFilterScala: StateFlow<String?> = _paymentsFilterScala
-    fun setPaymentsFilterScala(s: String?) { _paymentsFilterScala.value = s }
 
     private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading
