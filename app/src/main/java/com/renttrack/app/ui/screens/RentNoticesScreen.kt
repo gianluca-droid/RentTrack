@@ -143,8 +143,12 @@ fun RentNoticesScreen(viewModel: RentViewModel) {
                 }
 
                 items(filtered, key = { it.id }) { cedolino ->
+                    val isOverdue = cedolino.dueDate < System.currentTimeMillis() && cedolino.status != "Pagato"
+                    var showMenu by remember { mutableStateOf(false) }
+                    val cwi = cedoliniWithItems.find { it.cedolino.id == cedolino.id }
+
                     ItemCard(onDelete = { deleteTarget = cedolino }) {
-                        // Header: unità + badge invio
+                        // Header: unità + badge stato + menu overflow
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
@@ -155,119 +159,131 @@ fun RentNoticesScreen(viewModel: RentViewModel) {
                                 Text(cedolino.period, style = MaterialTheme.typography.bodySmall, color = Cyan400)
                             }
                             StatusBadge(cedolino.status)
-                            if (cedolino.sentToResident) {
-                                Spacer(Modifier.width(6.dp))
-                                Surface(
-                                    shape = RoundedCornerShape(6.dp),
-                                    color = Green400.copy(alpha = 0.15f)
+                            Spacer(Modifier.width(4.dp))
+                            Box {
+                                IconButton(
+                                    onClick = { showMenu = true },
+                                    modifier = Modifier.size(32.dp)
                                 ) {
-                                    Row(
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Icon(Icons.Filled.Send, null, tint = Green400, modifier = Modifier.size(11.dp))
-                                        Spacer(Modifier.width(3.dp))
-                                        Text("Inviato", style = MaterialTheme.typography.labelSmall, color = Green400)
+                                    Icon(Icons.Filled.MoreVert, null, tint = TextMuted, modifier = Modifier.size(18.dp))
+                                }
+                                DropdownMenu(
+                                    expanded = showMenu,
+                                    onDismissRequest = { showMenu = false }
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text("Dettaglio", color = TextPrimary) },
+                                        leadingIcon = { Icon(Icons.Filled.Visibility, null, tint = Cyan400, modifier = Modifier.size(18.dp)) },
+                                        onClick = {
+                                            showDetailDialog = cwi
+                                            showMenu = false
+                                        }
+                                    )
+                                    if (cwi != null) {
+                                        DropdownMenuItem(
+                                            text = { Text("Duplica mese successivo", color = TextPrimary) },
+                                            leadingIcon = { Icon(Icons.Filled.ContentCopy, null, tint = Amber400, modifier = Modifier.size(18.dp)) },
+                                            onClick = {
+                                                viewModel.duplicateCedolino(cwi)
+                                                showMenu = false
+                                            }
+                                        )
+                                    }
+                                    val shareText = buildString {
+                                        val unitName = viewModel.getUnitName(cedolino.unitId)
+                                        appendLine("📋 Avviso Affitto")
+                                        appendLine("Intestato a: $unitName")
+                                        appendLine("Periodo: ${cedolino.period}")
+                                        cwi?.items?.forEach { appendLine("• ${it.description}: ${Formatters.currency(it.amount)}") }
+                                        appendLine("─────────────────")
+                                        appendLine("TOTALE: ${Formatters.currency(cedolino.total)}")
+                                        appendLine("Scadenza: ${Formatters.date(cedolino.dueDate)}")
+                                        appendLine("Stato: ${cedolino.status}")
+                                    }
+                                    DropdownMenuItem(
+                                        text = { Text("Condividi", color = TextPrimary) },
+                                        leadingIcon = { Icon(Icons.Filled.Share, null, tint = Green400, modifier = Modifier.size(18.dp)) },
+                                        onClick = {
+                                            val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                                type = "text/plain"
+                                                putExtra(android.content.Intent.EXTRA_TEXT, shareText)
+                                                putExtra(android.content.Intent.EXTRA_SUBJECT, "Avviso affitto ${cedolino.period}")
+                                            }
+                                            context.startActivity(android.content.Intent.createChooser(intent, "Invia avviso"))
+                                            showMenu = false
+                                        }
+                                    )
+                                    if (!cedolino.sentToResident) {
+                                        DropdownMenuItem(
+                                            text = { Text("Segna come inviato", color = TextPrimary) },
+                                            leadingIcon = { Icon(Icons.Filled.Send, null, tint = Cyan400, modifier = Modifier.size(18.dp)) },
+                                            onClick = {
+                                                showConfirmSendDialog = cedolino
+                                                showMenu = false
+                                            }
+                                        )
                                     }
                                 }
                             }
                         }
-                        Spacer(Modifier.height(8.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                Formatters.currency(cedolino.total),
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = TextPrimary
-                            )
-                            Spacer(Modifier.weight(1f))
-                            Text("Scad: ${Formatters.date(cedolino.dueDate)}", style = MaterialTheme.typography.bodySmall, color = TextMuted)
-                        }
-                        if (cedolino.paidAmount > 0 && cedolino.status != "Pagato") {
-                            Text("Versato: ${Formatters.currency(cedolino.paidAmount)}", style = MaterialTheme.typography.bodySmall, color = Green400)
-                        }
+
                         Spacer(Modifier.height(10.dp))
 
-                        // Azioni
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                            // Dettaglio
-                            OutlinedButton(
-                                onClick = {
-                                    showDetailDialog = cedoliniWithItems.find { it.cedolino.id == cedolino.id }
-                                },
-                                modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Cyan400)
-                            ) {
-                                Icon(Icons.Filled.Visibility, null, modifier = Modifier.size(14.dp))
-                                Spacer(Modifier.width(4.dp))
-                                Text("Dettaglio", style = MaterialTheme.typography.labelSmall)
-                            }
-                            // Duplica (copia mese successivo)
-                            val cwi = cedoliniWithItems.find { it.cedolino.id == cedolino.id }
-                            if (cwi != null) {
-                                OutlinedButton(
-                                    onClick = { viewModel.duplicateCedolino(cwi) },
-                                    modifier = Modifier.weight(1f),
-                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Amber400)
-                                ) {
-                                    Icon(Icons.Filled.ContentCopy, null, modifier = Modifier.size(14.dp))
-                                    Spacer(Modifier.width(4.dp))
-                                    Text("Duplica", style = MaterialTheme.typography.labelSmall)
+                        // Corpo: importo grande + scadenza (rossa se scaduta)
+                        Row(verticalAlignment = Alignment.Bottom) {
+                            Text(
+                                Formatters.currency(cedolino.total),
+                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
+                                color = TextPrimary,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text(
+                                    "Scad. ${Formatters.date(cedolino.dueDate)}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (isOverdue) Color(0xFFFF6B6B) else TextMuted
+                                )
+                                if (isOverdue) {
+                                    Text(
+                                        "⚠ SCADUTO",
+                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                        color = Color(0xFFFF6B6B)
+                                    )
                                 }
                             }
                         }
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                            // Condividi via WhatsApp/Email
-                            val shareText = buildString {
-                                val unitName = viewModel.getUnitName(cedolino.unitId)
-                                val cwi2 = cedoliniWithItems.find { it.cedolino.id == cedolino.id }
-                                appendLine("📋 Avviso Affitto")
-                                appendLine("Intestato a: $unitName")
-                                appendLine("Periodo: ${cedolino.period}")
-                                cwi2?.items?.forEach { appendLine("• ${it.description}: ${Formatters.currency(it.amount)}") }
-                                appendLine("─────────────────")
-                                appendLine("TOTALE: ${Formatters.currency(cedolino.total)}")
-                                appendLine("Scadenza: ${Formatters.date(cedolino.dueDate)}")
-                                appendLine("Stato: ${cedolino.status}")
-                            }
-                            OutlinedButton(
-                                onClick = {
-                                    val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                                        type = "text/plain"
-                                        putExtra(android.content.Intent.EXTRA_TEXT, shareText)
-                                        putExtra(android.content.Intent.EXTRA_SUBJECT, "Avviso affitto ${cedolino.period}")
-                                    }
-                                    context.startActivity(android.content.Intent.createChooser(intent, "Invia avviso"))
-                                },
-                                modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Green400)
+
+                        if (cedolino.paidAmount > 0 && cedolino.status != "Pagato") {
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                "Versato: ${Formatters.currency(cedolino.paidAmount)} / ${Formatters.currency(cedolino.total)}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Green400
+                            )
+                        }
+
+                        // CTA principale solo se non pagato
+                        if (cedolino.status != "Pagato") {
+                            Spacer(Modifier.height(10.dp))
+                            Button(
+                                onClick = { showPagamentoDialog = cedolino },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(containerColor = Green500),
+                                shape = RoundedCornerShape(10.dp)
                             ) {
-                                Icon(Icons.Filled.Share, null, modifier = Modifier.size(14.dp))
+                                Icon(Icons.Filled.CheckCircle, null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    "Segna Pagato",
+                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
+                                )
+                            }
+                        } else if (cedolino.sentToResident) {
+                            Spacer(Modifier.height(6.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Filled.Send, null, tint = Green400.copy(alpha = 0.7f), modifier = Modifier.size(12.dp))
                                 Spacer(Modifier.width(4.dp))
-                                Text("Condividi", style = MaterialTheme.typography.labelSmall)
-                            }
-                            // Conferma Invio (solo se non già inviato)
-                            if (!cedolino.sentToResident) {
-                                Button(
-                                    onClick = { showConfirmSendDialog = cedolino },
-                                    modifier = Modifier.weight(1f),
-                                    colors = ButtonDefaults.buttonColors(containerColor = Cyan500)
-                                ) {
-                                    Icon(Icons.Filled.Send, null, modifier = Modifier.size(14.dp))
-                                    Spacer(Modifier.width(4.dp))
-                                    Text("Invia", style = MaterialTheme.typography.labelSmall)
-                                }
-                            }
-                            // Segna Pagato → apre dialog con scelta metodo
-                            if (cedolino.status != "Pagato") {
-                                Button(
-                                    onClick = { showPagamentoDialog = cedolino },
-                                    modifier = Modifier.weight(1f),
-                                    colors = ButtonDefaults.buttonColors(containerColor = Green500)
-                                ) {
-                                    Icon(Icons.Filled.CheckCircle, null, modifier = Modifier.size(14.dp))
-                                    Spacer(Modifier.width(4.dp))
-                                    Text("Pagato", style = MaterialTheme.typography.labelSmall)
-                                }
+                                Text("Inviato all'inquilino", style = MaterialTheme.typography.labelSmall, color = Green400.copy(alpha = 0.7f))
                             }
                         }
                     }
