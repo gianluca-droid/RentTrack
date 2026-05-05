@@ -40,6 +40,20 @@ fun DashboardScreen(viewModel: RentViewModel) {
     }
     val totalOpen = remember(openCedolini) { openCedolini.sumOf { it.cedolino.total } }
 
+    // Scadenze contratti
+    val now = System.currentTimeMillis()
+    val expiredUnits = remember(units) {
+        units.filter { it.leaseEndDate != null && it.leaseEndDate < now }
+    }
+    val urgentUnits = remember(units) {
+        units.filter { it.leaseEndDate != null && it.leaseEndDate >= now &&
+            ((it.leaseEndDate - now) / (1000 * 60 * 60 * 24)) < 30 }
+    }
+    val soonUnits = remember(units) {
+        units.filter { it.leaseEndDate != null && it.leaseEndDate >= now &&
+            ((it.leaseEndDate - now) / (1000 * 60 * 60 * 24)).let { d -> d in 30..59 } }
+    }
+
     var showOpenCedoliniSheet by remember { mutableStateOf(false) }
 
     LazyColumn(
@@ -87,6 +101,52 @@ fun DashboardScreen(viewModel: RentViewModel) {
                     subtitle = "$pendingCedolini avvisi aperti",
                     onClick = { if (pendingCedolini > 0) showOpenCedoliniSheet = true }
                 )
+            }
+        }
+
+        // ─── Alert Scadenze Contratti ────────────────────────────
+        if (expiredUnits.isNotEmpty() || urgentUnits.isNotEmpty() || soonUnits.isNotEmpty()) {
+            item {
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = DarkCard)
+                ) {
+                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Filled.CalendarMonth, null, tint = Amber400, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                "Scadenze contratti",
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                color = TextPrimary
+                            )
+                        }
+                        if (expiredUnits.isNotEmpty()) {
+                            ContractAlertRow(
+                                count = expiredUnits.size,
+                                label = if (expiredUnits.size == 1) "contratto scaduto" else "contratti scaduti",
+                                color = Color(0xFFFF6B6B),
+                                names = expiredUnits.map { it.ownerName }
+                            )
+                        }
+                        if (urgentUnits.isNotEmpty()) {
+                            ContractAlertRow(
+                                count = urgentUnits.size,
+                                label = if (urgentUnits.size == 1) "contratto scade entro 30 giorni" else "contratti scadono entro 30 giorni",
+                                color = Color(0xFFFF6B6B),
+                                names = urgentUnits.map { it.ownerName }
+                            )
+                        }
+                        if (soonUnits.isNotEmpty()) {
+                            ContractAlertRow(
+                                count = soonUnits.size,
+                                label = if (soonUnits.size == 1) "contratto scade entro 60 giorni" else "contratti scadono entro 60 giorni",
+                                color = Amber400,
+                                names = soonUnits.map { it.ownerName }
+                            )
+                        }
+                    }
+                }
             }
         }
 
@@ -418,6 +478,34 @@ private fun OpenCedoliniSheet(
                     Text(Formatters.currency(totalOpen), style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold), color = Amber400)
                 }
                 Spacer(Modifier.height(8.dp))
+            }
+        }
+    }
+}
+
+// ─── Riga alert scadenza contratto ───────────────────────────────────────────
+@Composable
+private fun ContractAlertRow(count: Int, label: String, color: Color, names: List<String>) {
+    Surface(shape = RoundedCornerShape(8.dp), color = color.copy(alpha = 0.08f)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(shape = androidx.compose.foundation.shape.CircleShape, color = color, modifier = Modifier.size(8.dp)) {}
+            Spacer(Modifier.width(8.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "$count $label",
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                    color = color
+                )
+                if (names.isNotEmpty()) {
+                    Text(
+                        names.joinToString(", "),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = color.copy(alpha = 0.7f)
+                    )
+                }
             }
         }
     }
