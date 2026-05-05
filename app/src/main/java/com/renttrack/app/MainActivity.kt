@@ -133,7 +133,16 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
                         // Report
                         if (currentRoute != Screen.Reports.route) {
                             TextButton(
-                                onClick = { navController.navigate(Screen.Reports.route) },
+                                onClick = {
+                                    navController.navigate(Screen.Reports.route) {
+                                        // Usa lo stesso pattern della bottom nav:
+                                        // popUpTo(Dashboard) mantiene lo stack pulito
+                                        // e permette di tornare agli altri tab senza problemi.
+                                        popUpTo(Screen.Dashboard.route) { saveState = true }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
+                                },
                                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
                             ) {
                                 Icon(Icons.Filled.BarChart, null, tint = TextSecondary, modifier = Modifier.size(16.dp))
@@ -158,9 +167,11 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
                         NavigationBarItem(
                             selected = selected,
                             onClick = {
+                                // Guard: non navigare se già su quel tab o su Report
+                                // (Report e i tab sono allo stesso livello dello stack dopo il fix)
                                 if (currentRoute != screen.route) {
                                     navController.navigate(screen.route) {
-                                        popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                        popUpTo(Screen.Dashboard.route) { saveState = true }
                                         launchSingleTop = true
                                         restoreState = true
                                     }
