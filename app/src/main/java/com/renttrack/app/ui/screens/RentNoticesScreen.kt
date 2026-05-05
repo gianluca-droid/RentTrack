@@ -41,9 +41,11 @@ fun RentNoticesScreen(viewModel: RentViewModel) {
     var showPagamentoDialog by remember { mutableStateOf<Cedolino?>(null) }
     var deleteTarget by remember { mutableStateOf<Cedolino?>(null) }
     var filterStatus by remember { mutableStateOf<String?>(null) }
+    var showArchive by remember { mutableStateOf(false) }
 
+    val openCedolini = remember(cedolini) { cedolini.filter { it.status != "Pagato" } }
+    val paidCedolini = remember(cedolini) { cedolini.filter { it.status == "Pagato" }.sortedByDescending { it.paidDate } }
     val sentCount = cedolini.count { it.sentToResident }
-    val filtered = if (filterStatus != null) cedolini.filter { it.status == filterStatus } else cedolini
 
     Box(modifier = Modifier.fillMaxSize()) {
         if (cedolini.isEmpty()) {
@@ -82,14 +84,13 @@ fun RentNoticesScreen(viewModel: RentViewModel) {
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                // Statistiche
+                // ─── Statistiche ───────────────────────────────────────
                 item {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        // Card compatta: numero grande + etichetta breve, niente icona laterale
                         listOf(
-                            Triple("${cedolini.size}", "Totale", Cyan400),
-                            Triple("$pendingCount",   "Sospesi",  Amber400),
-                            Triple("$sentCount",       "Inviati",  Green400)
+                            Triple("${openCedolini.size}", "Da incassare", Amber400),
+                            Triple("${paidCedolini.size}", "Pagati",       Green400),
+                            Triple("$sentCount",           "Inviati",      Cyan400)
                         ).forEach { (value, label, color) ->
                             Card(
                                 modifier = Modifier.weight(1f),
@@ -97,108 +98,76 @@ fun RentNoticesScreen(viewModel: RentViewModel) {
                                 colors = CardDefaults.cardColors(containerColor = DarkCard)
                             ) {
                                 Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 12.dp, horizontal = 8.dp),
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp, horizontal = 8.dp),
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     verticalArrangement = Arrangement.Center
                                 ) {
-                                    Text(
-                                        text = value,
-                                        style = MaterialTheme.typography.headlineSmall.copy(
-                                            fontWeight = FontWeight.ExtraBold
-                                        ),
-                                        color = color,
-                                        maxLines = 1
-                                    )
+                                    Text(value, style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold), color = color, maxLines = 1)
                                     Spacer(Modifier.height(4.dp))
-                                    Text(
-                                        text = label,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = TextSecondary,
-                                        maxLines = 1
-                                    )
+                                    Text(label, style = MaterialTheme.typography.labelSmall, color = TextSecondary, maxLines = 1)
                                 }
                             }
                         }
                     }
                 }
 
-                // Filtri stato
-                item {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(vertical = 4.dp)) {
-                        FilterChip(
-                            selected = filterStatus == null, onClick = { filterStatus = null },
-                            label = { Text("Tutti") },
-                            colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Cyan500.copy(alpha = 0.2f))
-                        )
-                        CedolinoStatuses.statuses.forEach { s ->
-                            FilterChip(
-                                selected = filterStatus == s, onClick = { filterStatus = if (filterStatus == s) null else s },
-                                label = { Text(s) },
-                                colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Cyan500.copy(alpha = 0.2f))
-                            )
+                // ─── Cedolini aperti ────────────────────────────────────
+                if (openCedolini.isEmpty()) {
+                    item {
+                        Card(
+                            shape = RoundedCornerShape(14.dp),
+                            colors = CardDefaults.cardColors(containerColor = Green400.copy(alpha = 0.08f))
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Filled.CheckCircle, null, tint = Green400, modifier = Modifier.size(22.dp))
+                                Spacer(Modifier.width(10.dp))
+                                Text("Tutto in regola! Nessun affitto in sospeso.", style = MaterialTheme.typography.bodyMedium, color = Green400)
+                            }
                         }
                     }
                 }
 
-                items(filtered, key = { it.id }) { cedolino ->
-                    val isOverdue = cedolino.dueDate < System.currentTimeMillis() && cedolino.status != "Pagato"
+                items(openCedolini, key = { it.id }) { cedolino ->
+                    val isOverdue = cedolino.dueDate < System.currentTimeMillis()
                     var showMenu by remember { mutableStateOf(false) }
                     val cwi = cedoliniWithItems.find { it.cedolino.id == cedolino.id }
 
                     ItemCard(onDelete = { deleteTarget = cedolino }) {
-                        // Header: unità + badge stato + menu overflow
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    viewModel.getUnitName(cedolino.unitId),
-                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                                    color = TextPrimary
-                                )
+                                Text(viewModel.getUnitName(cedolino.unitId), style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = TextPrimary)
                                 Text(cedolino.period, style = MaterialTheme.typography.bodySmall, color = Cyan400)
                             }
                             StatusBadge(cedolino.status)
                             Spacer(Modifier.width(4.dp))
                             Box {
-                                IconButton(
-                                    onClick = { showMenu = true },
-                                    modifier = Modifier.size(32.dp)
-                                ) {
+                                IconButton(onClick = { showMenu = true }, modifier = Modifier.size(32.dp)) {
                                     Icon(Icons.Filled.MoreVert, null, tint = TextMuted, modifier = Modifier.size(18.dp))
                                 }
-                                DropdownMenu(
-                                    expanded = showMenu,
-                                    onDismissRequest = { showMenu = false }
-                                ) {
+                                DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
                                     DropdownMenuItem(
                                         text = { Text("Dettaglio", color = TextPrimary) },
                                         leadingIcon = { Icon(Icons.Filled.Visibility, null, tint = Cyan400, modifier = Modifier.size(18.dp)) },
-                                        onClick = {
-                                            showDetailDialog = cwi
-                                            showMenu = false
-                                        }
+                                        onClick = { showDetailDialog = cwi; showMenu = false }
                                     )
                                     if (cwi != null) {
                                         DropdownMenuItem(
                                             text = { Text("Duplica mese successivo", color = TextPrimary) },
                                             leadingIcon = { Icon(Icons.Filled.ContentCopy, null, tint = Amber400, modifier = Modifier.size(18.dp)) },
-                                            onClick = {
-                                                viewModel.duplicateCedolino(cwi)
-                                                showMenu = false
-                                            }
+                                            onClick = { viewModel.duplicateCedolino(cwi); showMenu = false }
                                         )
                                     }
                                     val shareText = buildString {
-                                        val unitName = viewModel.getUnitName(cedolino.unitId)
                                         appendLine("📋 Avviso Affitto")
-                                        appendLine("Intestato a: $unitName")
+                                        appendLine("Intestato a: ${viewModel.getUnitName(cedolino.unitId)}")
                                         appendLine("Periodo: ${cedolino.period}")
                                         cwi?.items?.forEach { appendLine("• ${it.description}: ${Formatters.currency(it.amount)}") }
                                         appendLine("─────────────────")
                                         appendLine("TOTALE: ${Formatters.currency(cedolino.total)}")
                                         appendLine("Scadenza: ${Formatters.date(cedolino.dueDate)}")
-                                        appendLine("Stato: ${cedolino.status}")
                                     }
                                     DropdownMenuItem(
                                         text = { Text("Condividi", color = TextPrimary) },
@@ -217,77 +186,104 @@ fun RentNoticesScreen(viewModel: RentViewModel) {
                                         DropdownMenuItem(
                                             text = { Text("Segna come inviato", color = TextPrimary) },
                                             leadingIcon = { Icon(Icons.Filled.Send, null, tint = Cyan400, modifier = Modifier.size(18.dp)) },
-                                            onClick = {
-                                                showConfirmSendDialog = cedolino
-                                                showMenu = false
-                                            }
+                                            onClick = { showConfirmSendDialog = cedolino; showMenu = false }
                                         )
                                     }
                                 }
                             }
                         }
-
                         Spacer(Modifier.height(10.dp))
-
-                        // Corpo: importo grande + scadenza (rossa se scaduta)
                         Row(verticalAlignment = Alignment.Bottom) {
-                            Text(
-                                Formatters.currency(cedolino.total),
-                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
-                                color = TextPrimary,
-                                modifier = Modifier.weight(1f)
-                            )
+                            Text(Formatters.currency(cedolino.total), style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold), color = TextPrimary, modifier = Modifier.weight(1f))
                             Column(horizontalAlignment = Alignment.End) {
-                                Text(
-                                    "Scad. ${Formatters.date(cedolino.dueDate)}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = if (isOverdue) Color(0xFFFF6B6B) else TextMuted
-                                )
-                                if (isOverdue) {
-                                    Text(
-                                        "⚠ SCADUTO",
-                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                        color = Color(0xFFFF6B6B)
-                                    )
-                                }
+                                Text("Scad. ${Formatters.date(cedolino.dueDate)}", style = MaterialTheme.typography.bodySmall, color = if (isOverdue) Color(0xFFFF6B6B) else TextMuted)
+                                if (isOverdue) Text("⚠ SCADUTO", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = Color(0xFFFF6B6B))
                             }
                         }
-
-                        if (cedolino.paidAmount > 0 && cedolino.status != "Pagato") {
+                        if (cedolino.paidAmount > 0) {
                             Spacer(Modifier.height(4.dp))
-                            Text(
-                                "Versato: ${Formatters.currency(cedolino.paidAmount)} / ${Formatters.currency(cedolino.total)}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Green400
-                            )
+                            Text("Versato: ${Formatters.currency(cedolino.paidAmount)} / ${Formatters.currency(cedolino.total)}", style = MaterialTheme.typography.bodySmall, color = Green400)
                         }
+                        Spacer(Modifier.height(10.dp))
+                        Button(
+                            onClick = { showPagamentoDialog = cedolino },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = Green500),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Icon(Icons.Filled.CheckCircle, null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Segna Pagato", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
+                        }
+                    }
+                }
 
-                        // CTA principale solo se non pagato
-                        if (cedolino.status != "Pagato") {
-                            Spacer(Modifier.height(10.dp))
-                            Button(
-                                onClick = { showPagamentoDialog = cedolino },
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = ButtonDefaults.buttonColors(containerColor = Green500),
-                                shape = RoundedCornerShape(10.dp)
+                // ─── Archivio pagamenti collassabile ────────────────────
+                if (paidCedolini.isNotEmpty()) {
+                    item {
+                        Card(
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = DarkCard),
+                            onClick = { showArchive = !showArchive }
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(Icons.Filled.CheckCircle, null, modifier = Modifier.size(16.dp))
-                                Spacer(Modifier.width(6.dp))
+                                Icon(Icons.Filled.Archive, null, tint = Green400, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(10.dp))
                                 Text(
-                                    "Segna Pagato",
-                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
+                                    "Storico pagamenti (${paidCedolini.size})",
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                    color = TextPrimary,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Icon(
+                                    if (showArchive) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                                    null, tint = TextMuted, modifier = Modifier.size(20.dp)
                                 )
                             }
-                        } else if (cedolino.sentToResident) {
-                            Spacer(Modifier.height(6.dp))
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Filled.Send, null, tint = Green400.copy(alpha = 0.7f), modifier = Modifier.size(12.dp))
-                                Spacer(Modifier.width(4.dp))
-                                Text("Inviato all'inquilino", style = MaterialTheme.typography.labelSmall, color = Green400.copy(alpha = 0.7f))
+                        }
+                    }
+
+                    if (showArchive) {
+                        items(paidCedolini, key = { "paid_${it.id}" }) { cedolino ->
+                            var showMenu by remember { mutableStateOf(false) }
+                            val cwi = cedoliniWithItems.find { it.cedolino.id == cedolino.id }
+                            ItemCard(onDelete = { deleteTarget = cedolino }) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(viewModel.getUnitName(cedolino.unitId), style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = TextPrimary)
+                                        Text(cedolino.period, style = MaterialTheme.typography.bodySmall, color = Cyan400)
+                                    }
+                                    StatusBadge(cedolino.status)
+                                    Spacer(Modifier.width(4.dp))
+                                    Box {
+                                        IconButton(onClick = { showMenu = true }, modifier = Modifier.size(32.dp)) {
+                                            Icon(Icons.Filled.MoreVert, null, tint = TextMuted, modifier = Modifier.size(18.dp))
+                                        }
+                                        DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                                            DropdownMenuItem(
+                                                text = { Text("Dettaglio", color = TextPrimary) },
+                                                leadingIcon = { Icon(Icons.Filled.Visibility, null, tint = Cyan400, modifier = Modifier.size(18.dp)) },
+                                                onClick = { showDetailDialog = cwi; showMenu = false }
+                                            )
+                                        }
+                                    }
+                                }
+                                Spacer(Modifier.height(6.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(Formatters.currency(cedolino.total), style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = Green400, modifier = Modifier.weight(1f))
+                                    cedolino.paidDate?.let {
+                                        Text("Pagato il ${Formatters.date(it)}", style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                                    }
+                                }
                             }
                         }
                     }
                 }
+
+                item { Spacer(Modifier.height(100.dp)) }
                 item { Spacer(Modifier.height(100.dp)) }
             }
         }
