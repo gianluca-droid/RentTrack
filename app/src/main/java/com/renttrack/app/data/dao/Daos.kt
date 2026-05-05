@@ -50,6 +50,9 @@ interface UnitDao {
     @Query("SELECT COUNT(*) FROM units WHERE condominioId = :condominioId")
     fun getUnitCount(condominioId: Long): Flow<Int>
 
+    @Query("SELECT * FROM units ORDER BY condominioId, number ASC")
+    fun getAllUnitsGlobal(): Flow<List<CondoUnit>>
+
     @Transaction
     @Query("SELECT * FROM units WHERE condominioId = :condominioId")
     fun getAllUnitsWithPayments(condominioId: Long): Flow<List<UnitWithPayments>>
@@ -189,6 +192,9 @@ interface CedolinoDao {
 
     @Query("SELECT COUNT(*) FROM cedolini c JOIN units u ON c.unitId = u.id WHERE u.condominioId = :condominioId AND c.sentToResident = 0")
     fun getUnsentCedoliniCount(condominioId: Long): Flow<Int>
+
+    @Query("SELECT c.* FROM cedolini c JOIN units u ON c.unitId = u.id ORDER BY c.issueDate DESC")
+    fun getAllCedoliniGlobal(): Flow<List<Cedolino>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCedolino(cedolino: Cedolino): Long

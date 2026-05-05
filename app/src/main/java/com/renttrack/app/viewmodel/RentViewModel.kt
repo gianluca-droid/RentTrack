@@ -17,6 +17,14 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.Calendar
 
+/** Riepilogo per singola proprietà — usato nella PropertySelectorScreen */
+data class PropertySummary(
+    val unitCount: Int,
+    val totalMonthlyRent: Double,
+    val totalMorosita: Double,
+    val expiringContracts: Int     // contratti in scadenza entro 60 giorni
+)
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class RentViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -159,6 +167,36 @@ class RentViewModel(application: Application) : AndroidViewModel(application) {
         .filter { it > 0 }
         .flatMapLatest { repository.getDocumentCount(it) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    // ─── Riepilogo globale per PropertySelectorScreen ───────────────────────
+    private val allUnitsGlobal: StateFlow<List<CondoUnit>> = repository.getAllUnitsGlobal()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    private val allCedoliniGlobal: StateFlow<List<Cedolino>> = repository.getAllCedoliniGlobal()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** Mappa condominioId → PropertySummary, aggiornata in tempo reale */
+    val propertySummaryMap: StateFlow<Map<Long, PropertySummary>> =
+        combine(allUnitsGlobal, allCedoliniGlobal) { units, cedolini ->
+            val now  = System.currentTimeMillis()
+            val soon = now + 60L * 24 * 60 * 60 * 1000   // 60 giorni
+            val cedByUnit = cedolini.groupBy { it.unitId }
+            units.groupBy { it.condominioId }.mapValues { (_, propUnits) ->
+                PropertySummary(
+                    unitCount        = propUnits.size,
+                    totalMonthlyRent = propUnits.sumOf { it.millesimi },
+                    totalMorosita    = propUnits.sumOf { unit ->
+                        (cedByUnit[unit.id] ?: emptyList())
+                            .filter { it.status != "Pagato" && it.total > it.paidAmount }
+                            .sumOf { it.total - it.paidAmount }
+                    },
+                    expiringContracts = propUnits.count {
+                        it.leaseEndDate != null && it.leaseEndDate > now && it.leaseEndDate < soon
+                    }
+                )
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
     // ─── Anno selezionato (per ripartizione mensile) ──────────────
     private val _selectedYear = MutableStateFlow(Calendar.getInstance().get(Calendar.YEAR))

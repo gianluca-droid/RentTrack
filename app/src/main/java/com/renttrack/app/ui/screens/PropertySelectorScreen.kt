@@ -20,6 +20,7 @@ import com.renttrack.app.data.model.Condominio
 import com.renttrack.app.ui.components.Formatters
 import com.renttrack.app.ui.components.condoTextFieldColors
 import com.renttrack.app.ui.theme.*
+import com.renttrack.app.viewmodel.PropertySummary
 import com.renttrack.app.viewmodel.RentViewModel
 
 private val propertyGradients = listOf(
@@ -36,9 +37,10 @@ private val propertyGradients = listOf(
 fun PropertySelectorScreen(
     viewModel: RentViewModel,
     onCondominioSelected: (Long) -> Unit,
-    onResidentAccess: () -> Unit = {}   // parametro mantenuto per compatibilità, non usato
+    onResidentAccess: () -> Unit = {}
 ) {
     val proprieta by viewModel.allCondomini.collectAsState()
+    val summaryMap by viewModel.propertySummaryMap.collectAsState()
     var showAddSheet by remember { mutableStateOf(false) }
     var toEdit by remember { mutableStateOf<Condominio?>(null) }
     var toDelete by remember { mutableStateOf<Condominio?>(null) }
@@ -108,10 +110,11 @@ fun PropertySelectorScreen(
                     itemsIndexed(proprieta) { index, prop ->
                         PropertyCard(
                             proprieta = prop,
-                            gradient = propertyGradients[index % propertyGradients.size],
-                            onClick = { onCondominioSelected(prop.id) },
-                            onEdit = { toEdit = prop },
-                            onDelete = { toDelete = prop }
+                            summary   = summaryMap[prop.id],
+                            gradient  = propertyGradients[index % propertyGradients.size],
+                            onClick   = { onCondominioSelected(prop.id) },
+                            onEdit    = { toEdit = prop },
+                            onDelete  = { toDelete = prop }
                         )
                     }
                     item { Spacer(Modifier.height(80.dp)) }
@@ -177,10 +180,11 @@ fun PropertySelectorScreen(
     }
 }
 
-// ─── Card proprietà ────────────────────────────────────────────────────
+// ─── Card proprietà ──────────────────────────────────────────────────────
 @Composable
 fun PropertyCard(
     proprieta: Condominio,
+    summary: PropertySummary?,
     gradient: List<Color>,
     onClick: () -> Unit,
     onEdit: () -> Unit,
@@ -230,12 +234,42 @@ fun PropertyCard(
                         style = MaterialTheme.typography.bodySmall, color = TextSecondary,
                         maxLines = 1, overflow = TextOverflow.Ellipsis
                     )
-                    if (proprieta.note.isNotBlank()) {
-                        Text(
-                            proprieta.note,
-                            style = MaterialTheme.typography.labelSmall, color = TextMuted,
-                            maxLines = 1, overflow = TextOverflow.Ellipsis
-                        )
+                    // ── Badge riepilogo ──
+                    if (summary != null) {
+                        Spacer(Modifier.height(4.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                            // Inquilini + canone
+                            Surface(shape = RoundedCornerShape(6.dp), color = gradient[0].copy(alpha = 0.12f)) {
+                                Text(
+                                    "👤 ${summary.unitCount} · ${Formatters.currency(summary.totalMonthlyRent)}/mese",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                    color = gradient[0],
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                                )
+                            }
+                            // Badge morosità
+                            if (summary.totalMorosita > 0) {
+                                Surface(shape = RoundedCornerShape(6.dp), color = Color(0xFFFF6B6B).copy(alpha = 0.15f)) {
+                                    Text(
+                                        "⚠️ ${Formatters.currency(summary.totalMorosita)}",
+                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                        color = Color(0xFFFF6B6B),
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                                    )
+                                }
+                            }
+                            // Badge scadenze
+                            if (summary.expiringContracts > 0) {
+                                Surface(shape = RoundedCornerShape(6.dp), color = Color(0xFFF59E0B).copy(alpha = 0.15f)) {
+                                    Text(
+                                        "📅 ${summary.expiringContracts} scad.",
+                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                        color = Color(0xFFF59E0B),
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -263,6 +297,7 @@ fun PropertyCard(
         }
     }
 }
+
 
 // ─── Form aggiunta/modifica proprietà ─────────────────────────────────
 @OptIn(ExperimentalMaterial3Api::class)

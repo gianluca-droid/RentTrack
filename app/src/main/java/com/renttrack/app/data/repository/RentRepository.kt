@@ -26,6 +26,7 @@ class RentRepository(
     fun getUnitCount(condId: Long) = unitDao.getUnitCount(condId)
     fun getTotalMillesimi(condId: Long) = unitDao.getTotalMillesimi(condId)
     fun getAllUnitsWithPayments(condId: Long) = unitDao.getAllUnitsWithPayments(condId)
+    fun getAllUnitsGlobal() = unitDao.getAllUnitsGlobal()
     suspend fun getUnitById(id: Long) = unitDao.getUnitById(id)
     suspend fun insertUnit(unit: CondoUnit) = unitDao.insertUnit(unit)
     suspend fun updateUnit(unit: CondoUnit) = unitDao.updateUnit(unit)
@@ -59,6 +60,7 @@ class RentRepository(
     // ─── Cedolini ────────────────────────────────────────────────
     fun getAllCedolini(condId: Long) = cedolinoDao.getAllCedolini(condId)
     fun getAllCedoliniWithItems(condId: Long) = cedolinoDao.getAllCedoliniWithItems(condId)
+    fun getAllCedoliniGlobal() = cedolinoDao.getAllCedoliniGlobal()
     fun getPendingCedoliniCount(condId: Long) = cedolinoDao.getPendingCedoliniCount(condId)
     fun getUnsentCedoliniCount(condId: Long) = cedolinoDao.getUnsentCedoliniCount(condId)
     fun getCedoliniByUnit(unitId: Long) = cedolinoDao.getCedoliniByUnit(unitId)
