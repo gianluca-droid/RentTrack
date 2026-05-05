@@ -37,7 +37,8 @@ data class CondoUnit(
     val ownerPhone: String = "",
     val scala: String = "",
     val leaseStartDate: Long? = null,   // data inizio contratto (timestamp)
-    val leaseEndDate: Long? = null      // data fine contratto (timestamp)
+    val leaseEndDate: Long? = null,     // data fine contratto (timestamp)
+    val paymentDayOfMonth: Int = 5      // giorno del mese entro cui pagare (default: 5)
 )
 
 // ─── Spesa Condominiale ─────────────────────────────────────────────

@@ -392,6 +392,58 @@ class RentViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /**
+     * Genera automaticamente i cedolini mensili per l'intera durata del contratto
+     * di una singola unità. Salta i mesi che hanno già un cedolino.
+     * La scadenza di ogni cedolino = [paymentDayOfMonth] del mese successivo.
+     */
+    fun generateMonthlyPaymentPlan(unit: CondoUnit) = viewModelScope.launch {
+        val start  = unit.leaseStartDate ?: return@launch
+        val end    = unit.leaseEndDate   ?: return@launch
+        val canone = unit.millesimi
+        if (canone <= 0) return@launch
+
+        val mesi = listOf("Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno",
+            "Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre")
+
+        // Cursore al primo giorno del mese di inizio contratto
+        val cal = Calendar.getInstance().apply {
+            timeInMillis = start
+            set(Calendar.DAY_OF_MONTH, 1)
+            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0)
+        }
+        val calEnd = Calendar.getInstance().apply { timeInMillis = end }
+        val existingPeriods = cedolini.value.filter { it.unitId == unit.id }.map { it.period }.toSet()
+
+        while (!cal.after(calEnd)) {
+            val month  = cal.get(Calendar.MONTH)
+            val year   = cal.get(Calendar.YEAR)
+            val period = "${mesi[month]} $year"
+
+            if (period !in existingPeriods) {
+                // Scadenza = paymentDayOfMonth del mese successivo
+                val dueCal = Calendar.getInstance().apply {
+                    set(Calendar.YEAR,         if (month == 11) year + 1 else year)
+                    set(Calendar.MONTH,        if (month == 11) 0 else month + 1)
+                    set(Calendar.DAY_OF_MONTH, unit.paymentDayOfMonth.coerceIn(1, 28))
+                    set(Calendar.HOUR_OF_DAY, 23); set(Calendar.MINUTE, 59); set(Calendar.SECOND, 59)
+                }
+                repository.insertCedolinoWithItems(
+                    Cedolino(
+                        unitId    = unit.id,
+                        period    = period,
+                        issueDate = System.currentTimeMillis(),
+                        dueDate   = dueCal.timeInMillis,
+                        total     = canone,
+                        status    = "Emesso"
+                    ),
+                    listOf(CedolinoItem(cedolinoId = 0, description = "Canone affitto $period", amount = canone))
+                )
+            }
+            cal.add(Calendar.MONTH, 1)
+        }
+    }
+
     // ─── Documento CRUD ──────────────────────────────────────────
     fun addDocumento(
         uri: Uri,
