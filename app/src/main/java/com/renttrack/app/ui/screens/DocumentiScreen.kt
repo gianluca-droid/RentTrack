@@ -444,11 +444,11 @@ fun AddDocumentoSheet(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Filled.Notes, null, tint = Amber400, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Note per l'inquilino",
+                        Text("Note aggiuntive",
                             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
                             color = Amber400)
                     }
-                    Text("L'inquilino vedrà questo riepilogo prima di aprire il documento",
+                    Text("Informazioni extra sul documento (opzionale)",
                         style = MaterialTheme.typography.labelSmall, color = TextMuted)
                     OutlinedTextField(
                         sommario, { sommario = it },
@@ -586,7 +586,7 @@ fun AddDocumentoSheet(
                         },
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.buttonColors(containerColor = Cyan400, contentColor = DarkBg),
-                        enabled = titolo.isNotBlank() && (visibilita == "Tutti" || selectedUnitIds.isNotEmpty())
+                        enabled = titolo.isNotBlank()
                     ) {
                         Icon(Icons.Filled.Save, null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
@@ -686,7 +686,7 @@ fun EditDocumentoSheet(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Filled.Notes, null, tint = Amber400, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Note per l'inquilino", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold), color = Amber400)
+                        Text("Note aggiuntive", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold), color = Amber400)
                     }
                     OutlinedTextField(sommario, { sommario = it }, label = { Text("Sintesi (opzionale)") },
                         modifier = Modifier.fillMaxWidth(), minLines = 2, maxLines = 4, colors = condoTextFieldColors())

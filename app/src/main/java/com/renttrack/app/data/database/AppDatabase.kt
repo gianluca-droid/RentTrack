@@ -19,7 +19,7 @@ import com.renttrack.app.data.model.*
         CedolinoItem::class,
         Documento::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -42,6 +42,14 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // ─── Migrazione 6 → 7: aggiunge date contratto a units ──────────────────────
+        private val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE units ADD COLUMN leaseStartDate INTEGER")
+                db.execSQL("ALTER TABLE units ADD COLUMN leaseEndDate INTEGER")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 Room.databaseBuilder(
@@ -49,7 +57,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "condogest_v3"
                 )
-                    .addMigrations(MIGRATION_5_6)
+                    .addMigrations(MIGRATION_5_6, MIGRATION_6_7)
                     .build()
                     .also { INSTANCE = it }
             }

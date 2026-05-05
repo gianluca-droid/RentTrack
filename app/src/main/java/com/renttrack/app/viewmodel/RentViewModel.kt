@@ -198,6 +198,33 @@ class RentViewModel(application: Application) : AndroidViewModel(application) {
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    // ─── Morosità: importo non pagato per unit ──────────────────────────────
+    /** Totale affitti non pagati (o scaduti) per ogni inquilino */
+    val morositaByUnit: StateFlow<Map<Long, Double>> = cedolini
+        .map { list ->
+            list.filter { it.status != "Pagato" && it.total > it.paidAmount }
+                .groupBy { it.unitId }
+                .mapValues { (_, ceds) -> ceds.sumOf { it.total - it.paidAmount } }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+
+    /** Numero di mesi in arretrato per ogni inquilino */
+    val mesiArretratiByUnit: StateFlow<Map<Long, Int>> = cedolini
+        .map { list ->
+            list.filter { it.status != "Pagato" }
+                .groupBy { it.unitId }
+                .mapValues { (_, ceds) -> ceds.size }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+
+    /** Ultimo cedolino per unit (per semaforo dashboard) */
+    val lastCedolinoByUnit: StateFlow<Map<Long, Cedolino>> = cedolini
+        .map { list ->
+            list.groupBy { it.unitId }
+                .mapValues { (_, ceds) -> ceds.maxByOrNull { it.dueDate }!! }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+
     // ─── UI State persistente: Unità ─────────────────────────────
     // Set delle scale COLLASSATE (default = tutte espanse = set vuoto)
     private val _collapsedScales = MutableStateFlow<Set<String>>(emptySet())

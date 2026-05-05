@@ -30,6 +30,8 @@ fun DashboardScreen(viewModel: RentViewModel) {
     val pendingCedolini by viewModel.pendingCedolini.collectAsState()
     val cedoliniWithItems by viewModel.cedoliniWithItems.collectAsState()
     val expensesByCategory by viewModel.expensesByCategory.collectAsState()
+    val lastCedolinoByUnit by viewModel.lastCedolinoByUnit.collectAsState()
+    val morositaByUnit by viewModel.morositaByUnit.collectAsState()
     val balance = totalPayments - totalExpenses
 
     // Cedolini aperti (non pagati)
@@ -85,6 +87,60 @@ fun DashboardScreen(viewModel: RentViewModel) {
                     subtitle = "$pendingCedolini avvisi aperti",
                     onClick = { if (pendingCedolini > 0) showOpenCedoliniSheet = true }
                 )
+            }
+        }
+
+        // ─── Semaforo Affitti ─────────────────────────────────
+        if (units.isNotEmpty()) {
+            item { SectionHeader("🚦 Stato affitti inquilini") }
+            item {
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = DarkCard)
+                ) {
+                    Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                        units.forEach { unit ->
+                            val lastCed = lastCedolinoByUnit[unit.id]
+                            val morosita = morositaByUnit[unit.id] ?: 0.0
+                            val (dotColor, statusLabel) = when {
+                                lastCed == null                    -> Pair(TextMuted,             "Nessun avviso")
+                                lastCed.status == "Pagato"         -> Pair(Green400,              "Pagato")
+                                lastCed.status == "Scaduto"        -> Pair(Color(0xFFFF6B6B),     "Scaduto")
+                                lastCed.status == "Parziale"       -> Pair(Amber400,              "Parziale")
+                                else                               -> Pair(Amber400,              "In attesa")
+                            }
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // Pallino semaforo
+                                Surface(shape = androidx.compose.foundation.shape.CircleShape, color = dotColor.copy(alpha = 0.25f), modifier = Modifier.size(28.dp)) {
+                                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                        Surface(shape = androidx.compose.foundation.shape.CircleShape, color = dotColor, modifier = Modifier.size(12.dp)) {}
+                                    }
+                                }
+                                Spacer(Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(unit.ownerName, style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold), color = TextPrimary)
+                                    Text(unit.number, style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                                }
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text(statusLabel, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = dotColor)
+                                    if (morosita > 0) {
+                                        Text(Formatters.currency(morosita), style = MaterialTheme.typography.labelSmall, color = Color(0xFFFF6B6B))
+                                    } else if (unit.millesimi > 0) {
+                                        Text(Formatters.currency(unit.millesimi), style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                                    }
+                                }
+                            }
+                            if (unit != units.last()) {
+                                HorizontalDivider(color = DarkSurface, modifier = Modifier.padding(horizontal = 16.dp))
+                            }
+                        }
+                    }
+                }
             }
         }
 

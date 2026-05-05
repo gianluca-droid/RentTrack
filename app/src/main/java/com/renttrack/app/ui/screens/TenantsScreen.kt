@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -25,11 +26,18 @@ import com.renttrack.app.data.model.*
 import com.renttrack.app.ui.components.*
 import com.renttrack.app.ui.theme.*
 import com.renttrack.app.viewmodel.RentViewModel
+import java.text.SimpleDateFormat
+import java.util.*
+
+private val dateFmt = SimpleDateFormat("dd/MM/yyyy", Locale.ITALIAN)
 
 @Composable
 fun TenantsScreen(viewModel: RentViewModel) {
     val units by viewModel.units.collectAsState()
     val activeCondominioId by viewModel.activeCondominioId.collectAsState()
+    val morositaByUnit by viewModel.morositaByUnit.collectAsState()
+    val mesiArretratiByUnit by viewModel.mesiArretratiByUnit.collectAsState()
+
     var showDialog by remember { mutableStateOf(false) }
     var editingUnit by remember { mutableStateOf<CondoUnit?>(null) }
     var deleteTarget by remember { mutableStateOf<CondoUnit?>(null) }
@@ -45,8 +53,9 @@ fun TenantsScreen(viewModel: RentViewModel) {
         }
     }
 
-    // Canone totale mensile = somma dei "millesimi" (riutilizzato come canone)
     val totalMonthlyRent = units.sumOf { it.millesimi }
+    val totalMorosity = morositaByUnit.values.sum()
+    val moroseCount = morositaByUnit.keys.size
 
     Box(modifier = Modifier.fillMaxSize()) {
         if (units.isEmpty()) {
@@ -56,15 +65,26 @@ fun TenantsScreen(viewModel: RentViewModel) {
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 96.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                // Summary card
+                // Summary cards
                 item {
-                    SummaryCard(
-                        title = "Inquilini attivi",
-                        value = "${units.size}",
-                        icon = Icons.Filled.People,
-                        accentColor = Cyan400,
-                        subtitle = "Entrata mensile totale: ${Formatters.currency(totalMonthlyRent)}"
-                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        SummaryCard(
+                            title = "Inquilini",
+                            value = "${units.size}",
+                            icon = Icons.Filled.People,
+                            accentColor = Cyan400,
+                            subtitle = "${Formatters.currency(totalMonthlyRent)}/mese attesi",
+                            modifier = Modifier.weight(1f)
+                        )
+                        SummaryCard(
+                            title = "Morosità",
+                            value = if (totalMorosity > 0) Formatters.currency(totalMorosity) else "—",
+                            icon = Icons.Filled.Warning,
+                            accentColor = if (totalMorosity > 0) Color(0xFFFF6B6B) else Green400,
+                            subtitle = if (moroseCount > 0) "$moroseCount inquilini in ritardo" else "Tutto in regola",
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                 }
 
                 // Barra di ricerca
@@ -72,12 +92,12 @@ fun TenantsScreen(viewModel: RentViewModel) {
                     OutlinedTextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
-                        placeholder = { Text("Cerca per nome, email o telefono…", style = MaterialTheme.typography.bodyMedium, color = TextMuted) },
+                        placeholder = { Text("Cerca inquilino…", style = MaterialTheme.typography.bodyMedium, color = TextMuted) },
                         leadingIcon = { Icon(Icons.Filled.Search, null, tint = TextMuted) },
                         trailingIcon = {
                             if (searchQuery.isNotBlank()) {
                                 IconButton(onClick = { searchQuery = "" }) {
-                                    Icon(Icons.Filled.Close, "Cancella ricerca", tint = TextMuted)
+                                    Icon(Icons.Filled.Close, "Cancella", tint = TextMuted)
                                 }
                             }
                         },
@@ -109,6 +129,8 @@ fun TenantsScreen(viewModel: RentViewModel) {
                 items(filteredUnits, key = { it.id }) { unit ->
                     TenantCard(
                         unit = unit,
+                        morosita = morositaByUnit[unit.id] ?: 0.0,
+                        mesiArretrati = mesiArretratiByUnit[unit.id] ?: 0,
                         onEdit = { editingUnit = unit; showDialog = true },
                         onDelete = { deleteTarget = unit }
                     )
@@ -147,8 +169,24 @@ fun TenantsScreen(viewModel: RentViewModel) {
 
 // ─── Card inquilino ───────────────────────────────────────────────────
 @Composable
-private fun TenantCard(unit: CondoUnit, onEdit: () -> Unit, onDelete: () -> Unit) {
-    val hasCanonemensile = unit.millesimi > 0
+private fun TenantCard(
+    unit: CondoUnit,
+    morosita: Double,
+    mesiArretrati: Int,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
+    val canone = unit.millesimi
+    val now = System.currentTimeMillis()
+    val daysToExpiry = unit.leaseEndDate?.let { ((it - now) / (1000 * 60 * 60 * 24)).toInt() }
+    val expiryColor = when {
+        daysToExpiry == null -> null
+        daysToExpiry < 0    -> Color(0xFFFF6B6B)   // scaduto
+        daysToExpiry < 30   -> Color(0xFFFF6B6B)   // rosso < 30gg
+        daysToExpiry < 60   -> Amber400             // arancio < 60gg
+        else                -> Green400             // verde OK
+    }
+
     ItemCard(onEdit = onEdit, onDelete = onDelete) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             // Avatar iniziali
@@ -156,9 +194,7 @@ private fun TenantCard(unit: CondoUnit, onEdit: () -> Unit, onDelete: () -> Unit
                 modifier = Modifier
                     .size(44.dp)
                     .clip(CircleShape)
-                    .background(
-                        Brush.radialGradient(listOf(Cyan500.copy(alpha = 0.3f), Purple500.copy(alpha = 0.1f)))
-                    ),
+                    .background(Brush.radialGradient(listOf(Cyan500.copy(alpha = 0.3f), Purple500.copy(alpha = 0.1f)))),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -178,17 +214,47 @@ private fun TenantCard(unit: CondoUnit, onEdit: () -> Unit, onDelete: () -> Unit
                     Text("✉ ${unit.ownerEmail}", style = MaterialTheme.typography.labelSmall, color = TextMuted)
                 }
             }
-            Column(horizontalAlignment = Alignment.End) {
-                if (hasCanonemensile) {
-                    Text(
-                        Formatters.currency(unit.millesimi),
-                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                        color = Green400
-                    )
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                if (canone > 0) {
+                    Text(Formatters.currency(canone), style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold), color = Green400)
                     Text("/mese", style = MaterialTheme.typography.labelSmall, color = TextMuted)
                 }
                 if (unit.areaMq > 0) {
                     Text("${unit.areaMq.toInt()} m²", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                }
+            }
+        }
+
+        // Badge morosità
+        if (morosita > 0) {
+            Spacer(Modifier.height(6.dp))
+            Surface(shape = RoundedCornerShape(6.dp), color = Color(0xFFFF6B6B).copy(alpha = 0.12f)) {
+                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Filled.Warning, null, tint = Color(0xFFFF6B6B), modifier = Modifier.size(13.dp))
+                    Spacer(Modifier.width(5.dp))
+                    Text(
+                        "$mesiArretrati ${if (mesiArretrati == 1) "avviso" else "avvisi"} in ritardo — ${Formatters.currency(morosita)} da incassare",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = Color(0xFFFF6B6B)
+                    )
+                }
+            }
+        }
+
+        // Badge scadenza contratto
+        if (expiryColor != null) {
+            Spacer(Modifier.height(4.dp))
+            Surface(shape = RoundedCornerShape(6.dp), color = expiryColor.copy(alpha = 0.1f)) {
+                Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Filled.CalendarMonth, null, tint = expiryColor, modifier = Modifier.size(12.dp))
+                    Spacer(Modifier.width(4.dp))
+                    val label = when {
+                        daysToExpiry!! < 0   -> "Contratto scaduto il ${dateFmt.format(Date(unit.leaseEndDate!!))}"
+                        daysToExpiry == 0    -> "Contratto scade oggi"
+                        daysToExpiry < 30    -> "Contratto scade tra $daysToExpiry giorni"
+                        else                 -> "Scadenza: ${dateFmt.format(Date(unit.leaseEndDate!!))}"
+                    }
+                    Text(label, style = MaterialTheme.typography.labelSmall, color = expiryColor)
                 }
             }
         }
@@ -202,10 +268,12 @@ private fun TenantFormDialog(unit: CondoUnit?, condominioId: Long, onDismiss: ()
     var ownerName    by remember { mutableStateOf(unit?.ownerName ?: "") }
     var ownerEmail   by remember { mutableStateOf(unit?.ownerEmail ?: "") }
     var ownerPhone   by remember { mutableStateOf(unit?.ownerPhone ?: "") }
-    var number       by remember { mutableStateOf(unit?.number ?: "") }       // es. "Ap. 1", "Int. 2"
+    var number       by remember { mutableStateOf(unit?.number ?: "") }
     var canone       by remember { mutableStateOf(if ((unit?.millesimi ?: 0.0) > 0) unit!!.millesimi.toString() else "") }
     var areaMq       by remember { mutableStateOf(if ((unit?.areaMq ?: 0.0) > 0) unit!!.areaMq.toString() else "") }
     var tipo         by remember { mutableStateOf(unit?.type ?: "Appartamento") }
+    var leaseStart   by remember { mutableStateOf(unit?.leaseStartDate) }
+    var leaseEnd     by remember { mutableStateOf(unit?.leaseEndDate) }
     var tipoExpanded by remember { mutableStateOf(false) }
 
     AlertDialog(
@@ -221,9 +289,7 @@ private fun TenantFormDialog(unit: CondoUnit?, condominioId: Long, onDismiss: ()
             LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
 
                 // ── Dati personali ──
-                item {
-                    Text("Dati inquilino", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold), color = Cyan400)
-                }
+                item { Text("Dati inquilino", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold), color = Cyan400) }
                 item {
                     OutlinedTextField(
                         value = ownerName, onValueChange = { ownerName = it },
@@ -251,15 +317,13 @@ private fun TenantFormDialog(unit: CondoUnit?, condominioId: Long, onDismiss: ()
                     )
                 }
 
-                // ── Dati appartamento ──
+                // ── Appartamento ──
                 item { Spacer(Modifier.height(4.dp)) }
-                item {
-                    Text("Appartamento", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold), color = Cyan400)
-                }
+                item { Text("Appartamento", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold), color = Cyan400) }
                 item {
                     OutlinedTextField(
                         value = number, onValueChange = { number = it },
-                        label = { Text("Identificativo (es. Ap. 1, Piano 2)") },
+                        label = { Text("Identificativo (es. Ap. 1, Int. 2)") },
                         leadingIcon = { Icon(Icons.Filled.Home, null, tint = TextMuted, modifier = Modifier.size(18.dp)) },
                         modifier = Modifier.fillMaxWidth(), singleLine = true
                     )
@@ -283,17 +347,35 @@ private fun TenantFormDialog(unit: CondoUnit?, condominioId: Long, onDismiss: ()
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         OutlinedTextField(
                             value = canone, onValueChange = { canone = it },
-                            label = { Text("Canone mensile (€)") },
+                            label = { Text("Canone €/mese") },
                             modifier = Modifier.weight(1f), singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                         )
                         OutlinedTextField(
                             value = areaMq, onValueChange = { areaMq = it },
-                            label = { Text("m² (opzionale)") },
+                            label = { Text("m² (opz.)") },
                             modifier = Modifier.weight(1f), singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                         )
                     }
+                }
+
+                // ── Contratto ──
+                item { Spacer(Modifier.height(4.dp)) }
+                item { Text("Contratto", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold), color = Cyan400) }
+                item {
+                    DatePickerField(
+                        label = "Data inizio contratto",
+                        dateMillis = leaseStart,
+                        onDateSelected = { leaseStart = it }
+                    )
+                }
+                item {
+                    DatePickerField(
+                        label = "Data fine contratto",
+                        dateMillis = leaseEnd,
+                        onDateSelected = { leaseEnd = it }
+                    )
                 }
             }
         },
@@ -307,11 +389,13 @@ private fun TenantFormDialog(unit: CondoUnit?, condominioId: Long, onDismiss: ()
                         floor        = 0,
                         type         = tipo,
                         areaMq       = areaMq.toDoubleOrNull() ?: 0.0,
-                        millesimi    = canone.toDoubleOrNull() ?: 0.0,  // canone mensile salvato qui
+                        millesimi    = canone.toDoubleOrNull() ?: 0.0,
                         ownerName    = ownerName,
                         ownerEmail   = ownerEmail,
                         ownerPhone   = ownerPhone,
-                        scala        = ""
+                        scala        = "",
+                        leaseStartDate = leaseStart,
+                        leaseEndDate   = leaseEnd
                     ))
                 },
                 enabled = ownerName.isNotBlank(),
@@ -320,4 +404,61 @@ private fun TenantFormDialog(unit: CondoUnit?, condominioId: Long, onDismiss: ()
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Annulla", color = TextSecondary) } }
     )
+}
+
+// ─── DatePicker field riutilizzabile ─────────────────────────────────
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DatePickerField(label: String, dateMillis: Long?, onDateSelected: (Long?) -> Unit) {
+    var showPicker by remember { mutableStateOf(false) }
+    val dateStr = dateMillis?.let { dateFmt.format(Date(it)) } ?: ""
+
+    OutlinedTextField(
+        value = dateStr,
+        onValueChange = {},
+        label = { Text(label) },
+        readOnly = true,
+        trailingIcon = {
+            Row {
+                if (dateMillis != null) {
+                    IconButton(onClick = { onDateSelected(null) }, modifier = Modifier.size(36.dp)) {
+                        Icon(Icons.Filled.Clear, "Cancella", tint = TextMuted, modifier = Modifier.size(16.dp))
+                    }
+                }
+                IconButton(onClick = { showPicker = true }, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Filled.CalendarMonth, "Seleziona data", tint = Cyan400, modifier = Modifier.size(18.dp))
+                }
+            }
+        },
+        modifier = Modifier.fillMaxWidth(),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = Cyan400, unfocusedBorderColor = TextMuted.copy(alpha = 0.3f),
+            focusedContainerColor = DarkSurface, unfocusedContainerColor = DarkSurface
+        )
+    )
+
+    if (showPicker) {
+        val pickerState = rememberDatePickerState(initialSelectedDateMillis = dateMillis)
+        DatePickerDialog(
+            onDismissRequest = { showPicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    onDateSelected(pickerState.selectedDateMillis)
+                    showPicker = false
+                }) { Text("OK", color = Cyan400) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPicker = false }) { Text("Annulla", color = TextSecondary) }
+            }
+        ) {
+            DatePicker(
+                state = pickerState,
+                colors = DatePickerDefaults.colors(
+                    containerColor = DarkSurface,
+                    selectedDayContainerColor = Cyan400,
+                    todayDateBorderColor = Cyan400
+                )
+            )
+        }
+    }
 }

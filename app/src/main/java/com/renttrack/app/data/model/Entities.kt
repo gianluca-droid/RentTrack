@@ -31,11 +31,13 @@ data class CondoUnit(
     val floor: Int,
     val type: String,
     val areaMq: Double,
-    val millesimi: Double,
+    val millesimi: Double,          // riutilizzato come canone mensile (€)
     val ownerName: String,
     val ownerEmail: String = "",
     val ownerPhone: String = "",
-    val scala: String = ""    // es. "A", "B", "1", "2" — vuoto = nessuna scala
+    val scala: String = "",
+    val leaseStartDate: Long? = null,   // data inizio contratto (timestamp)
+    val leaseEndDate: Long? = null      // data fine contratto (timestamp)
 )
 
 // ─── Spesa Condominiale ─────────────────────────────────────────────
