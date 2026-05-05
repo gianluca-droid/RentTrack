@@ -84,22 +84,43 @@ fun RentNoticesScreen(viewModel: RentViewModel) {
             ) {
                 // Statistiche
                 item {
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        SummaryCard(
-                            title = "Totale", value = "${cedolini.size}",
-                            icon = Icons.Filled.Description, accentColor = Cyan400,
-                            modifier = Modifier.weight(1f)
-                        )
-                        SummaryCard(
-                            title = "In Sospeso", value = "$pendingCount",
-                            icon = Icons.Filled.PendingActions, accentColor = Amber400,
-                            modifier = Modifier.weight(1f)
-                        )
-                        SummaryCard(
-                            title = "Inviati", value = "$sentCount",
-                            icon = Icons.Filled.Send, accentColor = Green400,
-                            modifier = Modifier.weight(1f)
-                        )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        // Card compatta: numero grande + etichetta breve, niente icona laterale
+                        listOf(
+                            Triple("${cedolini.size}", "Totale", Cyan400),
+                            Triple("$pendingCount",   "Sospesi",  Amber400),
+                            Triple("$sentCount",       "Inviati",  Green400)
+                        ).forEach { (value, label, color) ->
+                            Card(
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(containerColor = DarkCard)
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 12.dp, horizontal = 8.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center
+                                ) {
+                                    Text(
+                                        text = value,
+                                        style = MaterialTheme.typography.headlineSmall.copy(
+                                            fontWeight = FontWeight.ExtraBold
+                                        ),
+                                        color = color,
+                                        maxLines = 1
+                                    )
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(
+                                        text = label,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = TextSecondary,
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
 
