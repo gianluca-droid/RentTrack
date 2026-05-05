@@ -1,4 +1,4 @@
-﻿package com.renttrack.app.viewmodel
+package com.renttrack.app.viewmodel
 
 import android.app.Application
 import android.net.Uri
@@ -65,43 +65,6 @@ class RentViewModel(application: Application) : AndroidViewModel(application) {
         _collapsedScales.value = emptySet()
     }
 
-    // ─── Modalità Condomino (Mock) ────────────────────────────────
-    // In produzione questi dati arriveranno da Supabase auth
-    private val _residentUnitId = MutableStateFlow<Long>(-1L)
-    val residentUnitId: StateFlow<Long> = _residentUnitId
-
-    private val _residentCondominioId = MutableStateFlow<Long>(-1L)
-    val residentCondominioId: StateFlow<Long> = _residentCondominioId
-
-    fun loginAsResident(condominioId: Long, unitId: Long) {
-        _residentCondominioId.value = condominioId
-        _residentUnitId.value = unitId
-    }
-
-    fun logoutResident() {
-        _residentCondominioId.value = -1L
-        _residentUnitId.value = -1L
-    }
-
-    /** Cedolini inviati al condomino corrente (sentToResident = true) */
-    val residentCedolini: StateFlow<List<CedolinoWithItems>> = _residentUnitId
-        .filter { it > 0 }
-        .flatMapLatest { unitId -> repository.getAllCedoliniWithItems(_residentCondominioId.value).map { list ->
-            list.filter { it.cedolino.unitId == unitId && it.cedolino.sentToResident }
-        }}
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    /** Pagamenti del condomino corrente */
-    val residentPayments: StateFlow<List<Payment>> = _residentUnitId
-        .filter { it > 0 }
-        .flatMapLatest { unitId -> repository.getPaymentsByCondominio(_residentCondominioId.value).map { list ->
-            list.filter { it.unitId == unitId }
-        }}
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    /** Unità del condomino corrente */
-    fun getResidentUnit(): CondoUnit? = units.value.find { it.id == _residentUnitId.value }
-        ?: allCondomini.value.let { null }  // fallback se unità non nel condominio attivo
 
     // ─── State Flows (dipendono dal condominio attivo) ───────────
     val units: StateFlow<List<CondoUnit>> = _activeCondominioId
