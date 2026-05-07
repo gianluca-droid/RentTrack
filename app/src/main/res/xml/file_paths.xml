@@ -3,4 +3,5 @@
     <cache-path name="cache" path="/" />
     <files-path name="documents" path="documents/" />
     <external-files-path name="export" path="export/" />
+    <external-files-path name="backup" path="backup/" />
 </paths>

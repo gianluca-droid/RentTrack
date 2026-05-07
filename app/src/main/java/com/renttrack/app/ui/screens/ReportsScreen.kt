@@ -1,5 +1,7 @@
 package com.renttrack.app.ui.screens
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -179,15 +181,81 @@ private fun PanoramicaTab(viewModel: RentViewModel) {
                 Icon(Icons.Filled.Download, null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Column {
+                    Text("Esporta CSV", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
+                    Text("Cedolini + Spese del condominio attivo", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                }
+            }
+        }
+        // ── Sezione Backup & Ripristino ─────────────────────────
+        item {
+            val ctx = LocalContext.current
+            val backupStatus by viewModel.backupStatus.collectAsState()
+
+            // File picker per ripristino ZIP
+            val restoreLauncher = rememberLauncherForActivityResult(
+                ActivityResultContracts.GetContent()
+            ) { uri ->
+                uri?.let { viewModel.restoreDatabase(ctx, it) }
+            }
+
+            // Snackbar di stato
+            backupStatus?.let { msg ->
+                LaunchedEffect(msg) {
+                    kotlinx.coroutines.delay(4000)
+                    viewModel.clearBackupStatus()
+                }
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = if (msg.startsWith("✅")) Color(0xFF1B4332).copy(alpha = 0.95f)
+                            else Color(0xFF7F1D1D).copy(alpha = 0.95f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
                     Text(
-                        "Esporta CSV",
-                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold)
+                        msg,
+                        modifier = Modifier.padding(12.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White
                     )
-                    Text(
-                        "Cedolini + Spese del condominio attivo",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = TextMuted
-                    )
+                }
+                Spacer(Modifier.height(8.dp))
+            }
+
+            Text(
+                "💾 Backup & Ripristino",
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                color = TextPrimary
+            )
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                // ── Backup
+                OutlinedButton(
+                    onClick = { viewModel.backupDatabase(ctx) },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Green400),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Green400.copy(alpha = 0.5f)),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(Icons.Filled.CloudUpload, null, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.height(4.dp))
+                        Text("Backup", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold))
+                        Text("Salva su Drive/Email", style = MaterialTheme.typography.labelSmall, color = TextMuted, textAlign = TextAlign.Center)
+                    }
+                }
+                // ── Ripristino
+                OutlinedButton(
+                    onClick = { restoreLauncher.launch("application/zip") },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Amber400),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Amber400.copy(alpha = 0.5f)),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(Icons.Filled.CloudDownload, null, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.height(4.dp))
+                        Text("Ripristina", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold))
+                        Text("Da file .zip", style = MaterialTheme.typography.labelSmall, color = TextMuted, textAlign = TextAlign.Center)
+                    }
                 }
             }
         }

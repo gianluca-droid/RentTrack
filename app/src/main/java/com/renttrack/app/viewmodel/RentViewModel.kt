@@ -629,4 +629,102 @@ class RentViewModel(application: Application) : AndroidViewModel(application) {
             })
         }
     }
+
+    // ─── Backup & Ripristino ────────────────────────────────────────────────
+    /** Messaggio di stato dell'ultima operazione di backup/ripristino */
+    private val _backupStatus = MutableStateFlow<String?>(null)
+    val backupStatus: StateFlow<String?> = _backupStatus
+
+    fun clearBackupStatus() { _backupStatus.value = null }
+
+    /**
+     * Crea un file ZIP contenente il database SQLite e i -shm/-wal,
+     * poi apre il share intent (Drive, email, WhatsApp…).
+     */
+    fun backupDatabase(context: Context) = viewModelScope.launch {
+        withContext(Dispatchers.IO) {
+            try {
+                // Chiudi e flush WAL prima del backup
+                AppDatabase.closeAndReset()
+
+                val stamp    = SimpleDateFormat("yyyyMMdd_HHmm", Locale.ITALIAN).format(Date())
+                val backupDir = File(context.getExternalFilesDir(null), "backup").also { it.mkdirs() }
+                val zipFile   = File(backupDir, "renttrack_backup_$stamp.zip")
+
+                val dbPath = context.getDatabasePath("condogest_v3")
+                val dbDir  = dbPath.parentFile!!
+
+                java.util.zip.ZipOutputStream(zipFile.outputStream()).use { zos ->
+                    listOf("condogest_v3", "condogest_v3-shm", "condogest_v3-wal").forEach { name ->
+                        val f = File(dbDir, name)
+                        if (f.exists()) {
+                            zos.putNextEntry(java.util.zip.ZipEntry(name))
+                            f.inputStream().use { it.copyTo(zos) }
+                            zos.closeEntry()
+                        }
+                    }
+                }
+
+                val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", zipFile)
+                val intent = Intent(Intent.ACTION_SEND).apply {
+                    type = "application/zip"
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    putExtra(Intent.EXTRA_SUBJECT, "RentTrack Backup — $stamp")
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                context.startActivity(Intent.createChooser(intent, "Salva backup").apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                })
+                _backupStatus.value = "✅ Backup creato: renttrack_backup_$stamp.zip"
+            } catch (e: Exception) {
+                _backupStatus.value = "❌ Errore backup: ${e.message}"
+            } finally {
+                // Ri-apri il DB
+                AppDatabase.getDatabase(context)
+            }
+        }
+    }
+
+    /**
+     * Ripristina il database da un file ZIP di backup.
+     * [zipUri] — URI del file .zip scelto dall'utente via file picker.
+     * Dopo il ripristino riavvia l'app per ricaricare il DB.
+     */
+    fun restoreDatabase(context: Context, zipUri: Uri) = viewModelScope.launch {
+        withContext(Dispatchers.IO) {
+            try {
+                AppDatabase.closeAndReset()
+
+                val dbPath = context.getDatabasePath("condogest_v3")
+                val dbDir  = dbPath.parentFile!!
+
+                context.contentResolver.openInputStream(zipUri)?.use { stream ->
+                    java.util.zip.ZipInputStream(stream).use { zis ->
+                        var entry = zis.nextEntry
+                        while (entry != null) {
+                            val outFile = File(dbDir, entry.name)
+                            outFile.outputStream().use { zis.copyTo(it) }
+                            zis.closeEntry()
+                            entry = zis.nextEntry
+                        }
+                    }
+                }
+
+                _backupStatus.value = "✅ Ripristino completato. L'app si riavvierà."
+
+                // Riavvio automatico dell'app dopo 1 secondo
+                kotlinx.coroutines.delay(1000)
+                val pm = context.packageManager
+                val intent = pm.getLaunchIntentForPackage(context.packageName)!!.apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                }
+                context.startActivity(intent)
+                android.os.Process.killProcess(android.os.Process.myPid())
+            } catch (e: Exception) {
+                _backupStatus.value = "❌ Errore ripristino: ${e.message}"
+                AppDatabase.getDatabase(context)
+            }
+        }
+    }
 }
+

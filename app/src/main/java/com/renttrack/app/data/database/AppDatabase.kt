@@ -93,5 +93,12 @@ abstract class AppDatabase : RoomDatabase() {
                     .also { INSTANCE = it }
             }
         }
+
+        /** Chiude il DB e azzera l'istanza singleton.
+         *  Va chiamato prima di operazioni sui file (backup/ripristino). */
+        fun closeAndReset() {
+            INSTANCE?.close()
+            INSTANCE = null
+        }
     }
 }
