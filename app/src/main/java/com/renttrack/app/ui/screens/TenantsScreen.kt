@@ -41,7 +41,9 @@ fun TenantsScreen(viewModel: RentViewModel) {
     var showDialog by remember { mutableStateOf(false) }
     var editingUnit by remember { mutableStateOf<CondoUnit?>(null) }
     var deleteTarget by remember { mutableStateOf<CondoUnit?>(null) }
+    var changeTenantUnit by remember { mutableStateOf<CondoUnit?>(null) }
     var searchQuery by rememberSaveable { mutableStateOf("") }
+    val tenantHistory by viewModel.tenantHistory.collectAsState()
 
     val filteredUnits = remember(units, searchQuery) {
         if (searchQuery.isBlank()) units
@@ -131,9 +133,12 @@ fun TenantsScreen(viewModel: RentViewModel) {
                         unit = unit,
                         morosita = morositaByUnit[unit.id] ?: 0.0,
                         mesiArretrati = mesiArretratiByUnit[unit.id] ?: 0,
+                        tenantHistory = tenantHistory.filter { it.unitId == unit.id },
                         onEdit = { editingUnit = unit; showDialog = true },
                         onDelete = { deleteTarget = unit },
-                        onGeneratePlan = { viewModel.generateMonthlyPaymentPlan(unit) }
+                        onChangeTenant = { changeTenantUnit = unit },
+                        onGeneratePlan = { viewModel.generateMonthlyPaymentPlan(unit) },
+                        onDeleteHistory = { viewModel.deleteTenantHistory(it) }
                     )
                 }
             }
@@ -166,6 +171,26 @@ fun TenantsScreen(viewModel: RentViewModel) {
             onDismiss = { deleteTarget = null }
         )
     }
+
+    changeTenantUnit?.let { unit ->
+        ChangeTenantDialog(
+            unit = unit,
+            onDismiss = { changeTenantUnit = null },
+            onConfirm = { exitNotes, newName, newEmail, newPhone, newStart, newEnd, newRent ->
+                viewModel.changeTenant(
+                    unit = unit,
+                    exitNotes = exitNotes,
+                    newOwnerName = newName,
+                    newOwnerEmail = newEmail,
+                    newOwnerPhone = newPhone,
+                    newLeaseStart = newStart,
+                    newLeaseEnd = newEnd,
+                    newMonthlyRent = newRent
+                )
+                changeTenantUnit = null
+            }
+        )
+    }
 }
 
 // ─── Card inquilino ───────────────────────────────────────────────────
@@ -174,9 +199,12 @@ private fun TenantCard(
     unit: CondoUnit,
     morosita: Double,
     mesiArretrati: Int,
+    tenantHistory: List<TenantHistory>,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
-    onGeneratePlan: () -> Unit
+    onChangeTenant: () -> Unit,
+    onGeneratePlan: () -> Unit,
+    onDeleteHistory: (TenantHistory) -> Unit
 ) {
     val canone = unit.millesimi
     val now = System.currentTimeMillis()
@@ -278,6 +306,67 @@ private fun TenantCard(
                     if (generated) "Piano generato ✓" else "Genera piano pagamenti",
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold)
                 )
+            }
+        }
+
+        // Bottone "Cambia Inquilino"
+        Spacer(Modifier.height(6.dp))
+        OutlinedButton(
+            onClick = onChangeTenant,
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = Amber400),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Amber400.copy(alpha = 0.5f)),
+            shape = RoundedCornerShape(8.dp)
+        ) {
+            Icon(Icons.Filled.SwapHoriz, null, modifier = Modifier.size(14.dp))
+            Spacer(Modifier.width(6.dp))
+            Text("Cambia inquilino", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold))
+        }
+
+        // Sezione storico inquilini collassabile
+        if (tenantHistory.isNotEmpty()) {
+            var expanded by remember { mutableStateOf(false) }
+            Spacer(Modifier.height(4.dp))
+            TextButton(
+                onClick = { expanded = !expanded },
+                contentPadding = PaddingValues(horizontal = 0.dp, vertical = 2.dp)
+            ) {
+                Icon(
+                    if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                    null, tint = TextMuted, modifier = Modifier.size(14.dp)
+                )
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    "${tenantHistory.size} ex-inquilin${if (tenantHistory.size == 1) "o" else "i"}",
+                    style = MaterialTheme.typography.labelSmall, color = TextMuted
+                )
+            }
+            AnimatedVisibility(visible = expanded) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    tenantHistory.forEach { h ->
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = DarkBg.copy(alpha = 0.6f)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(h.ownerName, style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold), color = TextSecondary)
+                                    val start = h.leaseStartDate?.let { dateFmt.format(Date(it)) } ?: "?"
+                                    val end   = h.leaseEndDate?.let { dateFmt.format(Date(it)) } ?: "?"
+                                    Text("$start → $end", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                                    if (h.monthlyRent > 0) Text("${Formatters.currency(h.monthlyRent)}/mese", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                                    if (h.exitNotes.isNotBlank()) Text("Note: ${h.exitNotes}", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                                }
+                                IconButton(onClick = { onDeleteHistory(h) }, modifier = Modifier.size(28.dp)) {
+                                    Icon(Icons.Filled.Delete, "Rimuovi", tint = TextMuted.copy(alpha = 0.5f), modifier = Modifier.size(14.dp))
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -534,4 +623,117 @@ private fun DatePickerField(label: String, dateMillis: Long?, onDateSelected: (L
             )
         }
     }
+}
+
+// ─── Dialog Cambia Inquilino ───────────────────────────────────────────
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ChangeTenantDialog(
+    unit: CondoUnit,
+    onDismiss: () -> Unit,
+    onConfirm: (exitNotes: String, newName: String, newEmail: String, newPhone: String,
+                newLeaseStart: Long?, newLeaseEnd: Long?, newRent: Double) -> Unit
+) {
+    var exitNotes  by remember { mutableStateOf("") }
+    var newName    by remember { mutableStateOf("") }
+    var newEmail   by remember { mutableStateOf("") }
+    var newPhone   by remember { mutableStateOf("") }
+    var newRent    by remember { mutableStateOf(unit.millesimi.toString()) }
+    var newStart   by remember { mutableStateOf<Long?>(null) }
+    var newEnd     by remember { mutableStateOf<Long?>(null) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = DarkSurface,
+        icon = { Icon(Icons.Filled.SwapHoriz, null, tint = Amber400) },
+        title = {
+            Column {
+                Text("Cambia inquilino", color = TextPrimary, fontWeight = FontWeight.Bold)
+                Text("Int. ${unit.number}", style = MaterialTheme.typography.bodySmall, color = TextMuted)
+            }
+        },
+        text = {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                // ── Uscita inquilino attuale ──
+                item {
+                    Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFFFF6B6B).copy(alpha = 0.08f)) {
+                        Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text("Inquilino uscente", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold), color = Color(0xFFFF6B6B))
+                            Text(unit.ownerName, style = MaterialTheme.typography.bodyMedium, color = TextPrimary)
+                            if (unit.millesimi > 0) Text("Canone: ${Formatters.currency(unit.millesimi)}/mese", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                        }
+                    }
+                }
+                item {
+                    OutlinedTextField(
+                        value = exitNotes, onValueChange = { exitNotes = it },
+                        label = { Text("Note uscita (caparra, danni, ecc.)") },
+                        leadingIcon = { Icon(Icons.Filled.Notes, null, tint = TextMuted, modifier = Modifier.size(18.dp)) },
+                        modifier = Modifier.fillMaxWidth(), maxLines = 3,
+                        colors = condoTextFieldColors()
+                    )
+                }
+
+                // ── Nuovo inquilino ──
+                item { Spacer(Modifier.height(4.dp)) }
+                item {
+                    Text("Nuovo inquilino *", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold), color = Cyan400)
+                }
+                item {
+                    OutlinedTextField(
+                        value = newName, onValueChange = { newName = it },
+                        label = { Text("Nome e cognome *") },
+                        leadingIcon = { Icon(Icons.Filled.Person, null, tint = TextMuted, modifier = Modifier.size(18.dp)) },
+                        modifier = Modifier.fillMaxWidth(), singleLine = true,
+                        colors = condoTextFieldColors()
+                    )
+                }
+                item {
+                    OutlinedTextField(
+                        value = newEmail, onValueChange = { newEmail = it },
+                        label = { Text("Email") },
+                        leadingIcon = { Icon(Icons.Filled.Email, null, tint = TextMuted, modifier = Modifier.size(18.dp)) },
+                        modifier = Modifier.fillMaxWidth(), singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                        colors = condoTextFieldColors()
+                    )
+                }
+                item {
+                    OutlinedTextField(
+                        value = newPhone, onValueChange = { newPhone = it },
+                        label = { Text("Telefono") },
+                        leadingIcon = { Icon(Icons.Filled.Phone, null, tint = TextMuted, modifier = Modifier.size(18.dp)) },
+                        modifier = Modifier.fillMaxWidth(), singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                        colors = condoTextFieldColors()
+                    )
+                }
+                item {
+                    OutlinedTextField(
+                        value = newRent, onValueChange = { newRent = it },
+                        label = { Text("Canone mensile €") },
+                        leadingIcon = { Icon(Icons.Filled.EuroSymbol, null, tint = TextMuted, modifier = Modifier.size(18.dp)) },
+                        modifier = Modifier.fillMaxWidth(), singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        colors = condoTextFieldColors()
+                    )
+                }
+                item { DatePickerField("Inizio contratto nuovo", newStart) { newStart = it } }
+                item { DatePickerField("Fine contratto nuovo", newEnd) { newEnd = it } }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    onConfirm(
+                        exitNotes, newName, newEmail, newPhone,
+                        newStart, newEnd, newRent.toDoubleOrNull() ?: unit.millesimi
+                    )
+                },
+                enabled = newName.isNotBlank(),
+                colors = ButtonDefaults.buttonColors(containerColor = Amber400)
+            ) { Text("Conferma cambio", fontWeight = FontWeight.Bold, color = DarkBg) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Annulla", color = TextSecondary) } }
+    )
 }
