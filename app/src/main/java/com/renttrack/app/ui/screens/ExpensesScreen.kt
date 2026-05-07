@@ -102,14 +102,43 @@ fun ExpensesScreen(viewModel: RentViewModel) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ExpenseFormDialog(expense: Expense?, condominioId: Long, onDismiss: () -> Unit, onSave: (Expense) -> Unit) {
-    var category by remember { mutableStateOf(expense?.category ?: ExpenseCategories.categories.first().first) }
+    var category    by remember { mutableStateOf(expense?.category ?: ExpenseCategories.categories.first().first) }
     var description by remember { mutableStateOf(expense?.description ?: "") }
-    var amount by remember { mutableStateOf(expense?.amount?.toString() ?: "") }
-    var notes by remember { mutableStateOf(expense?.notes ?: "") }
-    var categoryExpanded by remember { mutableStateOf(false) }
+    var amount      by remember { mutableStateOf(expense?.amount?.toString() ?: "") }
+    var notes       by remember { mutableStateOf(expense?.notes ?: "") }
+    var categoryExpanded  by remember { mutableStateOf(false) }
+    var showDiscardDialog by remember { mutableStateOf(false) }
+
+    val hasChanges = remember(category, description, amount, notes) {
+        category    != (expense?.category ?: ExpenseCategories.categories.first().first) ||
+        description != (expense?.description ?: "") ||
+        amount      != (expense?.amount?.toString() ?: "") ||
+        notes       != (expense?.notes ?: "")
+    }
+
+    if (showDiscardDialog) {
+        AlertDialog(
+            onDismissRequest = { showDiscardDialog = false },
+            containerColor = DarkSurface,
+            icon = { Icon(Icons.Filled.Warning, null, tint = Amber400) },
+            title = { Text("Modifiche non salvate", color = TextPrimary, fontWeight = FontWeight.Bold) },
+            text = { Text("Hai inserito dei dati che non sono stati salvati. Vuoi uscire lo stesso?", color = TextSecondary) },
+            confirmButton = {
+                Button(
+                    onClick = { showDiscardDialog = false; onDismiss() },
+                    colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color(0xFFFF6B6B))
+                ) { Text("Esci senza salvare", fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDiscardDialog = false }) {
+                    Text("Continua a modificare", color = Cyan400)
+                }
+            }
+        )
+    }
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { if (hasChanges) showDiscardDialog = true else onDismiss() },
         title = { Text(if (expense != null) "Modifica Spesa" else "Nuova Spesa") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {

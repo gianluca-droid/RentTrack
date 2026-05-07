@@ -219,7 +219,9 @@ class RentViewModel(application: Application) : AndroidViewModel(application) {
     val lastCedolinoByUnit: StateFlow<Map<Long, Cedolino>> = cedolini
         .map { list ->
             list.groupBy { it.unitId }
-                .mapValues { (_, ceds) -> ceds.maxByOrNull { it.dueDate }!! }
+                .mapValues { (_, ceds) -> ceds.maxByOrNull { it.dueDate } }
+                .filterValues { it != null }
+                .mapValues { it.value!! }   // safe: null già filtrati sopra
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 

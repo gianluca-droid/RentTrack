@@ -251,7 +251,7 @@ fun DashboardScreen(viewModel: RentViewModel) {
         // ─── Ultime Spese ───────────────────────────────────────
         item { SectionHeader("Ultime spese di manutenzione") }
 
-        val recentExpenses = expenses.take(5)
+        val recentExpenses = expenses.sortedByDescending { it.date }.take(5)
         items(recentExpenses) { expense ->
             val icon = ExpenseCategories.getIcon(expense.category)
             ItemCard {
@@ -273,7 +273,7 @@ fun DashboardScreen(viewModel: RentViewModel) {
         // ─── Ultimi Pagamenti ───────────────────────────────────
         item { SectionHeader("Ultimi affitti incassati") }
 
-        val recentPayments = payments.take(5)
+        val recentPayments = payments.sortedByDescending { it.date }.take(5)
         items(recentPayments) { payment ->
             ItemCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
