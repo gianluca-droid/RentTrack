@@ -78,6 +78,7 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
     val activeCondominioId by viewModel.activeCondominioId.collectAsState()
     val activeCondominio   by viewModel.activeCondominio.collectAsState()
     val pendingCedolini    by viewModel.pendingCedolini.collectAsState()
+    var showSwitchPropertyDialog by remember { mutableStateOf(false) }
 
     // ── Loading ──────────────────────────────────────────────────────────
     if (isLoading) {
@@ -119,11 +120,7 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
                     actions = {
                         // Cambia proprietà
                         TextButton(
-                            onClick = {
-                                navController.navigate(Screen.CondominioSelector.route) {
-                                    popUpTo(Screen.Dashboard.route) { saveState = true }
-                                }
-                            },
+                            onClick = { showSwitchPropertyDialog = true },
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
                         ) {
                             Icon(Icons.Filled.Business, null, tint = TextSecondary, modifier = Modifier.size(16.dp))
@@ -201,7 +198,46 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
             }
         }
     ) { paddingValues ->
-        NavHost(
+    // ── Dialog conferma cambio proprietà ────────────────────────────────────
+    if (showSwitchPropertyDialog) {
+        AlertDialog(
+            onDismissRequest = { showSwitchPropertyDialog = false },
+            containerColor = androidx.compose.ui.graphics.Color(0xFF1E1E2E),
+            icon = { Icon(Icons.Filled.Business, null, tint = Cyan400) },
+            title = {
+                Text(
+                    "Cambia proprietà",
+                    color = TextPrimary,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text(
+                    "Vuoi tornare alla schermata di selezione delle proprietà?\n\n" +
+                    "La proprietà attuale è: ${activeCondominio?.nome ?: "—"}",
+                    color = TextSecondary
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showSwitchPropertyDialog = false
+                        navController.navigate(Screen.CondominioSelector.route) {
+                            popUpTo(Screen.Dashboard.route) { saveState = true }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Cyan400,  contentColor = androidx.compose.ui.graphics.Color.Black)
+                ) { Text("Cambia", fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSwitchPropertyDialog = false }) {
+                    Text("Rimani qui", color = TextSecondary)
+                }
+            }
+        )
+    }
+
+    NavHost(
             navController    = navController,
             startDestination = startDestination,
             modifier         = Modifier.padding(paddingValues),

@@ -370,17 +370,28 @@ class RentViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun generateCedoliniForAllUnits(period: String, dueDate: Long) = viewModelScope.launch {
-        val currentUnits = units.value.filter { it.millesimi > 0 }  // millesimi = canone mensile
+        val currentUnits = units.value.filter { it.millesimi > 0 }
         if (currentUnits.isEmpty()) return@launch
-        // Modello landlord: ogni inquilino riceve un avviso con il proprio canone fisso
+
+        // Recupera i periodi già esistenti per ogni unità — evita duplicati
+        val existingByUnit: Map<Long, Set<String>> = cedolini.value
+            .groupBy { it.unitId }
+            .mapValues { (_, ceds) -> ceds.map { it.period }.toSet() }
+
+        var skipped = 0
         for (unit in currentUnits) {
+            // Se esiste già un cedolino per questo periodo → salta
+            if (existingByUnit[unit.id]?.contains(period) == true) {
+                skipped++
+                continue
+            }
             repository.insertCedolinoWithItems(
                 Cedolino(
                     unitId    = unit.id,
                     period    = period,
                     issueDate = System.currentTimeMillis(),
                     dueDate   = dueDate,
-                    total     = unit.millesimi,   // canone mensile fisso dell'inquilino
+                    total     = unit.millesimi,
                     status    = "Emesso"
                 ),
                 listOf(
@@ -392,6 +403,7 @@ class RentViewModel(application: Application) : AndroidViewModel(application) {
                 )
             )
         }
+        android.util.Log.d("RentViewModel", "generateCedolini: ${currentUnits.size - skipped} creati, $skipped saltati (già esistenti)")
     }
 
     /**
