@@ -1,7 +1,7 @@
 package com.renttrack.app.ui.screens
 
 import androidx.compose.foundation.background
- import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -344,12 +344,15 @@ fun RentNoticesScreen(viewModel: RentViewModel) {
         )
     }
 
-    // Dialog: genera per tutte le unità
+    // Dialog: genera per tutte le unità (range di mesi)
     if (showGenerateDialog) {
         GenerateCedoliniDialog(
             onDismiss = { showGenerateDialog = false },
-            onGenerate = { period, dueDate ->
-                viewModel.generateCedoliniForAllUnits(period, dueDate)
+            onGenerate = { periods ->
+                // periods = lista di Pair(periodo: String, dueDate: Long)
+                periods.forEach { (period, dueDate) ->
+                    viewModel.generateCedoliniForAllUnits(period, dueDate)
+                }
                 showGenerateDialog = false
             }
         )
@@ -577,36 +580,246 @@ private fun SingleCedolinoDialog(
     )
 }
 
-// ─── Dialog: Genera per tutte le unità ──────────────────────────────
+// ─── Dialog: Genera per tutte le unità (range mesi) ──────────────────
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun GenerateCedoliniDialog(onDismiss: () -> Unit, onGenerate: (String, Long) -> Unit) {
-    var period by remember { mutableStateOf("") }
-    val cal = Calendar.getInstance().apply { add(Calendar.MONTH, 1) }
-    val dueDate = cal.timeInMillis
+private fun GenerateCedoliniDialog(
+    onDismiss: () -> Unit,
+    onGenerate: (List<Pair<String, Long>>) -> Unit
+) {
+    val nomiMesi = listOf(
+        "Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno",
+        "Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"
+    )
+    val now = Calendar.getInstance()
+    val currentMonth = now.get(Calendar.MONTH)   // 0-based
+    val currentYear  = now.get(Calendar.YEAR)
+
+    // Anno range ±2 anni
+    val years = (currentYear - 1..currentYear + 2).toList()
+
+    // Stato: mese/anno di inizio e fine
+    var fromMonth by remember { mutableIntStateOf(currentMonth) }
+    var fromYear  by remember { mutableIntStateOf(currentYear) }
+    var toMonth   by remember { mutableIntStateOf(currentMonth) }
+    var toYear    by remember { mutableIntStateOf(currentYear) }
+
+    // Giorno di scadenza (default 5 del mese successivo — modificabile)
+    var dueDay by remember { mutableStateOf("5") }
+
+    var fromMonthExpanded by remember { mutableStateOf(false) }
+    var fromYearExpanded  by remember { mutableStateOf(false) }
+    var toMonthExpanded   by remember { mutableStateOf(false) }
+    var toYearExpanded    by remember { mutableStateOf(false) }
+
+    // Calcola i periodi nel range selezionato
+    val periodsInRange = remember(fromMonth, fromYear, toMonth, toYear) {
+        val result = mutableListOf<Pair<String, Long>>()
+        val cal = Calendar.getInstance().apply {
+            set(Calendar.MONTH, fromMonth)
+            set(Calendar.YEAR, fromYear)
+            set(Calendar.DAY_OF_MONTH, 1)
+        }
+        val endCal = Calendar.getInstance().apply {
+            set(Calendar.MONTH, toMonth)
+            set(Calendar.YEAR, toYear)
+            set(Calendar.DAY_OF_MONTH, 1)
+        }
+        while (!cal.after(endCal)) {
+            val m = cal.get(Calendar.MONTH)
+            val y = cal.get(Calendar.YEAR)
+            val period = "${nomiMesi[m]} $y"
+            // dueDate = giorno [dueDay] del mese successivo
+            val dueCal = Calendar.getInstance().apply {
+                set(Calendar.YEAR,  if (m == 11) y + 1 else y)
+                set(Calendar.MONTH, if (m == 11) 0 else m + 1)
+                set(Calendar.DAY_OF_MONTH, (dueDay.toIntOrNull() ?: 5).coerceIn(1, 28))
+                set(Calendar.HOUR_OF_DAY, 23); set(Calendar.MINUTE, 59); set(Calendar.SECOND, 59)
+            }
+            result.add(period to dueCal.timeInMillis)
+            cal.add(Calendar.MONTH, 1)
+        }
+        result
+    }
+
+    val isRangeValid = fromYear < toYear || (fromYear == toYear && fromMonth <= toMonth)
 
     AlertDialog(
         onDismissRequest = { /* blocca chiusura accidentale — usare Annulla */ },
+        containerColor = DarkSurface,
+        icon = { Icon(Icons.Filled.AutoAwesome, null, tint = Cyan400) },
+        title = { Text("Genera avvisi affitto", color = TextPrimary, fontWeight = FontWeight.Bold) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    "Verrà generato un avviso di affitto per ogni inquilino registrato.",
-                    style = MaterialTheme.typography.bodyMedium, color = TextSecondary
+                    "Verrà generato un avviso per ogni inquilino registrato per ogni mese nel periodo selezionato.",
+                    style = MaterialTheme.typography.bodySmall, color = TextSecondary
                 )
+
+                // ── Da ──────────────────────────────────────────────
+                Text("Da:", style = MaterialTheme.typography.labelMedium, color = TextMuted)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // Mese inizio
+                    ExposedDropdownMenuBox(
+                        expanded = fromMonthExpanded,
+                        onExpandedChange = { fromMonthExpanded = it },
+                        modifier = Modifier.weight(2f)
+                    ) {
+                        OutlinedTextField(
+                            value = nomiMesi[fromMonth],
+                            onValueChange = {}, readOnly = true,
+                            label = { Text("Mese") },
+                            modifier = Modifier.fillMaxWidth().menuAnchor(),
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(fromMonthExpanded) },
+                            colors = condoTextFieldColors()
+                        )
+                        ExposedDropdownMenu(expanded = fromMonthExpanded, onDismissRequest = { fromMonthExpanded = false }) {
+                            nomiMesi.forEachIndexed { idx, nome ->
+                                DropdownMenuItem(
+                                    text = { Text(nome, color = TextPrimary) },
+                                    onClick = { fromMonth = idx; fromMonthExpanded = false }
+                                )
+                            }
+                        }
+                    }
+                    // Anno inizio
+                    ExposedDropdownMenuBox(
+                        expanded = fromYearExpanded,
+                        onExpandedChange = { fromYearExpanded = it },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        OutlinedTextField(
+                            value = fromYear.toString(),
+                            onValueChange = {}, readOnly = true,
+                            label = { Text("Anno") },
+                            modifier = Modifier.fillMaxWidth().menuAnchor(),
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(fromYearExpanded) },
+                            colors = condoTextFieldColors()
+                        )
+                        ExposedDropdownMenu(expanded = fromYearExpanded, onDismissRequest = { fromYearExpanded = false }) {
+                            years.forEach { y ->
+                                DropdownMenuItem(
+                                    text = { Text(y.toString(), color = TextPrimary) },
+                                    onClick = { fromYear = y; fromYearExpanded = false }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // ── A ───────────────────────────────────────────────
+                Text("A:", style = MaterialTheme.typography.labelMedium, color = TextMuted)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // Mese fine
+                    ExposedDropdownMenuBox(
+                        expanded = toMonthExpanded,
+                        onExpandedChange = { toMonthExpanded = it },
+                        modifier = Modifier.weight(2f)
+                    ) {
+                        OutlinedTextField(
+                            value = nomiMesi[toMonth],
+                            onValueChange = {}, readOnly = true,
+                            label = { Text("Mese") },
+                            modifier = Modifier.fillMaxWidth().menuAnchor(),
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(toMonthExpanded) },
+                            colors = condoTextFieldColors()
+                        )
+                        ExposedDropdownMenu(expanded = toMonthExpanded, onDismissRequest = { toMonthExpanded = false }) {
+                            nomiMesi.forEachIndexed { idx, nome ->
+                                DropdownMenuItem(
+                                    text = { Text(nome, color = TextPrimary) },
+                                    onClick = { toMonth = idx; toMonthExpanded = false }
+                                )
+                            }
+                        }
+                    }
+                    // Anno fine
+                    ExposedDropdownMenuBox(
+                        expanded = toYearExpanded,
+                        onExpandedChange = { toYearExpanded = it },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        OutlinedTextField(
+                            value = toYear.toString(),
+                            onValueChange = {}, readOnly = true,
+                            label = { Text("Anno") },
+                            modifier = Modifier.fillMaxWidth().menuAnchor(),
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(toYearExpanded) },
+                            colors = condoTextFieldColors()
+                        )
+                        ExposedDropdownMenu(expanded = toYearExpanded, onDismissRequest = { toYearExpanded = false }) {
+                            years.forEach { y ->
+                                DropdownMenuItem(
+                                    text = { Text(y.toString(), color = TextPrimary) },
+                                    onClick = { toYear = y; toYearExpanded = false }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // ── Giorno scadenza ─────────────────────────────────
                 OutlinedTextField(
-                    value = period, onValueChange = { period = it },
-                    label = { Text("Periodo (es. II Trimestre 2026)") },
-                    modifier = Modifier.fillMaxWidth(), singleLine = true
+                    value = dueDay,
+                    onValueChange = { if (it.length <= 2 && (it.toIntOrNull() ?: 0) <= 28) dueDay = it },
+                    label = { Text("Giorno scadenza (1–28)") },
+                    placeholder = { Text("5") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    colors = condoTextFieldColors(),
+                    supportingText = { Text("Es. 5 → ogni avviso scade il 5 del mese successivo", color = TextMuted) }
                 )
-                Text("Scadenza: ${Formatters.date(dueDate)}", style = MaterialTheme.typography.bodySmall, color = TextMuted)
+
+                // ── Riepilogo ───────────────────────────────────────
+                if (isRangeValid && periodsInRange.isNotEmpty()) {
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = Cyan400.copy(alpha = 0.08f)
+                    ) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                "✅ ${periodsInRange.size} ${if (periodsInRange.size == 1) "mese" else "mesi"} selezionati:",
+                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                color = Cyan400
+                            )
+                            periodsInRange.forEach { (period, dueTs) ->
+                                Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                                    Text(period, style = MaterialTheme.typography.bodySmall, color = TextPrimary)
+                                    Text("scad. ${Formatters.date(dueTs)}", style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                                }
+                            }
+                        }
+                    }
+                } else if (!isRangeValid) {
+                    Text(
+                        "⚠ La data di inizio deve essere precedente o uguale alla data di fine.",
+                        style = MaterialTheme.typography.bodySmall, color = Color(0xFFFF6B6B)
+                    )
+                }
             }
         },
         confirmButton = {
-            TextButton(onClick = { onGenerate(period, dueDate) }, enabled = period.isNotBlank()) { Text("Genera") }
+            Button(
+                onClick = { onGenerate(periodsInRange) },
+                enabled = isRangeValid && periodsInRange.isNotEmpty(),
+                colors = ButtonDefaults.buttonColors(containerColor = Cyan500)
+            ) {
+                Icon(Icons.Filled.AutoAwesome, null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    if (periodsInRange.size > 1) "Genera ${periodsInRange.size} mesi" else "Genera",
+                    fontWeight = FontWeight.Bold
+                )
+            }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Annulla") } },
-        containerColor = DarkSurface
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Annulla", color = TextSecondary) } }
     )
 }
+
 
 // ─── Dialog: Dettaglio cedolino ──────────────────────────────────────
 @Composable
