@@ -43,7 +43,7 @@ fun RentNoticesScreen(viewModel: RentViewModel) {
     var filterStatus by remember { mutableStateOf<String?>(null) }
     var showArchive by remember { mutableStateOf(false) }
 
-    val openCedolini = remember(cedolini) { cedolini.filter { it.status != "Pagato" } }
+    val openCedolini = remember(cedolini) { cedolini.filter { it.status != "Pagato" }.sortedBy { it.dueDate } }
     val paidCedolini = remember(cedolini) { cedolini.filter { it.status == "Pagato" }.sortedByDescending { it.paidDate } }
     val sentCount = cedolini.count { it.sentToResident }
 
@@ -295,28 +295,76 @@ fun RentNoticesScreen(viewModel: RentViewModel) {
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             // FAB: addebita quota diretta a singola unità
-            SmallFloatingActionButton(
-                onClick = { showQuotaDialog = true },
-                containerColor = Amber400.copy(alpha = 0.9f),
-                contentColor = DarkBg
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Icon(Icons.Filled.EuroSymbol, "Addebita importo a inquilino")
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = DarkSurface.copy(alpha = 0.92f)
+                ) {
+                    Text(
+                        "Addebita spesa extra",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = TextSecondary,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+                SmallFloatingActionButton(
+                    onClick = { showQuotaDialog = true },
+                    containerColor = Amber400.copy(alpha = 0.9f),
+                    contentColor = DarkBg
+                ) {
+                    Icon(Icons.Filled.EuroSymbol, "Addebita importo a inquilino")
+                }
             }
-            // FAB secondario: singolo condomino (con millesimi)
-            SmallFloatingActionButton(
-                onClick = { showSingleDialog = true },
-                containerColor = DarkSurface,
-                contentColor = Cyan400
+            // FAB secondario: singolo condomino
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Icon(Icons.Filled.PersonAdd, "Nuovo avviso")
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = DarkSurface.copy(alpha = 0.92f)
+                ) {
+                    Text(
+                        "Avviso singolo inquilino",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = TextSecondary,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+                SmallFloatingActionButton(
+                    onClick = { showSingleDialog = true },
+                    containerColor = DarkSurface,
+                    contentColor = Cyan400
+                ) {
+                    Icon(Icons.Filled.PersonAdd, "Nuovo avviso")
+                }
             }
             // FAB principale: genera per tutti
-            @Suppress("DEPRECATION")
-            GradientFab(
-                icon = Icons.Filled.NoteAdd,
-                contentDescription = "Genera avvisi affitto",
-                onClick = { showGenerateDialog = true }
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = DarkSurface.copy(alpha = 0.92f)
+                ) {
+                    Text(
+                        "Genera per tutti",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = TextSecondary,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+                @Suppress("DEPRECATION")
+                GradientFab(
+                    icon = Icons.Filled.NoteAdd,
+                    contentDescription = "Genera avvisi affitto",
+                    onClick = { showGenerateDialog = true }
+                )
+            }
         }
     }
 
@@ -663,7 +711,7 @@ private fun GenerateCedoliniDialog(
                     ExposedDropdownMenuBox(
                         expanded = fromMonthExpanded,
                         onExpandedChange = { fromMonthExpanded = it },
-                        modifier = Modifier.weight(2f)
+                        modifier = Modifier.weight(3f)
                     ) {
                         OutlinedTextField(
                             value = nomiMesi[fromMonth],
@@ -682,18 +730,17 @@ private fun GenerateCedoliniDialog(
                             }
                         }
                     }
-                    // Anno inizio
+                    // Anno inizio — weight maggiore per mostrare '2026' senza troncamento
                     ExposedDropdownMenuBox(
                         expanded = fromYearExpanded,
                         onExpandedChange = { fromYearExpanded = it },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(2f)
                     ) {
                         OutlinedTextField(
                             value = fromYear.toString(),
                             onValueChange = {}, readOnly = true,
                             label = { Text("Anno") },
                             modifier = Modifier.fillMaxWidth().menuAnchor(),
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(fromYearExpanded) },
                             colors = condoTextFieldColors()
                         )
                         ExposedDropdownMenu(expanded = fromYearExpanded, onDismissRequest = { fromYearExpanded = false }) {
@@ -714,7 +761,7 @@ private fun GenerateCedoliniDialog(
                     ExposedDropdownMenuBox(
                         expanded = toMonthExpanded,
                         onExpandedChange = { toMonthExpanded = it },
-                        modifier = Modifier.weight(2f)
+                        modifier = Modifier.weight(3f)
                     ) {
                         OutlinedTextField(
                             value = nomiMesi[toMonth],
@@ -737,14 +784,13 @@ private fun GenerateCedoliniDialog(
                     ExposedDropdownMenuBox(
                         expanded = toYearExpanded,
                         onExpandedChange = { toYearExpanded = it },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(2f)
                     ) {
                         OutlinedTextField(
                             value = toYear.toString(),
                             onValueChange = {}, readOnly = true,
                             label = { Text("Anno") },
                             modifier = Modifier.fillMaxWidth().menuAnchor(),
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(toYearExpanded) },
                             colors = condoTextFieldColors()
                         )
                         ExposedDropdownMenu(expanded = toYearExpanded, onDismissRequest = { toYearExpanded = false }) {
