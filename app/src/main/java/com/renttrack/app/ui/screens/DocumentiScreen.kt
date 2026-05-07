@@ -154,8 +154,7 @@ fun DocumentiScreen(viewModel: RentViewModel) {
                     }
                     DropdownMenu(
                         expanded = showSortMenu,
-                        onDismissRequest = { showSortMenu = false },
-                        containerColor = DarkSurface
+                        onDismissRequest = { showSortMenu = false }
                     ) {
                         Text(
                             "Ordina per",
