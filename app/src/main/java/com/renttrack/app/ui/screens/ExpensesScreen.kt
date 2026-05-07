@@ -138,7 +138,7 @@ private fun ExpenseFormDialog(expense: Expense?, condominioId: Long, onDismiss: 
     }
 
     AlertDialog(
-        onDismissRequest = { if (hasChanges) showDiscardDialog = true else onDismiss() },
+        onDismissRequest = { /* blocca chiusura accidentale — usare Annulla */ },
         title = { Text(if (expense != null) "Modifica Spesa" else "Nuova Spesa") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {

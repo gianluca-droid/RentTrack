@@ -336,7 +336,7 @@ private fun TenantFormDialog(unit: CondoUnit?, condominioId: Long, onDismiss: ()
     }
 
     AlertDialog(
-        onDismissRequest = { if (hasChanges) showDiscardDialog = true else onDismiss() },
+        onDismissRequest = { /* blocca chiusura accidentale — usare Annulla */ },
         containerColor = DarkSurface,
         title = {
             Text(
