@@ -24,8 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.zIndex
 import coil.compose.AsyncImage
 import com.renttrack.app.data.model.Documento
 import com.renttrack.app.data.model.DocumentCategories
@@ -329,74 +328,93 @@ fun DocumentiScreen(viewModel: RentViewModel) {
             }
         }
 
+        // FAB aggiungi documento
         FloatingActionButton(
             onClick = { filePicker.launch(FileTypes.allMimeTypes) },
-            modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp)
+                .zIndex(5f),
             containerColor = Cyan400, contentColor = DarkBg
         ) { Icon(Icons.Filled.Add, "Aggiungi documento") }
-    }
 
-
-    // ── Photo Viewer fullscreen in-app ──────────────────────────
-    photoViewer?.let { doc ->
-        Dialog(
-            onDismissRequest = { photoViewer = null },
-            properties = DialogProperties(usePlatformDefaultWidth = false)
+        // ── Photo Viewer fullscreen overlay (dentro il Box principale — nessun Dialog) ──
+        AnimatedVisibility(
+            visible = photoViewer != null,
+            modifier = Modifier
+                .fillMaxSize()
+                .zIndex(10f),
+            enter = fadeIn(),
+            exit = fadeOut()
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black)
-                    .clickable { photoViewer = null },
-                contentAlignment = Alignment.Center
-            ) {
-                AsyncImage(
-                    model = File(doc.filePath),
-                    contentDescription = doc.titolo,
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier.fillMaxSize()
-                )
-                // Header con titolo e chiudi
-                Row(
+            val doc = photoViewer
+            if (doc != null) {
+                Box(
                     modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .fillMaxWidth()
-                        .background(
-                            androidx.compose.ui.graphics.Brush.verticalGradient(
-                                listOf(Color.Black.copy(alpha = 0.7f), Color.Transparent)
-                            )
-                        )
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .fillMaxSize()
+                        .background(Color.Black),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        doc.titolo,
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                        color = Color.White,
-                        modifier = Modifier.weight(1f)
+                    // Immagine
+                    AsyncImage(
+                        model = File(doc.filePath),
+                        contentDescription = doc.titolo,
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.fillMaxSize()
                     )
-                    IconButton(onClick = { photoViewer = null }) {
-                        Icon(Icons.Filled.Close, "Chiudi", tint = Color.White)
-                    }
-                }
-                // Info in basso
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .fillMaxWidth()
-                        .background(
-                            androidx.compose.ui.graphics.Brush.verticalGradient(
-                                listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f))
+                    // Gradiente + header in alto
+                    Row(
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .fillMaxWidth()
+                            .background(
+                                androidx.compose.ui.graphics.Brush.verticalGradient(
+                                    listOf(Color.Black.copy(alpha = 0.75f), Color.Transparent)
+                                )
                             )
+                            .statusBarsPadding()
+                            .padding(horizontal = 8.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(onClick = { photoViewer = null }) {
+                            Icon(Icons.Filled.ArrowBack, "Chiudi", tint = Color.White)
+                        }
+                        Text(
+                            doc.titolo,
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = Color.White,
+                            modifier = Modifier.weight(1f)
                         )
-                        .padding(16.dp)
-                ) {
-                    Text(doc.categoria, style = MaterialTheme.typography.labelMedium, color = Cyan400)
-                    if (doc.sommario.isNotBlank()) Text(doc.sommario, style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.8f))
+                    }
+                    // Info in basso
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .fillMaxWidth()
+                            .background(
+                                androidx.compose.ui.graphics.Brush.verticalGradient(
+                                    listOf(Color.Transparent, Color.Black.copy(alpha = 0.75f))
+                                )
+                            )
+                            .navigationBarsPadding()
+                            .padding(16.dp)
+                    ) {
+                        Text(doc.categoria, style = MaterialTheme.typography.labelMedium, color = Cyan400)
+                        if (doc.sommario.isNotBlank()) {
+                            Spacer(Modifier.height(4.dp))
+                            Text(doc.sommario, style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.8f))
+                        }
+                        if (doc.note.isNotBlank()) {
+                            Spacer(Modifier.height(2.dp))
+                            Text(doc.note, style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.5f))
+                        }
+                    }
                 }
             }
         }
     }
+
+    // FAB aggiunto all'overlay Box qui sopra
 
     if (showAddSheet && pickedUri != null) {
         AddDocumentoSheet(
