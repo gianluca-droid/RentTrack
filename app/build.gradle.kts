@@ -1,4 +1,4 @@
-﻿plugins {
+plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("com.google.devtools.ksp")
@@ -88,8 +88,11 @@ dependencies {
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
-    // Image loading (anteprima foto nei documenti) â€” Coil2 compatibile con compileSdk 34
+        // Image loading
     implementation("io.coil-kt:coil-compose:2.6.0")
+
+    // WorkManager (notifiche schedulate in background)
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
 
     // Debug
     debugImplementation("androidx.compose.ui:ui-tooling")

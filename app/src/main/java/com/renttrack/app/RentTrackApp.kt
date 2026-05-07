@@ -2,12 +2,16 @@ package com.renttrack.app
 
 import android.app.Application
 import android.content.Context
+import androidx.work.*
+import com.renttrack.app.notifications.NotificationHelper
+import com.renttrack.app.notifications.RentCheckWorker
+import java.util.concurrent.TimeUnit
 
 class RentTrackApp : Application() {
     override fun onCreate() {
         super.onCreate()
 
-        // ── Crash handler: salva l'errore in SharedPreferences ──────
+        // ── Crash handler ────────────────────────────────────────────
         val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
             try {
@@ -21,5 +25,24 @@ class RentTrackApp : Application() {
             } catch (_: Exception) {}
             defaultHandler?.uncaughtException(thread, throwable)
         }
+
+        // ── Canali notifiche (richiesti da Android 8+) ───────────────
+        NotificationHelper.createChannels(this)
+
+        // ── WorkManager: check giornaliero scadenze e morosità ───────
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.NOT_REQUIRED)
+            .build()
+
+        val dailyWork = PeriodicWorkRequestBuilder<RentCheckWorker>(1, TimeUnit.DAYS)
+            .setConstraints(constraints)
+            .setInitialDelay(1, TimeUnit.HOURS)   // prima esecuzione dopo 1h dall'avvio
+            .build()
+
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            "rent_daily_check",
+            ExistingPeriodicWorkPolicy.KEEP,       // non sostituisce se già schedulato
+            dailyWork
+        )
     }
 }
