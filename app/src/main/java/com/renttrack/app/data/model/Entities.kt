@@ -156,6 +156,29 @@ data class Documento(
     val destinatariUnitIds: String = ""
 )
 
+// ─── Storico Inquilino ───────────────────────────────────────────────
+@Entity(
+    tableName = "tenant_history",
+    foreignKeys = [ForeignKey(
+        entity = CondoUnit::class,
+        parentColumns = ["id"], childColumns = ["unitId"],
+        onDelete = ForeignKey.CASCADE
+    )],
+    indices = [Index("unitId")]
+)
+data class TenantHistory(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val unitId: Long,
+    val ownerName: String,
+    val ownerEmail: String = "",
+    val ownerPhone: String = "",
+    val leaseStartDate: Long? = null,
+    val leaseEndDate: Long? = null,
+    val monthlyRent: Double = 0.0,      // canone al momento dell'archiviazione
+    val exitNotes: String = "",          // note di uscita (es. caparra, danni, ecc.)
+    val archivedAt: Long = System.currentTimeMillis()
+)
+
 // ─── Relazioni ──────────────────────────────────────────────────────
 data class CedolinoWithItems(
     @Embedded val cedolino: Cedolino,

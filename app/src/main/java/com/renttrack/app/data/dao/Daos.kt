@@ -239,3 +239,22 @@ interface DocumentoDao {
     @Delete
     suspend fun deleteDocumento(documento: Documento)
 }
+
+// ─── TenantHistory DAO ──────────────────────────────────────────────
+@Dao
+interface TenantHistoryDao {
+    @Query("SELECT * FROM tenant_history WHERE unitId = :unitId ORDER BY archivedAt DESC")
+    fun getHistoryByUnit(unitId: Long): Flow<List<TenantHistory>>
+
+    @Query("SELECT * FROM tenant_history ORDER BY archivedAt DESC")
+    fun getAllHistory(): Flow<List<TenantHistory>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertHistory(history: TenantHistory): Long
+
+    @Delete
+    suspend fun deleteHistory(history: TenantHistory)
+
+    @Query("DELETE FROM tenant_history WHERE unitId = :unitId")
+    suspend fun deleteAllHistoryForUnit(unitId: Long)
+}

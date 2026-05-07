@@ -24,7 +24,8 @@ class RentCheckWorker(
             val db = AppDatabase.getDatabase(context)
             val repo = RentRepository(
                 db.condominioDao(), db.unitDao(), db.expenseDao(),
-                db.paymentDao(), db.cedolinoDao(), db.documentoDao()
+                db.paymentDao(), db.cedolinoDao(), db.documentoDao(),
+                db.tenantHistoryDao()
             )
 
             val now  = System.currentTimeMillis()

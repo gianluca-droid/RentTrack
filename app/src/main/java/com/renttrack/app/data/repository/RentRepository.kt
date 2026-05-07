@@ -10,7 +10,8 @@ class RentRepository(
     private val expenseDao: ExpenseDao,
     private val paymentDao: PaymentDao,
     private val cedolinoDao: CedolinoDao,
-    private val documentoDao: DocumentoDao
+    private val documentoDao: DocumentoDao,
+    private val tenantHistoryDao: TenantHistoryDao
 ) {
     // ─── Condomini ───────────────────────────────────────────────
     val allCondomini: Flow<List<Condominio>> = condominioDao.getAllCondomini()
@@ -75,4 +76,51 @@ class RentRepository(
     suspend fun insertDocumento(doc: Documento) = documentoDao.insertDocumento(doc)
     suspend fun updateDocumento(doc: Documento) = documentoDao.updateDocumento(doc)
     suspend fun deleteDocumento(doc: Documento) = documentoDao.deleteDocumento(doc)
+
+    // ─── Storico Inquilini ────────────────────────────────────────
+    fun getTenantHistoryByUnit(unitId: Long) = tenantHistoryDao.getHistoryByUnit(unitId)
+    fun getAllTenantHistory() = tenantHistoryDao.getAllHistory()
+    suspend fun insertTenantHistory(h: TenantHistory) = tenantHistoryDao.insertHistory(h)
+    suspend fun deleteTenantHistory(h: TenantHistory) = tenantHistoryDao.deleteHistory(h)
+
+    /**
+     * Archivia l'inquilino attuale dell'unità in TenantHistory
+     * e aggiorna l'unità con i dati del nuovo inquilino.
+     * Tutto in un'unica operazione atomica.
+     */
+    suspend fun changeTenant(
+        unit: CondoUnit,
+        exitNotes: String,
+        newOwnerName: String,
+        newOwnerEmail: String,
+        newOwnerPhone: String,
+        newLeaseStart: Long?,
+        newLeaseEnd: Long?,
+        newMonthlyRent: Double
+    ) {
+        // 1. Archivia inquilino attuale
+        tenantHistoryDao.insertHistory(
+            TenantHistory(
+                unitId = unit.id,
+                ownerName = unit.ownerName,
+                ownerEmail = unit.ownerEmail,
+                ownerPhone = unit.ownerPhone,
+                leaseStartDate = unit.leaseStartDate,
+                leaseEndDate = unit.leaseEndDate,
+                monthlyRent = unit.millesimi,
+                exitNotes = exitNotes
+            )
+        )
+        // 2. Aggiorna unità con nuovo inquilino
+        unitDao.updateUnit(
+            unit.copy(
+                ownerName = newOwnerName,
+                ownerEmail = newOwnerEmail,
+                ownerPhone = newOwnerPhone,
+                leaseStartDate = newLeaseStart,
+                leaseEndDate = newLeaseEnd,
+                millesimi = newMonthlyRent
+            )
+        )
+    }
 }

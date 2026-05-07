@@ -31,7 +31,8 @@ class RentViewModel(application: Application) : AndroidViewModel(application) {
     private val db = AppDatabase.getDatabase(application)
     val repository = RentRepository(
         db.condominioDao(), db.unitDao(), db.expenseDao(),
-        db.paymentDao(), db.cedolinoDao(), db.documentoDao()
+        db.paymentDao(), db.cedolinoDao(), db.documentoDao(),
+        db.tenantHistoryDao()
     )
 
     // ─── Condominio Attivo ───────────────────────────────────────
@@ -536,7 +537,39 @@ class RentViewModel(application: Application) : AndroidViewModel(application) {
         )
     }
 
-    // ─── Helpers ─────────────────────────────────────────────────
+    // ─── Helpers ────────────────────────────────────────────
     fun getUnitName(unitId: Long) =
         units.value.find { it.id == unitId }?.let { "Int. ${it.number} - ${it.ownerName}" } ?: "Sconosciuto"
+
+    // ─── Storico Inquilini ──────────────────────────────────────
+    val tenantHistory: StateFlow<List<TenantHistory>> = _activeCondominioId
+        .filter { it > 0 }
+        .flatMapLatest { repository.getAllTenantHistory() }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    fun getTenantHistoryForUnit(unitId: Long): Flow<List<TenantHistory>> =
+        repository.getTenantHistoryByUnit(unitId)
+
+    fun changeTenant(
+        unit: CondoUnit,
+        exitNotes: String,
+        newOwnerName: String,
+        newOwnerEmail: String = "",
+        newOwnerPhone: String = "",
+        newLeaseStart: Long? = null,
+        newLeaseEnd: Long? = null,
+        newMonthlyRent: Double = unit.millesimi
+    ) = viewModelScope.launch {
+        withContext(Dispatchers.IO) {
+            repository.changeTenant(
+                unit, exitNotes,
+                newOwnerName, newOwnerEmail, newOwnerPhone,
+                newLeaseStart, newLeaseEnd, newMonthlyRent
+            )
+        }
+    }
+
+    fun deleteTenantHistory(history: TenantHistory) = viewModelScope.launch {
+        withContext(Dispatchers.IO) { repository.deleteTenantHistory(history) }
+    }
 }
