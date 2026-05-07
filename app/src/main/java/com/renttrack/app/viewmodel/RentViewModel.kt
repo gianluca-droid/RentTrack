@@ -1,7 +1,10 @@
 package com.renttrack.app.viewmodel
 
 import android.app.Application
+import android.content.Context
+import android.content.Intent
 import android.net.Uri
+import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.renttrack.app.PropertyManager
@@ -15,7 +18,10 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 /** Riepilogo per singola proprietà — usato nella PropertySelectorScreen */
 data class PropertySummary(
@@ -558,18 +564,69 @@ class RentViewModel(application: Application) : AndroidViewModel(application) {
         newOwnerPhone: String = "",
         newLeaseStart: Long? = null,
         newLeaseEnd: Long? = null,
-        newMonthlyRent: Double = unit.millesimi
+        newMonthlyRent: Double = unit.millesimi,
+        newPaymentDay: Int = unit.paymentDayOfMonth
     ) = viewModelScope.launch {
         withContext(Dispatchers.IO) {
             repository.changeTenant(
                 unit, exitNotes,
                 newOwnerName, newOwnerEmail, newOwnerPhone,
-                newLeaseStart, newLeaseEnd, newMonthlyRent
+                newLeaseStart, newLeaseEnd, newMonthlyRent, newPaymentDay
             )
         }
     }
 
     fun deleteTenantHistory(history: TenantHistory) = viewModelScope.launch {
         withContext(Dispatchers.IO) { repository.deleteTenantHistory(history) }
+    }
+
+    // ─── Export CSV ────────────────────────────────────────
+    /** Esporta cedolini e spese del condominio attivo in due file CSV e apre lo share dialog */
+    fun exportCSV(context: Context) = viewModelScope.launch {
+        withContext(Dispatchers.IO) {
+            val fmt  = SimpleDateFormat("dd/MM/yyyy", Locale.ITALIAN)
+            val stamp = SimpleDateFormat("yyyyMMdd_HHmm", Locale.ITALIAN).format(Date())
+            val condName = activeCondominio.value?.nome?.replace(" ", "_") ?: "export"
+            val dir = File(context.getExternalFilesDir(null), "export").also { it.mkdirs() }
+
+            val unitMap = units.value.associateBy { it.id }
+
+            // ── 1. Cedolini CSV ──────────────────────────────────────
+            val cedFile = File(dir, "cedolini_${condName}_$stamp.csv")
+            cedFile.bufferedWriter().use { w ->
+                w.write("Periodo;Inquilino;Appartamento;Totale (€);Stato;Data Pagamento;Importo Pagato (€)\n")
+                cedolini.value.sortedBy { it.dueDate }.forEach { c ->
+                    val unit = unitMap[c.unitId]
+                    val paidDate = c.paidDate?.let { fmt.format(Date(it)) } ?: ""
+                    w.write("${c.period};${unit?.ownerName ?: ""};${unit?.number ?: ""};" +
+                        "${"%,.2f".format(c.total)};${c.status};$paidDate;${"%,.2f".format(c.paidAmount)}\n")
+                }
+            }
+
+            // ── 2. Spese CSV ─────────────────────────────────────────
+            val expFile = File(dir, "spese_${condName}_$stamp.csv")
+            expFile.bufferedWriter().use { w ->
+                w.write("Data;Categoria;Descrizione;Importo (€);Note\n")
+                expenses.value.sortedBy { it.date }.forEach { e ->
+                    w.write("${fmt.format(Date(e.date))};${e.category};${e.description};" +
+                        "${"%,.2f".format(e.amount)};${e.notes}\n")
+                }
+            }
+
+            // ── Share entrambi i file ─────────────────────────────────
+            val uris = ArrayList<Uri>()
+            listOf(cedFile, expFile).forEach { f ->
+                uris.add(FileProvider.getUriForFile(context, "${context.packageName}.provider", f))
+            }
+            val intent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+                type = "text/csv"
+                putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
+                putExtra(Intent.EXTRA_SUBJECT, "Export RentTrack — $condName ($stamp)")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            context.startActivity(Intent.createChooser(intent, "Esporta CSV").apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            })
+        }
     }
 }

@@ -176,7 +176,7 @@ fun TenantsScreen(viewModel: RentViewModel) {
         ChangeTenantDialog(
             unit = unit,
             onDismiss = { changeTenantUnit = null },
-            onConfirm = { exitNotes, newName, newEmail, newPhone, newStart, newEnd, newRent ->
+            onConfirm = { exitNotes, newName, newEmail, newPhone, newStart, newEnd, newRent, newPayDay ->
                 viewModel.changeTenant(
                     unit = unit,
                     exitNotes = exitNotes,
@@ -185,7 +185,8 @@ fun TenantsScreen(viewModel: RentViewModel) {
                     newOwnerPhone = newPhone,
                     newLeaseStart = newStart,
                     newLeaseEnd = newEnd,
-                    newMonthlyRent = newRent
+                    newMonthlyRent = newRent,
+                    newPaymentDay = newPayDay
                 )
                 changeTenantUnit = null
             }
@@ -632,15 +633,16 @@ private fun ChangeTenantDialog(
     unit: CondoUnit,
     onDismiss: () -> Unit,
     onConfirm: (exitNotes: String, newName: String, newEmail: String, newPhone: String,
-                newLeaseStart: Long?, newLeaseEnd: Long?, newRent: Double) -> Unit
+                newLeaseStart: Long?, newLeaseEnd: Long?, newRent: Double, newPaymentDay: Int) -> Unit
 ) {
-    var exitNotes  by remember { mutableStateOf("") }
-    var newName    by remember { mutableStateOf("") }
-    var newEmail   by remember { mutableStateOf("") }
-    var newPhone   by remember { mutableStateOf("") }
-    var newRent    by remember { mutableStateOf(unit.millesimi.toString()) }
-    var newStart   by remember { mutableStateOf<Long?>(null) }
-    var newEnd     by remember { mutableStateOf<Long?>(null) }
+    var exitNotes   by remember { mutableStateOf("") }
+    var newName     by remember { mutableStateOf("") }
+    var newEmail    by remember { mutableStateOf("") }
+    var newPhone    by remember { mutableStateOf("") }
+    var newRent     by remember { mutableStateOf(unit.millesimi.toString()) }
+    var newPayDay   by remember { mutableStateOf(unit.paymentDayOfMonth.toString()) }
+    var newStart    by remember { mutableStateOf<Long?>(null) }
+    var newEnd      by remember { mutableStateOf<Long?>(null) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -720,6 +722,20 @@ private fun ChangeTenantDialog(
                 }
                 item { DatePickerField("Inizio contratto nuovo", newStart) { newStart = it } }
                 item { DatePickerField("Fine contratto nuovo", newEnd) { newEnd = it } }
+                item {
+                    OutlinedTextField(
+                        value = newPayDay,
+                        onValueChange = { v -> if (v.length <= 2 && (v.toIntOrNull() ?: 0) <= 28) newPayDay = v },
+                        label = { Text("Giorno scadenza pagamento") },
+                        placeholder = { Text("es. 5", color = TextMuted) },
+                        leadingIcon = { Icon(Icons.Filled.CalendarMonth, null, tint = TextMuted, modifier = Modifier.size(18.dp)) },
+                        supportingText = { Text("Il ${newPayDay.ifBlank { "5" }} di ogni mese", color = TextMuted) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        colors = condoTextFieldColors()
+                    )
+                }
             }
         },
         confirmButton = {
@@ -727,7 +743,9 @@ private fun ChangeTenantDialog(
                 onClick = {
                     onConfirm(
                         exitNotes, newName, newEmail, newPhone,
-                        newStart, newEnd, newRent.toDoubleOrNull() ?: unit.millesimi
+                        newStart, newEnd,
+                        newRent.toDoubleOrNull() ?: unit.millesimi,
+                        newPayDay.toIntOrNull()?.coerceIn(1, 28) ?: unit.paymentDayOfMonth
                     )
                 },
                 enabled = newName.isNotBlank(),

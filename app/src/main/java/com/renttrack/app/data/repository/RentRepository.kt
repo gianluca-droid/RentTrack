@@ -96,30 +96,34 @@ class RentRepository(
         newOwnerPhone: String,
         newLeaseStart: Long?,
         newLeaseEnd: Long?,
-        newMonthlyRent: Double
+        newMonthlyRent: Double,
+        newPaymentDay: Int = unit.paymentDayOfMonth
     ) {
-        // 1. Archivia inquilino attuale
+        // 1. Archivia inquilino attuale (tutti i campi dell'inquilino uscente)
         tenantHistoryDao.insertHistory(
             TenantHistory(
-                unitId = unit.id,
-                ownerName = unit.ownerName,
-                ownerEmail = unit.ownerEmail,
-                ownerPhone = unit.ownerPhone,
+                unitId       = unit.id,
+                ownerName    = unit.ownerName,
+                ownerEmail   = unit.ownerEmail,
+                ownerPhone   = unit.ownerPhone,
                 leaseStartDate = unit.leaseStartDate,
-                leaseEndDate = unit.leaseEndDate,
-                monthlyRent = unit.millesimi,
-                exitNotes = exitNotes
+                leaseEndDate   = unit.leaseEndDate,
+                monthlyRent  = unit.millesimi,
+                exitNotes    = exitNotes
             )
         )
-        // 2. Aggiorna unità con nuovo inquilino
+        // 2. Aggiorna unità con il nuovo inquilino — preserva tutte le proprietà
+        //    dell'appartamento (number, floor, type, areaMq, scala, condominioId)
+        //    e sovrascrive solo i campi specifici del nuovo inquilino
         unitDao.updateUnit(
             unit.copy(
-                ownerName = newOwnerName,
-                ownerEmail = newOwnerEmail,
-                ownerPhone = newOwnerPhone,
-                leaseStartDate = newLeaseStart,
-                leaseEndDate = newLeaseEnd,
-                millesimi = newMonthlyRent
+                ownerName         = newOwnerName,
+                ownerEmail        = newOwnerEmail,
+                ownerPhone        = newOwnerPhone,
+                leaseStartDate    = newLeaseStart,
+                leaseEndDate      = newLeaseEnd,
+                millesimi         = newMonthlyRent,
+                paymentDayOfMonth = newPaymentDay
             )
         )
     }
