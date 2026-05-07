@@ -41,6 +41,7 @@ fun PropertySelectorScreen(
 ) {
     val proprieta by viewModel.allCondomini.collectAsState()
     val summaryMap by viewModel.propertySummaryMap.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
     var showAddSheet by remember { mutableStateOf(false) }
     var toEdit by remember { mutableStateOf<Condominio?>(null) }
     var toDelete by remember { mutableStateOf<Condominio?>(null) }
@@ -75,7 +76,26 @@ fun PropertySelectorScreen(
 
             HorizontalDivider(color = DarkSurface)
 
-            if (proprieta.isEmpty()) {
+            if (isLoading) {
+                // Schermata di caricamento: evita il flash dell'empty state durante l'avvio
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        CircularProgressIndicator(
+                            color = Cyan400,
+                            strokeWidth = 3.dp,
+                            modifier = androidx.compose.ui.Modifier.size(48.dp)
+                        )
+                        Text(
+                            "Caricamento proprietà…",
+                            color = TextMuted,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+            } else if (proprieta.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,

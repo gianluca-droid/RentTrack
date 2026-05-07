@@ -298,9 +298,45 @@ private fun TenantFormDialog(unit: CondoUnit?, condominioId: Long, onDismiss: ()
     var leaseEnd     by remember { mutableStateOf(unit?.leaseEndDate) }
     var paymentDay   by remember { mutableStateOf((unit?.paymentDayOfMonth ?: 5).toString()) }
     var tipoExpanded by remember { mutableStateOf(false) }
+    var showDiscardDialog by remember { mutableStateOf(false) }
+
+    // Rileva se l'utente ha modificato qualcosa rispetto allo stato iniziale
+    val hasChanges = remember(ownerName, ownerEmail, ownerPhone, number, canone, areaMq, leaseStart, leaseEnd, paymentDay) {
+        ownerName != (unit?.ownerName ?: "") ||
+        ownerEmail != (unit?.ownerEmail ?: "") ||
+        ownerPhone != (unit?.ownerPhone ?: "") ||
+        number != (unit?.number ?: "") ||
+        canone != (if ((unit?.millesimi ?: 0.0) > 0) unit!!.millesimi.toString() else "") ||
+        areaMq != (if ((unit?.areaMq ?: 0.0) > 0) unit!!.areaMq.toString() else "") ||
+        leaseStart != unit?.leaseStartDate ||
+        leaseEnd != unit?.leaseEndDate ||
+        paymentDay != (unit?.paymentDayOfMonth ?: 5).toString()
+    }
+
+    // Dialog di conferma abbandono modifiche
+    if (showDiscardDialog) {
+        AlertDialog(
+            onDismissRequest = { showDiscardDialog = false },
+            containerColor = DarkSurface,
+            icon = { Icon(Icons.Filled.Warning, null, tint = Amber400) },
+            title = { Text("Modifiche non salvate", color = TextPrimary, fontWeight = FontWeight.Bold) },
+            text = { Text("Hai inserito dei dati che non sono stati salvati. Vuoi uscire lo stesso?", color = TextSecondary) },
+            confirmButton = {
+                Button(
+                    onClick = { showDiscardDialog = false; onDismiss() },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF6B6B))
+                ) { Text("Esci senza salvare", fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDiscardDialog = false }) {
+                    Text("Continua a modificare", color = Cyan400)
+                }
+            }
+        )
+    }
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { if (hasChanges) showDiscardDialog = true else onDismiss() },
         containerColor = DarkSurface,
         title = {
             Text(
