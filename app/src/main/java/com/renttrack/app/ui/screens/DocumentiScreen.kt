@@ -383,7 +383,7 @@ fun AddDocumentoSheet(
     var selectedUnitIds by remember { mutableStateOf(setOf<Long>()) }
     var showCategoriaMenu by remember { mutableStateOf(false) }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = DarkSurface) {
+    ModalBottomSheet(onDismissRequest = { /* blocca chiusura accidentale — usare Annulla */ }, containerColor = DarkSurface) {
         LazyColumn(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -392,7 +392,6 @@ fun AddDocumentoSheet(
                 Text("Nuovo Documento",
                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, color = TextPrimary))
             }
-
             // Preview file
             item {
                 Surface(shape = RoundedCornerShape(10.dp), color = Cyan400.copy(alpha = 0.08f),
@@ -625,7 +624,7 @@ fun EditDocumentoSheet(
     }
     var showCategoriaMenu by remember { mutableStateOf(false) }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = DarkSurface) {
+    ModalBottomSheet(onDismissRequest = { /* blocca chiusura accidentale — usare Annulla */ }, containerColor = DarkSurface) {
         LazyColumn(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)

@@ -332,7 +332,7 @@ fun PropertyFormSheet(
     var citta     by remember { mutableStateOf(proprieta?.citta ?: "") }
     var note      by remember { mutableStateOf(proprieta?.note ?: "") }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = DarkSurface) {
+    ModalBottomSheet(onDismissRequest = { /* blocca chiusura accidentale — usare Annulla */ }, containerColor = DarkSurface) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()

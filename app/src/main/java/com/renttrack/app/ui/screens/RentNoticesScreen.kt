@@ -448,7 +448,7 @@ private fun SingleCedolinoDialog(
     val dueDate = cal.timeInMillis
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { /* blocca chiusura accidentale — usare Annulla */ },
         title = { Text("Nuovo Avviso Affitto") },
         text = {
             LazyColumn(
@@ -585,8 +585,7 @@ private fun GenerateCedoliniDialog(onDismiss: () -> Unit, onGenerate: (String, L
     val dueDate = cal.timeInMillis
 
     AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Genera Avvisi Affitto") },
+        onDismissRequest = { /* blocca chiusura accidentale — usare Annulla */ },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
@@ -684,7 +683,7 @@ fun QuotaDirectaDialog(
     }
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { /* blocca chiusura accidentale — usare Annulla */ },
         containerColor = com.renttrack.app.ui.theme.DarkSurface,
         icon = { Icon(Icons.Filled.EuroSymbol, null, tint = Amber400) },
         title = { Text("Addebita importo a inquilino", color = com.renttrack.app.ui.theme.TextPrimary, fontWeight = FontWeight.Bold) },
@@ -769,7 +768,7 @@ fun RegistraPagamentoDialog(
     )
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { /* blocca chiusura accidentale — usare Annulla */ },
         containerColor = com.renttrack.app.ui.theme.DarkSurface,
         icon = { Icon(Icons.Filled.CheckCircle, null, tint = Green400) },
         title = { Text("Registra pagamento", color = com.renttrack.app.ui.theme.TextPrimary, fontWeight = FontWeight.Bold) },
