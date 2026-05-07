@@ -45,8 +45,9 @@ class RentViewModel(application: Application) : AndroidViewModel(application) {
         .flatMapLatest { id -> flow { emit(repository.getCondominioById(id)) } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
+    // Eagerly: il flow resta sempre attivo, nessun flash di emptyList() alla riconnessione
     val allCondomini: StateFlow<List<Condominio>> = repository.allCondomini
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     fun setActiveCondominio(id: Long) {
         PropertyManager.setActiveCondominioId(getApplication(), id)
@@ -156,7 +157,8 @@ class RentViewModel(application: Application) : AndroidViewModel(application) {
                 )
             }
         }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+        // Eagerly: stesso motivo di allCondomini — nessun flash sul ritorno alla schermata
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
 
     // ─── Anno selezionato (per ripartizione mensile) ──────────────
     private val _selectedYear = MutableStateFlow(Calendar.getInstance().get(Calendar.YEAR))

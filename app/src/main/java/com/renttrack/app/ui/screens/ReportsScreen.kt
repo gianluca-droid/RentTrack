@@ -1,6 +1,6 @@
 package com.renttrack.app.ui.screens
 
-import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -69,7 +69,9 @@ fun ReportsScreen(viewModel: RentViewModel) {
             selectedTab = 1
         }
 
-        AnimatedContent(targetState = selectedTab, label = "tabs") { tab ->
+        // Crossfade è più stabile di AnimatedContent con LazyColumn dentro i tab:
+        // evita il crash quando si cambia tab mentre il LazyColumn sta ancora componendo.
+        Crossfade(targetState = selectedTab, label = "report_tabs") { tab ->
             when (tab) {
                 0 -> PanoramicaTab(viewModel)
                 1 -> MensileTab(viewModel)
@@ -336,20 +338,26 @@ private fun CategoryBar(category: String, total: Double, maxVal: Double) {
 
 @Composable
 private fun StatGrid(items: List<Pair<String, String>>) {
-    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+    // Usiamo Column + Row espliciti invece di chunked+weight per evitare
+    // crash da layout instabile quando il numero di item cambia
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         items.chunked(2).forEach { row ->
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                 row.forEach { (label, value) ->
                     Card(
                         colors = CardDefaults.cardColors(containerColor = DarkCard),
                         shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.weight(1f)
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
                             Text(label, style = MaterialTheme.typography.labelSmall, color = TextMuted)
                             Text(value, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = TextPrimary)
                         }
                     }
+                }
+                // Se la riga ha un solo elemento, riempi il secondo slot con uno Spacer
+                if (row.size == 1) {
+                    Spacer(modifier = Modifier.weight(1f))
                 }
             }
         }
