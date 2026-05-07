@@ -81,14 +81,20 @@ fun DocumentiScreen(viewModel: RentViewModel) {
     var searchActive by remember { mutableStateOf(false) }
     var gridMode by remember { mutableStateOf(false) }
     var photoViewer by remember { mutableStateOf<Documento?>(null) }
+    var selectedUnitFilter by remember { mutableStateOf<Long?>(null) }
 
     val documentiFiltrati = documenti
         .filter { doc ->
+            // Filtro categoria
             (selectedCategoria == null || doc.categoria == selectedCategoria) &&
+            // Filtro ricerca testo
             (searchQuery.isBlank() || doc.titolo.contains(searchQuery, ignoreCase = true) ||
              doc.note.contains(searchQuery, ignoreCase = true) ||
              doc.categoria.contains(searchQuery, ignoreCase = true) ||
-             doc.sommario.contains(searchQuery, ignoreCase = true))
+             doc.sommario.contains(searchQuery, ignoreCase = true)) &&
+            // Filtro inquilino: mostra doc "Tutti" o quelli che includono l'unità selezionata
+            (selectedUnitFilter == null || doc.visibilita == "Tutti" ||
+             doc.destinatariUnitIds.split(",").mapNotNull { it.trim().toLongOrNull() }.contains(selectedUnitFilter))
         }
         .let { list ->
             when (sortOrder) {
@@ -219,6 +225,86 @@ fun DocumentiScreen(viewModel: RentViewModel) {
                 }
             }
 
+            // ── Filtro Inquilini ──────────────────────────────────────
+            if (units.isNotEmpty()) {
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp)
+                ) {
+                    item {
+                        // Chip "Tutti gli inquilini"
+                        FilterChip(
+                            selected = selectedUnitFilter == null,
+                            onClick = { selectedUnitFilter = null },
+                            label = {
+                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Text("👥", fontSize = 12.sp)
+                                    Text("Tutti", style = MaterialTheme.typography.labelSmall)
+                                }
+                            },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = Cyan400.copy(alpha = 0.2f),
+                                selectedLabelColor = Cyan400,
+                                containerColor = DarkSurface,
+                                labelColor = TextMuted
+                            ),
+                            border = FilterChipDefaults.filterChipBorder(
+                                enabled = true,
+                                selected = selectedUnitFilter == null,
+                                selectedBorderColor = Cyan400.copy(alpha = 0.4f),
+                                borderColor = TextMuted.copy(alpha = 0.2f)
+                            )
+                        )
+                    }
+                    items(units.sortedBy { it.number }) { unit ->
+                        val docCount = documenti.count { doc ->
+                            doc.visibilita == "Tutti" ||
+                            doc.destinatariUnitIds.split(",").mapNotNull { it.trim().toLongOrNull() }.contains(unit.id)
+                        }
+                        val isSelected = selectedUnitFilter == unit.id
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { selectedUnitFilter = if (isSelected) null else unit.id },
+                            label = {
+                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Text("👤", fontSize = 12.sp)
+                                    Text(
+                                        "${unit.ownerName.split(" ").first()} · ${unit.number}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        maxLines = 1
+                                    )
+                                    if (docCount > 0) {
+                                        Surface(
+                                            shape = RoundedCornerShape(10.dp),
+                                            color = if (isSelected) Cyan400.copy(alpha = 0.3f) else TextMuted.copy(alpha = 0.15f)
+                                        ) {
+                                            Text(
+                                                "$docCount",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = if (isSelected) Cyan400 else TextMuted,
+                                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = Cyan400.copy(alpha = 0.15f),
+                                selectedLabelColor = Cyan400,
+                                containerColor = DarkSurface,
+                                labelColor = TextMuted
+                            ),
+                            border = FilterChipDefaults.filterChipBorder(
+                                enabled = true,
+                                selected = isSelected,
+                                selectedBorderColor = Cyan400.copy(alpha = 0.4f),
+                                borderColor = TextMuted.copy(alpha = 0.2f)
+                            )
+                        )
+                    }
+                }
+            }
+
             HorizontalDivider(color = DarkSurface, thickness = 1.dp)
 
             // ── Lista ──────────────────────────────────────────────────
@@ -227,7 +313,11 @@ fun DocumentiScreen(viewModel: RentViewModel) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Text("📁", fontSize = 48.sp)
                         Text(
-                            if (selectedCategoria == null) "Nessun documento ancora" else "Nessun documento in questa categoria",
+                            when {
+                                selectedUnitFilter != null -> "Nessun documento per questo inquilino"
+                                selectedCategoria != null -> "Nessun documento in questa categoria"
+                                else -> "Nessun documento ancora"
+                            },
                             color = TextMuted, style = MaterialTheme.typography.bodyMedium
                         )
                         if (selectedCategoria == null) {
