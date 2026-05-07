@@ -9,6 +9,7 @@ import androidx.compose.animation.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
+import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.foundation.shape.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -23,6 +24,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import com.renttrack.app.data.model.Documento
 import com.renttrack.app.data.model.DocumentCategories
@@ -34,6 +37,14 @@ import com.renttrack.app.viewmodel.RentViewModel
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
+
+enum class DocSortOrder(val label: String, val icon: String) {
+    DATE_DESC("Più recenti", "🕐"),
+    DATE_ASC("Più vecchi", "🕰"),
+    NAME_ASC("Nome A→Z", "🔤"),
+    NAME_DESC("Nome Z→A", "🔡"),
+    TYPE("Tipo file", "📄")
+}
 
 // Contract per aprire file di tipi multipli
 class GetMultiTypeContent : ActivityResultContract<Array<String>, Pair<Uri, String>?>() {
@@ -65,9 +76,30 @@ fun DocumentiScreen(viewModel: RentViewModel) {
     var documentoToEdit by remember { mutableStateOf<Documento?>(null) }
     var pickedUri by remember { mutableStateOf<Uri?>(null) }
     var pickedMimeType by remember { mutableStateOf("") }
+    var searchQuery by remember { mutableStateOf("") }
+    var sortOrder by remember { mutableStateOf(DocSortOrder.DATE_DESC) }
+    var showSortMenu by remember { mutableStateOf(false) }
+    var searchActive by remember { mutableStateOf(false) }
+    var gridMode by remember { mutableStateOf(false) }
+    var photoViewer by remember { mutableStateOf<Documento?>(null) }
 
-    val documentiFiltrati = if (selectedCategoria == null) documenti
-    else documenti.filter { it.categoria == selectedCategoria }
+    val documentiFiltrati = documenti
+        .filter { doc ->
+            (selectedCategoria == null || doc.categoria == selectedCategoria) &&
+            (searchQuery.isBlank() || doc.titolo.contains(searchQuery, ignoreCase = true) ||
+             doc.note.contains(searchQuery, ignoreCase = true) ||
+             doc.categoria.contains(searchQuery, ignoreCase = true) ||
+             doc.sommario.contains(searchQuery, ignoreCase = true))
+        }
+        .let { list ->
+            when (sortOrder) {
+                DocSortOrder.DATE_DESC -> list.sortedByDescending { it.dataInserimento }
+                DocSortOrder.DATE_ASC  -> list.sortedBy { it.dataInserimento }
+                DocSortOrder.NAME_ASC  -> list.sortedBy { it.titolo.lowercase() }
+                DocSortOrder.NAME_DESC -> list.sortedByDescending { it.titolo.lowercase() }
+                DocSortOrder.TYPE      -> list.sortedBy { it.fileType }
+            }
+        }
 
     val filePicker = rememberLauncherForActivityResult(GetMultiTypeContent()) { result ->
         result?.let { (uri, mime) ->
@@ -84,27 +116,93 @@ fun DocumentiScreen(viewModel: RentViewModel) {
 
             // ── Header ───────────────────────────────────────────────
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text("Archivio Documenti",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = TextPrimary))
-                    Text("$documentCount documento${if (documentCount != 1) "i" else ""}",
-                        style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                    Text(
+                        if (searchQuery.isBlank()) "$documentCount documento${if (documentCount != 1) "i" else ""}"
+                        else "${documentiFiltrati.size} risultati su $documentCount",
+                        style = MaterialTheme.typography.bodySmall, color = TextMuted
+                    )
                 }
-                // Chip tipi file
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    FileTypes.supported.forEach { ft ->
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = try { Color(android.graphics.Color.parseColor(ft.colorHex)) } catch (e: Exception) { Cyan400 }.copy(alpha = 0.15f)
-                        ) {
-                            Text(ft.icon, modifier = Modifier.padding(6.dp), fontSize = 16.sp)
+                // Bottone vista griglia/lista
+                IconButton(onClick = { gridMode = !gridMode }) {
+                    Icon(
+                        if (gridMode) Icons.Filled.ViewList else Icons.Filled.GridView,
+                        "Cambia vista",
+                        tint = if (gridMode) Cyan400 else TextMuted
+                    )
+                }
+                // Bottone cerca
+                IconButton(onClick = { searchActive = !searchActive; if (!searchActive) searchQuery = "" }) {
+                    Icon(
+                        if (searchActive) Icons.Filled.SearchOff else Icons.Filled.Search,
+                        "Cerca",
+                        tint = if (searchActive) Cyan400 else TextMuted
+                    )
+                }
+                // Bottone ordinamento
+                Box {
+                    IconButton(onClick = { showSortMenu = true }) {
+                        Icon(Icons.Filled.SortByAlpha, "Ordina", tint = if (sortOrder != DocSortOrder.DATE_DESC) Cyan400 else TextMuted)
+                    }
+                    DropdownMenu(
+                        expanded = showSortMenu,
+                        onDismissRequest = { showSortMenu = false },
+                        containerColor = DarkSurface
+                    ) {
+                        Text(
+                            "Ordina per",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = TextMuted,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                        )
+                        DocSortOrder.entries.forEach { order ->
+                            DropdownMenuItem(
+                                text = {
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                        Text(order.icon)
+                                        Text(order.label, color = if (sortOrder == order) Cyan400 else TextPrimary)
+                                    }
+                                },
+                                trailingIcon = {
+                                    if (sortOrder == order) Icon(Icons.Filled.Check, null, tint = Cyan400, modifier = Modifier.size(16.dp))
+                                },
+                                onClick = { sortOrder = order; showSortMenu = false }
+                            )
                         }
                     }
                 }
+            }
+
+            // ── Barra di ricerca (espandibile) ───────────────────────
+            AnimatedVisibility(visible = searchActive) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text("Cerca per titolo, categoria, note...", color = TextMuted) },
+                    leadingIcon = { Icon(Icons.Filled.Search, null, tint = Cyan400) },
+                    trailingIcon = {
+                        if (searchQuery.isNotBlank()) {
+                            IconButton(onClick = { searchQuery = "" }) {
+                                Icon(Icons.Filled.Clear, null, tint = TextMuted)
+                            }
+                        }
+                    },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 8.dp),
+                    colors = condoTextFieldColors(),
+                    shape = RoundedCornerShape(12.dp)
+                )
             }
 
             // ── Filtro Categorie ──────────────────────────────────────
@@ -147,30 +245,86 @@ fun DocumentiScreen(viewModel: RentViewModel) {
                     }
                 }
             } else {
-                LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    items(documentiFiltrati, key = { it.id }) { doc ->
-                        DocumentCard(
-                            documento = doc,
-                            units = units,
-                            onOpen = {
-                                val file = File(doc.filePath)
-                                if (file.exists()) {
-                                    val uri = androidx.core.content.FileProvider.getUriForFile(
-                                        context, "${context.packageName}.provider", file)
-                                    val mimeType = when (doc.fileType) {
-                                        "Word" -> "application/msword"
-                                        "Foto" -> "image/*"
-                                        else -> "application/pdf"
+                if (gridMode) {
+                    // ── Vista griglia 2 colonne ─────────────────────
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(2),
+                        contentPadding = PaddingValues(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        items(documentiFiltrati, key = { it.id }) { doc ->
+                            DocumentGridCard(
+                                documento = doc,
+                                onOpen = {
+                                    if (doc.fileType == "Foto") {
+                                        photoViewer = doc
+                                    } else {
+                                        val file = File(doc.filePath)
+                                        if (file.exists()) {
+                                            val uri = androidx.core.content.FileProvider.getUriForFile(
+                                                context, "${context.packageName}.provider", file)
+                                            val mimeType = when (doc.fileType) {
+                                                "Word" -> "application/msword"
+                                                else -> "application/pdf"
+                                            }
+                                            context.startActivity(Intent(Intent.ACTION_VIEW).apply {
+                                                setDataAndType(uri, mimeType)
+                                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+                                            })
+                                        }
                                     }
-                                    context.startActivity(Intent(Intent.ACTION_VIEW).apply {
-                                        setDataAndType(uri, mimeType)
-                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
-                                    })
+                                },
+                                onEdit = { documentoToEdit = doc },
+                                onDelete = { documentoToDelete = doc }
+                            )
+                        }
+                    }
+                } else {
+                    // ── Vista lista ─────────────────────────────
+                    LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        items(documentiFiltrati, key = { it.id }) { doc ->
+                            DocumentCard(
+                                documento = doc,
+                                units = units,
+                                onOpen = {
+                                    if (doc.fileType == "Foto") {
+                                        photoViewer = doc
+                                    } else {
+                                        val file = File(doc.filePath)
+                                        if (file.exists()) {
+                                            val uri = androidx.core.content.FileProvider.getUriForFile(
+                                                context, "${context.packageName}.provider", file)
+                                            val mimeType = when (doc.fileType) {
+                                                "Word" -> "application/msword"
+                                                else -> "application/pdf"
+                                            }
+                                            context.startActivity(Intent(Intent.ACTION_VIEW).apply {
+                                                setDataAndType(uri, mimeType)
+                                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+                                            })
+                                        }
+                                    }
+                                },
+                                onEdit = { documentoToEdit = doc },
+                                onDelete = { documentoToDelete = doc },
+                                onShare = {
+                                    val file = File(doc.filePath)
+                                    if (file.exists()) {
+                                        val uri = androidx.core.content.FileProvider.getUriForFile(
+                                            context, "${context.packageName}.provider", file)
+                                        context.startActivity(Intent.createChooser(
+                                            Intent(Intent.ACTION_SEND).apply {
+                                                type = context.contentResolver.getType(uri) ?: "*/*"
+                                                putExtra(Intent.EXTRA_STREAM, uri)
+                                                putExtra(Intent.EXTRA_SUBJECT, doc.titolo)
+                                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                            }, "Condividi ${doc.titolo}"
+                                        ))
+                                    }
                                 }
-                            },
-                            onEdit = { documentoToEdit = doc },
-                            onDelete = { documentoToDelete = doc }
-                        )
+                            )
+                        }
                     }
                 }
             }
@@ -183,6 +337,67 @@ fun DocumentiScreen(viewModel: RentViewModel) {
         ) { Icon(Icons.Filled.Add, "Aggiungi documento") }
     }
 
+
+    // ── Photo Viewer fullscreen in-app ──────────────────────────
+    photoViewer?.let { doc ->
+        Dialog(
+            onDismissRequest = { photoViewer = null },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black)
+                    .clickable { photoViewer = null },
+                contentAlignment = Alignment.Center
+            ) {
+                AsyncImage(
+                    model = File(doc.filePath),
+                    contentDescription = doc.titolo,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxSize()
+                )
+                // Header con titolo e chiudi
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .fillMaxWidth()
+                        .background(
+                            androidx.compose.ui.graphics.Brush.verticalGradient(
+                                listOf(Color.Black.copy(alpha = 0.7f), Color.Transparent)
+                            )
+                        )
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        doc.titolo,
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = Color.White,
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(onClick = { photoViewer = null }) {
+                        Icon(Icons.Filled.Close, "Chiudi", tint = Color.White)
+                    }
+                }
+                // Info in basso
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .fillMaxWidth()
+                        .background(
+                            androidx.compose.ui.graphics.Brush.verticalGradient(
+                                listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f))
+                            )
+                        )
+                        .padding(16.dp)
+                ) {
+                    Text(doc.categoria, style = MaterialTheme.typography.labelMedium, color = Cyan400)
+                    if (doc.sommario.isNotBlank()) Text(doc.sommario, style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.8f))
+                }
+            }
+        }
+    }
 
     if (showAddSheet && pickedUri != null) {
         AddDocumentoSheet(
@@ -235,7 +450,8 @@ fun DocumentCard(
     units: List<com.renttrack.app.data.model.CondoUnit> = emptyList(),
     onOpen: () -> Unit,
     onEdit: () -> Unit = {},
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onShare: (() -> Unit)? = null
 ) {
     val catColor = try { Color(android.graphics.Color.parseColor(DocumentCategories.getColorHex(documento.categoria))) }
     catch (e: Exception) { Cyan400 }
@@ -328,6 +544,11 @@ fun DocumentCard(
                     IconButton(onClick = onOpen, modifier = Modifier.size(36.dp)) {
                         Icon(Icons.Filled.OpenInNew, "Apri", tint = Cyan400, modifier = Modifier.size(20.dp))
                     }
+                    if (onShare != null) {
+                        IconButton(onClick = onShare, modifier = Modifier.size(36.dp)) {
+                            Icon(Icons.Filled.Share, "Condividi", tint = Green400, modifier = Modifier.size(20.dp))
+                        }
+                    }
                     IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
                         Icon(Icons.Outlined.Delete, "Elimina", tint = Color(0xFFFF6B6B), modifier = Modifier.size(20.dp))
                     }
@@ -358,6 +579,122 @@ fun DocumentCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(start = 84.dp, end = 14.dp, bottom = 8.dp)
+                )
+            }
+        }
+    }
+}
+
+// ─── Card compatta per vista GRIGLIA ─────────────────────────────────
+@Composable
+fun DocumentGridCard(
+    documento: Documento,
+    onOpen: () -> Unit,
+    onEdit: () -> Unit = {},
+    onDelete: () -> Unit
+) {
+    val catColor = try { Color(android.graphics.Color.parseColor(DocumentCategories.getColorHex(documento.categoria))) }
+    catch (e: Exception) { Cyan400 }
+    val fileColor = try { Color(android.graphics.Color.parseColor(FileTypes.getColorHex(documento.fileType))) }
+    catch (e: Exception) { Cyan400 }
+    val isPhoto = documento.fileType == "Foto" && File(documento.filePath).exists()
+
+    Surface(
+        onClick = onOpen,
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(0.85f),
+        shape = RoundedCornerShape(14.dp),
+        color = DarkSurface,
+        border = BorderStroke(1.dp, catColor.copy(alpha = 0.25f))
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            // Background: foto reale o icona
+            if (isPhoto) {
+                AsyncImage(
+                    model = File(documento.filePath),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+                // Gradiente in basso per leggibilità testo
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight(0.55f)
+                        .align(Alignment.BottomCenter)
+                        .background(
+                            androidx.compose.ui.graphics.Brush.verticalGradient(
+                                listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f))
+                            )
+                        )
+                )
+            } else {
+                // Icona centrata
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(fileColor.copy(alpha = 0.08f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(FileTypes.getIcon(documento.fileType), fontSize = 36.sp)
+                        Spacer(Modifier.height(4.dp))
+                        Text(documento.fileType, fontSize = 10.sp, color = fileColor, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+
+            // Categoria badge in alto
+            Surface(
+                modifier = Modifier.align(Alignment.TopStart).padding(8.dp),
+                shape = RoundedCornerShape(6.dp),
+                color = catColor.copy(alpha = 0.85f)
+            ) {
+                Text(
+                    documento.categoria,
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                    color = Color.White,
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                )
+            }
+
+            // Azioni rapide in alto a destra
+            Row(
+                modifier = Modifier.align(Alignment.TopEnd).padding(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(0.dp)
+            ) {
+                Surface(shape = CircleShape, color = DarkSurface.copy(alpha = 0.8f)) {
+                    IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Filled.Edit, null, tint = Purple400, modifier = Modifier.size(16.dp))
+                    }
+                }
+                Spacer(Modifier.width(4.dp))
+                Surface(shape = CircleShape, color = DarkSurface.copy(alpha = 0.8f)) {
+                    IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Outlined.Delete, null, tint = Color(0xFFFF6B6B), modifier = Modifier.size(16.dp))
+                    }
+                }
+            }
+
+            // Titolo in basso
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .padding(8.dp)
+            ) {
+                Text(
+                    documento.titolo,
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                    color = if (isPhoto) Color.White else TextPrimary,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    SimpleDateFormat("dd MMM yyyy", Locale.ITALIAN).format(Date(documento.dataInserimento)),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (isPhoto) Color.White.copy(alpha = 0.7f) else TextMuted
                 )
             }
         }
