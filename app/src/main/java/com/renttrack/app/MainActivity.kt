@@ -21,6 +21,9 @@ import androidx.navigation.compose.*
 import com.renttrack.app.ui.navigation.Screen
 import com.renttrack.app.ui.screens.*
 import com.renttrack.app.ui.theme.*
+import com.renttrack.app.viewmodel.AuthViewModel
+import com.renttrack.app.viewmodel.AuthViewModelFactory
+import com.renttrack.app.viewmodel.AuthState
 import com.renttrack.app.viewmodel.RentViewModel
 
 class MainActivity : ComponentActivity() {
@@ -99,19 +102,28 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
         return
     }
 
+    // ── Auth check ───────────────────────────────────────────────────────
+    val authViewModel: AuthViewModel = viewModel(
+        factory = AuthViewModelFactory(context)
+    )
+    val authState by authViewModel.authState.collectAsState()
+    val isLoggedIn = authState is AuthState.LoggedIn
+
     val startDestination = when {
         !onboardingShown                -> Screen.Onboarding.route
+        !isLoggedIn                     -> Screen.Login.route
         activeCondominioId > 0L         -> Screen.Dashboard.route
         else                            -> Screen.CondominioSelector.route
     }
 
     val isInSelector   = currentRoute == Screen.CondominioSelector.route
     val isInOnboarding = currentRoute == Screen.Onboarding.route
+    val isInLogin      = currentRoute == Screen.Login.route
 
     Scaffold(
         containerColor = DarkBg,
         topBar = {
-            if (!isInSelector && !isInOnboarding) {
+            if (!isInSelector && !isInOnboarding && !isInLogin) {
                 val currentScreen = Screen.allScreens.find { it.route == currentRoute } ?: Screen.Dashboard
                 TopAppBar(
                     title = {
@@ -174,7 +186,7 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
             }
         },
         bottomBar = {
-            if (!isInSelector && !isInOnboarding) {
+            if (!isInSelector && !isInOnboarding && !isInLogin) {
                 NavigationBar(
                     containerColor = DarkSurface,
                     contentColor = TextPrimary,
@@ -266,12 +278,22 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
             enterTransition  = { fadeIn() },
             exitTransition   = { fadeOut() }
         ) {
-            composable(Screen.Onboarding.route) {
-                OnboardingScreen(
-                    onFinished = {
+            composable(Screen.Login.route) {
+                LoginScreen(
+                    viewModel = authViewModel,
+                    onLoginSuccess = {
                         val dest = if (activeCondominioId > 0L) Screen.Dashboard.route
                                    else Screen.CondominioSelector.route
                         navController.navigate(dest) {
+                            popUpTo(Screen.Login.route) { inclusive = true }
+                        }
+                    }
+                )
+            }
+            composable(Screen.Onboarding.route) {
+                OnboardingScreen(
+                    onFinished = {
+                        navController.navigate(Screen.Login.route) {
                             popUpTo(Screen.Onboarding.route) { inclusive = true }
                         }
                     }

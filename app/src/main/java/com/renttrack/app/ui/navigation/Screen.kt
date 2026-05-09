@@ -12,6 +12,7 @@ sealed class Screen(
     val selectedIcon: ImageVector,
     val unselectedIcon: ImageVector
 ) {
+    data object Login               : Screen("login",              "Accedi",           "",                     Icons.Filled.Lock,         Icons.Filled.Lock)
     data object Onboarding          : Screen("onboarding",          "Benvenuto",        "",                     Icons.Filled.Home,         Icons.Filled.Home)
     data object CondominioSelector : Screen("condominio_selector", "Le mie proprietà", "Seleziona immobile",    Icons.Filled.Business,     Icons.Outlined.Business)
     data object Dashboard           : Screen("dashboard",           "Casa",             "Panoramica affitti",    Icons.Filled.Home,         Icons.Outlined.Home)
