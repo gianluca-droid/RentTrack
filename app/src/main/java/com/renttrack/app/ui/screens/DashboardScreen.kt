@@ -1,5 +1,7 @@
 package com.renttrack.app.ui.screens
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -17,11 +19,17 @@ import com.renttrack.app.data.model.CedolinoWithItems
 import com.renttrack.app.data.model.ExpenseCategories
 import com.renttrack.app.ui.components.*
 import com.renttrack.app.ui.theme.*
+import com.renttrack.app.viewmodel.ListingsViewModel
 import com.renttrack.app.viewmodel.RentViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DashboardScreen(viewModel: RentViewModel) {
+fun DashboardScreen(
+    viewModel: RentViewModel,
+    listingsViewModel: ListingsViewModel,
+    onNavigateToAnnunci: () -> Unit,
+    onCreaAnnuncio: () -> Unit
+) {
     val totalExpenses by viewModel.totalExpenses.collectAsState()
     val totalPayments by viewModel.totalPayments.collectAsState()
     val units by viewModel.units.collectAsState()
@@ -101,6 +109,51 @@ fun DashboardScreen(viewModel: RentViewModel) {
                     subtitle = "$pendingCedolini avvisi aperti",
                     onClick = { if (pendingCedolini > 0) showOpenCedoliniSheet = true }
                 )
+            }
+        }
+
+        // ─── Card Annunci ─────────────────────────────────────────
+        item {
+            val myListings by listingsViewModel.myListings.collectAsState()
+            val activeCount = myListings.count { it.isActive }
+            Surface(
+                modifier = Modifier.fillMaxWidth().clickable { onNavigateToAnnunci() },
+                shape = RoundedCornerShape(16.dp),
+                color = DarkCard,
+                border = BorderStroke(1.dp, Cyan400.copy(alpha = 0.2f))
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = Cyan400.copy(alpha = 0.12f),
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                            Icon(Icons.Filled.Apartment, null, tint = Cyan400, modifier = Modifier.size(24.dp))
+                        }
+                    }
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text("I miei annunci", fontWeight = FontWeight.Bold, color = TextPrimary)
+                        Text(
+                            if (myListings.isEmpty()) "Nessun annuncio pubblicato"
+                            else "$activeCount attivi · ${myListings.size} totali",
+                            color = TextMuted, style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = onCreaAnnuncio, modifier = Modifier.size(36.dp)) {
+                            Surface(shape = RoundedCornerShape(8.dp), color = Cyan400) {
+                                Icon(Icons.Filled.Add, null, tint = DarkBg,
+                                    modifier = Modifier.padding(6.dp).size(18.dp))
+                            }
+                        }
+                        Icon(Icons.Filled.ChevronRight, null, tint = TextMuted)
+                    }
+                }
             }
         }
 

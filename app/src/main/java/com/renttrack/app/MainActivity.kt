@@ -410,7 +410,18 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
                     }
                 )
             }
-            composable(Screen.Dashboard.route)  { DashboardScreen(viewModel) }
+            composable(Screen.Dashboard.route)  {
+                DashboardScreen(
+                    viewModel = viewModel,
+                    listingsViewModel = listingsViewModel,
+                    onNavigateToAnnunci = {
+                        navController.navigate(Screen.MieiAnnunci.route) { launchSingleTop = true }
+                    },
+                    onCreaAnnuncio = {
+                        navController.navigate(Screen.CreaAnnuncio.route) { launchSingleTop = true }
+                    }
+                )
+            }
             composable(Screen.Tenants.route)    { TenantsScreen(viewModel) }
             composable(Screen.Affitti.route)    { RentNoticesScreen(viewModel) }
             composable(Screen.Expenses.route)   { ExpensesScreen(viewModel) }
