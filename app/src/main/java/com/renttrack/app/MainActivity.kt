@@ -181,6 +181,34 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
                                 Text("Report", color = TextSecondary, style = MaterialTheme.typography.labelMedium)
                             }
                         }
+                        // Logout
+                        var showLogoutDialog by remember { mutableStateOf(false) }
+                        IconButton(onClick = { showLogoutDialog = true }) {
+                            Icon(Icons.Filled.Logout, contentDescription = "Logout", tint = TextMuted)
+                        }
+                        if (showLogoutDialog) {
+                            AlertDialog(
+                                onDismissRequest = { showLogoutDialog = false },
+                                containerColor = DarkSurface,
+                                icon = { Icon(Icons.Filled.Logout, null, tint = Red400) },
+                                title = { Text("Esci dall'account", color = TextPrimary, fontWeight = FontWeight.Bold) },
+                                text = { Text("Vuoi davvero uscire?", color = TextSecondary) },
+                                confirmButton = {
+                                    TextButton(onClick = {
+                                        showLogoutDialog = false
+                                        authViewModel.signOut()
+                                        navController.navigate(Screen.Login.route) {
+                                            popUpTo(0) { inclusive = true }
+                                        }
+                                    }) { Text("Esci", color = Red400, fontWeight = FontWeight.Bold) }
+                                },
+                                dismissButton = {
+                                    TextButton(onClick = { showLogoutDialog = false }) {
+                                        Text("Annulla", color = TextSecondary)
+                                    }
+                                }
+                            )
+                        }
                     }
                 )
             }

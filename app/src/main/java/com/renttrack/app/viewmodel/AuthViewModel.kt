@@ -131,6 +131,13 @@ class AuthViewModel(private val prefs: SharedPreferences) : ViewModel() {
         _authState.value = AuthState.LoggedOut
     }
 
+    // ── Reset errore (es. quando si passa da login a registrazione) ───────────
+    fun resetError() {
+        if (_authState.value is AuthState.Error) {
+            _authState.value = AuthState.LoggedOut
+        }
+    }
+
     // ── Helper HTTP (Supabase REST) ───────────────────────────────────────────
     private fun callSupabaseAuth(endpoint: String, body: String): JSONObject {
         val url  = URL(endpoint)
