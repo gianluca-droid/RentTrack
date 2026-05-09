@@ -57,7 +57,7 @@ fun MieiAnnunciScreen(
                 actions = {
                     // Pulsante richieste ricevute
                     TextButton(onClick = onRichieste) {
-                        Icon(Icons.Filled.Inbox, null, tint = Cyan400, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Filled.MarkEmailUnread, null, tint = Cyan400, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(4.dp))
                         Text("Richieste", color = Cyan400, fontWeight = FontWeight.Bold)
                     }

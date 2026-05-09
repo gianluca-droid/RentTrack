@@ -112,14 +112,19 @@ fun RichiesteScreen(
                             border = BorderStroke(1.dp, Cyan400.copy(alpha = 0.2f))
                         ) {
                             Row(
-                                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                                horizontalArrangement = Arrangement.SpaceEvenly
-                            ) {
-                                StatBox("📨", "${inquiries.size}", "Totali")
-                                VerticalDivider(color = Color(0xFF1E3A5F), modifier = Modifier.height(40.dp))
-                                StatBox("🏠", "${byListing.size}", "Annunci con richieste")
-                            }
-                        }
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            StatBox("📨", "${inquiries.size}", "Totali")
+                            Box(
+                                modifier = Modifier
+                                    .width(1.dp)
+                                    .height(40.dp)
+                                    .background(Color(0xFF1E3A5F))
+                            )
+                            StatBox("🏠", "${byListing.size}", "Annunci con richieste")
+                        }    }
                     }
 
                     // Per ogni annuncio, mostra le sue richieste
