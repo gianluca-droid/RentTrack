@@ -112,8 +112,6 @@ class ListingsViewModel(
     private val _toast = MutableStateFlow<String?>(null)
     val toast: StateFlow<String?> = _toast.asStateFlow()
 
-    init { loadPublicListings() }
-
     // ── Feed pubblico con paginazione ────────────────────────────────────────
     private val PAGE_SIZE = 20
     private var currentOffset = 0
@@ -123,6 +121,9 @@ class ListingsViewModel(
 
     private val _hasMore = MutableStateFlow(true)
     val hasMore: StateFlow<Boolean> = _hasMore.asStateFlow()
+
+    // init DOPO le proprietà di paginazione — altrimenti _hasMore è null al primo avvio
+    init { loadPublicListings() }
 
     fun loadPublicListings() {
         currentOffset = 0
