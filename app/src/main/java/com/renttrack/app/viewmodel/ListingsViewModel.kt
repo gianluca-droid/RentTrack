@@ -122,8 +122,8 @@ class ListingsViewModel(
     private val _hasMore = MutableStateFlow(true)
     val hasMore: StateFlow<Boolean> = _hasMore.asStateFlow()
 
-    // init DOPO le proprietà di paginazione — altrimenti _hasMore è null al primo avvio
-    init { loadPublicListings() }
+    // loadPublicListings() viene chiamato da AnnunciScreen via LaunchedEffect
+    // NON in init{} per evitare NPE durante l'inizializzazione del ViewModel
 
     fun loadPublicListings() {
         currentOffset = 0

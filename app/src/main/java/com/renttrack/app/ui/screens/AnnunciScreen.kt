@@ -60,6 +60,9 @@ fun AnnunciScreen(
     }
     val activeFilters = (if (maxPrice.isNotBlank()) 1 else 0) + (if (onlyFurnished) 1 else 0)
 
+    // Carica annunci al primo avvio della schermata
+    LaunchedEffect(Unit) { viewModel.loadPublicListings() }
+
     // Infinite scroll: carica più annunci quando mancano 3 item alla fine
     // (solo quando non ci sono filtri attivi — i filtri lavorano sui dati già caricati)
     val shouldLoadMore = remember {
