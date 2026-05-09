@@ -288,7 +288,10 @@ class ListingsViewModel(
         description: String, contactType: String,
         contactPhone: String, contactEmail: String, contactWhatsapp: String
     ): String? {
+        val userId = getUserIdFromToken(token)
+            ?: throw Exception("Impossibile leggere l'ID utente dal token")
         val body = JSONObject().apply {
+            put("landlord_id", userId)          // <─ obbligatorio per RLS
             put("title", title); put("city", city); put("zone", zone)
             put("price_monthly", price)
             if (sqm != null) put("sqm", sqm)
@@ -305,6 +308,17 @@ class ListingsViewModel(
             extraHeaders = mapOf("Prefer" to "return=representation")
         )
         return JSONArray(response).optJSONObject(0)?.optString("id")
+    }
+
+    /** Decodifica il JWT e restituisce il campo 'sub' (UUID utente) */
+    private fun getUserIdFromToken(token: String): String? {
+        return try {
+            val parts = token.split(".")
+            if (parts.size < 2) return null
+            val padded = parts[1].let { it.padEnd((it.length + 3) / 4 * 4, '=') }
+            val payload = String(android.util.Base64.decode(padded, android.util.Base64.URL_SAFE))
+            JSONObject(payload).optString("sub").takeIf { it.isNotBlank() }
+        } catch (e: Exception) { null }
     }
 
     private fun uploadPhoto(token: String, uri: Uri, listingId: String): String? {
