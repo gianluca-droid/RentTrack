@@ -129,6 +129,20 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
                         containerColor = DarkBg, titleContentColor = TextPrimary
                     ),
                     actions = {
+                        // Guida — riapre l'onboarding
+                        IconButton(
+                            onClick = {
+                                navController.navigate(Screen.Onboarding.route) {
+                                    launchSingleTop = true
+                                }
+                            }
+                        ) {
+                            Icon(
+                                Icons.Filled.HelpOutline,
+                                contentDescription = "Come funziona",
+                                tint = TextMuted
+                            )
+                        }
                         // Cambia proprietà
                         TextButton(
                             onClick = { showSwitchPropertyDialog = true },
@@ -143,9 +157,6 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
                             TextButton(
                                 onClick = {
                                     navController.navigate(Screen.Reports.route) {
-                                        // Usa lo stesso pattern della bottom nav:
-                                        // popUpTo(Dashboard) mantiene lo stack pulito
-                                        // e permette di tornare agli altri tab senza problemi.
                                         popUpTo(Screen.Dashboard.route) { saveState = true }
                                         launchSingleTop = true
                                         restoreState = true
@@ -273,6 +284,11 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
                         viewModel.setActiveCondominio(condoId)
                         navController.navigate(Screen.Dashboard.route) {
                             popUpTo(Screen.CondominioSelector.route) { inclusive = true }
+                        }
+                    },
+                    onShowOnboarding = {
+                        navController.navigate(Screen.Onboarding.route) {
+                            launchSingleTop = true
                         }
                     }
                 )

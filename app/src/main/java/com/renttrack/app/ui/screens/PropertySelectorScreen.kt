@@ -37,7 +37,8 @@ private val propertyGradients = listOf(
 fun PropertySelectorScreen(
     viewModel: RentViewModel,
     onCondominioSelected: (Long) -> Unit,
-    onResidentAccess: () -> Unit = {}
+    onResidentAccess: () -> Unit = {},
+    onShowOnboarding: () -> Unit = {}
 ) {
     val proprieta by viewModel.allCondomini.collectAsState()
     val summaryMap by viewModel.propertySummaryMap.collectAsState()
@@ -71,6 +72,23 @@ fun PropertySelectorScreen(
                         style = MaterialTheme.typography.bodyMedium,
                         color = TextMuted
                     )
+                }
+                // ── Pulsante "Come funziona" ────────────────────────
+                IconButton(
+                    onClick = onShowOnboarding,
+                    modifier = Modifier.align(Alignment.TopEnd)
+                ) {
+                    Surface(
+                        shape = androidx.compose.foundation.shape.CircleShape,
+                        color = Cyan400.copy(alpha = 0.12f)
+                    ) {
+                        Icon(
+                            Icons.Filled.HelpOutline,
+                            contentDescription = "Come funziona RentTrack",
+                            tint = Cyan400,
+                            modifier = Modifier.padding(8.dp).size(20.dp)
+                        )
+                    }
                 }
             }
 
