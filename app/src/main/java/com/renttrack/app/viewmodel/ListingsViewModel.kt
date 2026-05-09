@@ -71,20 +71,24 @@ class ListingsViewModel(
             _publicState.value = ListingsUiState.Loading
             try {
                 val list = withContext(Dispatchers.IO) {
-                    val url = URL(
-                        "$baseUrl/rest/v1/listings" +
-                        "?is_active=eq.true" +
-                        "&select=*,listing_photos(id,url,is_cover,display_order)" +
-                        "&order=created_at.desc"
+                    val listingsJson = httpGet(
+                        "$baseUrl/rest/v1/listings?is_active=eq.true&order=created_at.desc",
+                        anonKey
                     )
-                    val conn = url.openConnection() as HttpURLConnection
-                    conn.setRequestProperty("apikey", anonKey)
-                    conn.setRequestProperty("Authorization", "Bearer $anonKey")
-                    parseListings(JSONArray(conn.inputStream.bufferedReader().readText()))
+                    val listings = parseListings(JSONArray(listingsJson))
+                    // Carica le foto separatamente
+                    listings.map { l ->
+                        val photosJson = httpGet(
+                            "$baseUrl/rest/v1/listing_photos?listing_id=eq.${l.id}&order=display_order.asc",
+                            anonKey
+                        )
+                        val photos = parsePhotos(JSONArray(photosJson), l.id)
+                        l.copy(photos = photos)
+                    }
                 }
                 _publicState.value = ListingsUiState.Success(list)
             } catch (e: Exception) {
-                _publicState.value = ListingsUiState.Error("Errore caricamento: ${e.message}")
+                _publicState.value = ListingsUiState.Error("Caricamento fallito: ${e.message}")
             }
         }
     }
@@ -95,19 +99,23 @@ class ListingsViewModel(
             try {
                 val token = authToken ?: return@launch
                 val list = withContext(Dispatchers.IO) {
-                    val url = URL(
-                        "$baseUrl/rest/v1/listings" +
-                        "?select=*,listing_photos(id,url,is_cover,display_order)" +
-                        "&order=created_at.desc"
+                    val listingsJson = httpGet(
+                        "$baseUrl/rest/v1/listings?order=created_at.desc",
+                        token
                     )
-                    val conn = url.openConnection() as HttpURLConnection
-                    conn.setRequestProperty("apikey", anonKey)
-                    conn.setRequestProperty("Authorization", "Bearer $token")
-                    parseListings(JSONArray(conn.inputStream.bufferedReader().readText()))
+                    val listings = parseListings(JSONArray(listingsJson))
+                    listings.map { l ->
+                        val photosJson = httpGet(
+                            "$baseUrl/rest/v1/listing_photos?listing_id=eq.${l.id}&order=display_order.asc",
+                            token
+                        )
+                        val photos = parsePhotos(JSONArray(photosJson), l.id)
+                        l.copy(photos = photos)
+                    }
                 }
                 _myListings.value = list
             } catch (e: Exception) {
-                _toast.value = "Errore: ${e.message}"
+                _toast.value = "Errore caricamento annunci: ${e.message}"
             }
         }
     }
@@ -232,6 +240,26 @@ class ListingsViewModel(
 
     fun clearToast() { _toast.value = null }
 
+    // ── Helper HTTP robusto ───────────────────────────────────────────────────
+    private fun httpGet(endpoint: String, token: String): String {
+        val conn = URL(endpoint).openConnection() as HttpURLConnection
+        conn.setRequestProperty("apikey", anonKey)
+        conn.setRequestProperty("Authorization", "Bearer $token")
+        conn.connectTimeout = 10_000
+        conn.readTimeout    = 10_000
+        return try {
+            val code = conn.responseCode
+            if (code in 200..299) {
+                conn.inputStream.bufferedReader().readText()
+            } else {
+                val err = conn.errorStream?.bufferedReader()?.readText() ?: "HTTP $code"
+                throw Exception("HTTP $code: $err")
+            }
+        } finally {
+            conn.disconnect()
+        }
+    }
+
     // ── Helpers HTTP ──────────────────────────────────────────────────────────
     private fun postListing(
         token: String, title: String, city: String, zone: String,
@@ -303,7 +331,20 @@ class ListingsViewModel(
         conn.responseCode
     }
 
-    // ── Parser JSON → Listing ─────────────────────────────────────────────────
+    // ── Parser JSON → photos ──────────────────────────────────────────────────
+    private fun parsePhotos(arr: JSONArray, listingId: String): List<ListingPhoto> =
+        (0 until arr.length()).map { j ->
+            val p = arr.getJSONObject(j)
+            ListingPhoto(
+                id = p.optString("id"),
+                listingId = listingId,
+                url = p.optString("url"),
+                isCover = p.optBoolean("is_cover"),
+                displayOrder = p.optInt("display_order")
+            )
+        }.sortedBy { it.displayOrder }
+
+    // ── Parser JSON → Listing (senza foto embed) ──────────────────────────────
     private fun parseListings(arr: JSONArray): List<Listing> {
         val list = mutableListOf<Listing>()
         for (i in 0 until arr.length()) {
