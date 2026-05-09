@@ -364,6 +364,13 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
                 MieiAnnunciScreen(
                     viewModel = listingsViewModel,
                     onCreaAnnuncio = { navController.navigate(Screen.CreaAnnuncio.route) },
+                    onRichieste = { navController.navigate(Screen.Richieste.route) { launchSingleTop = true } },
+                    onBack = { navController.popBackStack() }
+                )
+            }
+            composable(Screen.Richieste.route) {
+                RichiesteScreen(
+                    viewModel = listingsViewModel,
                     onBack = { navController.popBackStack() }
                 )
             }

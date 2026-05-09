@@ -26,6 +26,7 @@ import com.renttrack.app.viewmodel.ListingsViewModel
 fun MieiAnnunciScreen(
     viewModel: ListingsViewModel,
     onCreaAnnuncio: () -> Unit,
+    onRichieste: () -> Unit,
     onBack: () -> Unit
 ) {
     val myListings by viewModel.myListings.collectAsState()
@@ -54,6 +55,12 @@ fun MieiAnnunciScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkBg),
                 actions = {
+                    // Pulsante richieste ricevute
+                    TextButton(onClick = onRichieste) {
+                        Icon(Icons.Filled.Inbox, null, tint = Cyan400, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Richieste", color = Cyan400, fontWeight = FontWeight.Bold)
+                    }
                     TextButton(onClick = onCreaAnnuncio) {
                         Icon(Icons.Filled.Add, null, tint = Cyan400, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(4.dp))

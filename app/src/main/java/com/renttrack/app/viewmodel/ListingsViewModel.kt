@@ -60,6 +60,52 @@ class ListingsViewModel(
     private val _myInquiries = MutableStateFlow<List<Inquiry>>(emptyList())
     val myInquiries: StateFlow<List<Inquiry>> = _myInquiries.asStateFlow()
 
+    private val _inquiriesLoading = MutableStateFlow(false)
+    val inquiriesLoading: StateFlow<Boolean> = _inquiriesLoading.asStateFlow()
+
+    fun loadMyInquiries() {
+        viewModelScope.launch {
+            _inquiriesLoading.value = true
+            try {
+                val token = authToken ?: return@launch
+                val listings = _myListings.value
+                if (listings.isEmpty()) {
+                    // Carica prima gli annunci se non presenti
+                    loadMyListings()
+                }
+                val ids = _myListings.value.joinToString(",") { it.id }
+                if (ids.isBlank()) {
+                    _myInquiries.value = emptyList()
+                    return@launch
+                }
+                val list = withContext(Dispatchers.IO) {
+                    val json = httpGet(
+                        "$baseUrl/rest/v1/inquiries?listing_id=in.($ids)&order=created_at.desc",
+                        token
+                    )
+                    val arr = JSONArray(json)
+                    (0 until arr.length()).map { i ->
+                        val o = arr.getJSONObject(i)
+                        Inquiry(
+                            id = o.optString("id"),
+                            listingId = o.optString("listing_id"),
+                            seekerName = o.optString("seeker_name"),
+                            seekerPhone = o.optString("seeker_phone"),
+                            seekerEmail = o.optString("seeker_email"),
+                            message = o.optString("message"),
+                            createdAt = o.optString("created_at")
+                        )
+                    }
+                }
+                _myInquiries.value = list
+            } catch (e: Exception) {
+                _toast.value = "Errore caricamento richieste: ${e.message}"
+            } finally {
+                _inquiriesLoading.value = false
+            }
+        }
+    }
+
     private val _isSubmitting = MutableStateFlow(false)
     val isSubmitting: StateFlow<Boolean> = _isSubmitting.asStateFlow()
 
