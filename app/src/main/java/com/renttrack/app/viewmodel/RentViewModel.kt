@@ -8,7 +8,6 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.renttrack.app.PropertyManager
-import com.renttrack.app.data.SampleData
 import com.renttrack.app.data.database.AppDatabase
 import com.renttrack.app.data.model.*
 import com.renttrack.app.data.repository.RentRepository
@@ -253,11 +252,9 @@ class RentViewModel(application: Application) : AndroidViewModel(application) {
     init {
         viewModelScope.launch {
             try {
+                // DB pronto — nessun dato di esempio in produzione
                 val count = repository.condominioCount.first()
-                if (count == 0) {
-                    val defaultCondoId = SampleData.populateDatabase(repository)
-                    setActiveCondominio(defaultCondoId)
-                }
+                android.util.Log.d("RentViewModel", "DB inizializzato: $count proprietà presenti")
             } catch (e: Exception) {
                 android.util.Log.e("RentViewModel", "Errore init DB: ${e.message}", e)
             } finally {
