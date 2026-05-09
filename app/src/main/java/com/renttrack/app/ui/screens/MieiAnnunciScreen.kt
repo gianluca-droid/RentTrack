@@ -29,7 +29,8 @@ fun MieiAnnunciScreen(
     onBack: () -> Unit
 ) {
     val myListings by viewModel.myListings.collectAsState()
-    val toast by viewModel.toast.collectAsState()
+    val isLoading  by viewModel.myListingsLoading.collectAsState()
+    val toast      by viewModel.toast.collectAsState()
     var toDelete by remember { mutableStateOf<Listing?>(null) }
 
     LaunchedEffect(Unit) { viewModel.loadMyListings() }
@@ -63,42 +64,50 @@ fun MieiAnnunciScreen(
         }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            if (myListings.isEmpty()) {
-                Column(
-                    modifier = Modifier.align(Alignment.Center),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text("📭", fontSize = 48.sp)
-                    Text("Nessun annuncio ancora", color = TextMuted, fontSize = 16.sp)
-                    Text("Pubblica il tuo primo annuncio\nper trovare inquilini",
-                        color = TextMuted.copy(alpha = 0.6f),
-                        style = MaterialTheme.typography.bodySmall,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-                    Spacer(Modifier.height(8.dp))
-                    Button(
-                        onClick = onCreaAnnuncio,
-                        colors = ButtonDefaults.buttonColors(containerColor = Cyan400, contentColor = DarkBg),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Icon(Icons.Filled.Add, null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Pubblica annuncio", fontWeight = FontWeight.Bold)
+            when {
+                isLoading -> {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = Cyan400)
                     }
                 }
-            } else {
-                LazyColumn(
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
-                ) {
-                    items(myListings) { listing ->
-                        MyListingCard(
-                            listing = listing,
-                            onToggleActive = { viewModel.toggleActive(listing.id, listing.isActive) },
-                            onDelete = { toDelete = listing }
-                        )
+                myListings.isEmpty() -> {
+                    Column(
+                        modifier = Modifier.align(Alignment.Center),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text("📭", fontSize = 48.sp)
+                        Text("Nessun annuncio ancora", color = TextMuted, fontSize = 16.sp)
+                        Text("Pubblica il tuo primo annuncio\nper trovare inquilini",
+                            color = TextMuted.copy(alpha = 0.6f),
+                            style = MaterialTheme.typography.bodySmall,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                        Spacer(Modifier.height(8.dp))
+                        Button(
+                            onClick = onCreaAnnuncio,
+                            colors = ButtonDefaults.buttonColors(containerColor = Cyan400, contentColor = DarkBg),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Filled.Add, null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Pubblica annuncio", fontWeight = FontWeight.Bold)
+                        }
                     }
-                    item { Spacer(Modifier.height(80.dp)) }
+                }
+                else -> {
+                    LazyColumn(
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        items(myListings) { listing ->
+                            MyListingCard(
+                                listing = listing,
+                                onToggleActive = { viewModel.toggleActive(listing.id, listing.isActive) },
+                                onDelete = { toDelete = listing }
+                            )
+                        }
+                        item { Spacer(Modifier.height(80.dp)) }
+                    }
                 }
             }
 

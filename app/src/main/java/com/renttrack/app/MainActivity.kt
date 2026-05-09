@@ -147,20 +147,6 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
                         containerColor = DarkBg, titleContentColor = TextPrimary
                     ),
                     actions = {
-                        // Annunci (feed pubblico)
-                        IconButton(onClick = {
-                            navController.navigate(Screen.Annunci.route) { launchSingleTop = true }
-                        }) {
-                            Icon(Icons.Filled.Search, "Annunci", tint = TextMuted)
-                        }
-                        // I miei annunci
-                        if (isLoggedIn) {
-                            IconButton(onClick = {
-                                navController.navigate(Screen.MieiAnnunci.route) { launchSingleTop = true }
-                            }) {
-                                Icon(Icons.Filled.Home, "I miei annunci", tint = TextMuted)
-                            }
-                        }
                         // Guida — riapre l'onboarding
                         IconButton(
                             onClick = {
@@ -183,6 +169,19 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
                             Icon(Icons.Filled.Business, null, tint = TextSecondary, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(4.dp))
                             Text("Proprietà", color = TextSecondary, style = MaterialTheme.typography.labelMedium)
+                        }
+                        // Annunci
+                        TextButton(
+                            onClick = {
+                                navController.navigate(Screen.Annunci.route) {
+                                    launchSingleTop = true
+                                }
+                            },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Icon(Icons.Filled.Apartment, null, tint = TextSecondary, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Annunci", color = TextSecondary, style = MaterialTheme.typography.labelMedium)
                         }
                         // Report
                         if (currentRoute != Screen.Reports.route) {

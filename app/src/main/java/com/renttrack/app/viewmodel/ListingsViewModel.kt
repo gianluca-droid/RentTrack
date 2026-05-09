@@ -53,6 +53,9 @@ class ListingsViewModel(
     private val _myListings = MutableStateFlow<List<Listing>>(emptyList())
     val myListings: StateFlow<List<Listing>> = _myListings.asStateFlow()
 
+    private val _myListingsLoading = MutableStateFlow(false)
+    val myListingsLoading: StateFlow<Boolean> = _myListingsLoading.asStateFlow()
+
     // Richieste ricevute (inquiries) per il proprietario
     private val _myInquiries = MutableStateFlow<List<Inquiry>>(emptyList())
     val myInquiries: StateFlow<List<Inquiry>> = _myInquiries.asStateFlow()
@@ -96,6 +99,7 @@ class ListingsViewModel(
     // ── Annunci del proprietario ──────────────────────────────────────────────
     fun loadMyListings() {
         viewModelScope.launch {
+            _myListingsLoading.value = true
             try {
                 val token = authToken ?: return@launch
                 val list = withContext(Dispatchers.IO) {
@@ -116,6 +120,8 @@ class ListingsViewModel(
                 _myListings.value = list
             } catch (e: Exception) {
                 _toast.value = "Errore caricamento annunci: ${e.message}"
+            } finally {
+                _myListingsLoading.value = false
             }
         }
     }
