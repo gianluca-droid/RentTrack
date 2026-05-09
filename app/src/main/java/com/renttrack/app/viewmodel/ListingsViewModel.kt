@@ -173,16 +173,11 @@ class ListingsViewModel(
             try {
                 val token = authToken ?: return@launch
                 withContext(Dispatchers.IO) {
-                    val conn = URL("$baseUrl/rest/v1/listings?id=eq.$listingId")
-                        .openConnection() as HttpURLConnection
-                    conn.requestMethod = "DELETE"
-                    conn.setRequestProperty("apikey", anonKey)
-                    conn.setRequestProperty("Authorization", "Bearer $token")
-                    conn.responseCode
+                    httpPost("$baseUrl/rest/v1/listings?id=eq.$listingId", token, "", method = "DELETE")
                 }
                 loadMyListings(); loadPublicListings()
                 _toast.value = "Annuncio eliminato"
-            } catch (e: Exception) { _toast.value = "Errore: ${e.message}" }
+            } catch (e: Exception) { _toast.value = "Errore eliminazione: ${e.message}" }
         }
     }
 
@@ -192,18 +187,13 @@ class ListingsViewModel(
             try {
                 val token = authToken ?: return@launch
                 withContext(Dispatchers.IO) {
-                    val conn = URL("$baseUrl/rest/v1/listings?id=eq.$listingId")
-                        .openConnection() as HttpURLConnection
-                    conn.requestMethod = "PATCH"
-                    conn.setRequestProperty("apikey", anonKey)
-                    conn.setRequestProperty("Authorization", "Bearer $token")
-                    conn.setRequestProperty("Content-Type", "application/json")
-                    conn.doOutput = true
-                    OutputStreamWriter(conn.outputStream).use { it.write("""{"is_active":${!current}}""") }
-                    conn.responseCode
+                    httpPost(
+                        "$baseUrl/rest/v1/listings?id=eq.$listingId", token,
+                        """{"is_active":${!current}}""", method = "PATCH"
+                    )
                 }
                 loadMyListings(); loadPublicListings()
-            } catch (e: Exception) { _toast.value = "Errore: ${e.message}" }
+            } catch (e: Exception) { _toast.value = "Errore toggle: ${e.message}" }
         }
     }
 
@@ -223,21 +213,15 @@ class ListingsViewModel(
                         put("seeker_email", email)
                         put("message", message)
                     }.toString()
-                    val conn = URL("$baseUrl/rest/v1/inquiries")
-                        .openConnection() as HttpURLConnection
-                    conn.requestMethod = "POST"
-                    conn.setRequestProperty("apikey", anonKey)
-                    conn.setRequestProperty("Authorization", "Bearer $anonKey")
-                    conn.setRequestProperty("Content-Type", "application/json")
-                    conn.setRequestProperty("Prefer", "return=minimal")
-                    conn.doOutput = true
-                    OutputStreamWriter(conn.outputStream).use { it.write(body) }
-                    conn.responseCode
+                    httpPost(
+                        "$baseUrl/rest/v1/inquiries", anonKey, body,
+                        extraHeaders = mapOf("Prefer" to "return=minimal")
+                    )
                 }
                 _toast.value = "Richiesta inviata! Il proprietario ti contatterà 👍"
                 onSuccess()
             } catch (e: Exception) {
-                _toast.value = "Errore: ${e.message}"
+                _toast.value = "Errore invio: ${e.message}"
             } finally {
                 _isSubmitting.value = false
             }
@@ -246,7 +230,7 @@ class ListingsViewModel(
 
     fun clearToast() { _toast.value = null }
 
-    // ── Helper HTTP robusto ───────────────────────────────────────────────────
+    // ── Helper HTTP GET robusto ──────────────────────────────────────────
     private fun httpGet(endpoint: String, token: String): String {
         val conn = URL(endpoint).openConnection() as HttpURLConnection
         conn.setRequestProperty("apikey", anonKey)
@@ -260,6 +244,36 @@ class ListingsViewModel(
             } else {
                 val err = conn.errorStream?.bufferedReader()?.readText() ?: "HTTP $code"
                 throw Exception("HTTP $code: $err")
+            }
+        } finally {
+            conn.disconnect()
+        }
+    }
+
+    // ── Helper HTTP POST/PATCH/DELETE robusto ──────────────────────────────
+    private fun httpPost(
+        endpoint: String, token: String, body: String,
+        method: String = "POST", extraHeaders: Map<String,String> = emptyMap()
+    ): String {
+        val conn = URL(endpoint).openConnection() as HttpURLConnection
+        conn.requestMethod = method
+        conn.setRequestProperty("apikey", anonKey)
+        conn.setRequestProperty("Authorization", "Bearer $token")
+        conn.setRequestProperty("Content-Type", "application/json")
+        conn.connectTimeout = 10_000
+        conn.readTimeout    = 15_000
+        extraHeaders.forEach { (k, v) -> conn.setRequestProperty(k, v) }
+        if (body.isNotEmpty()) {
+            conn.doOutput = true
+            OutputStreamWriter(conn.outputStream).use { it.write(body) }
+        }
+        return try {
+            val code = conn.responseCode
+            if (code in 200..299) {
+                conn.inputStream?.bufferedReader()?.readText() ?: ""
+            } else {
+                val err = conn.errorStream?.bufferedReader()?.readText() ?: "HTTP $code"
+                throw Exception("Errore $code: $err")
             }
         } finally {
             conn.disconnect()
@@ -286,17 +300,10 @@ class ListingsViewModel(
             put("contact_phone", contactPhone); put("contact_email", contactEmail)
             put("contact_whatsapp", contactWhatsapp)
         }.toString()
-
-        val conn = URL("$baseUrl/rest/v1/listings")
-            .openConnection() as HttpURLConnection
-        conn.requestMethod = "POST"
-        conn.setRequestProperty("apikey", anonKey)
-        conn.setRequestProperty("Authorization", "Bearer $token")
-        conn.setRequestProperty("Content-Type", "application/json")
-        conn.setRequestProperty("Prefer", "return=representation")
-        conn.doOutput = true
-        OutputStreamWriter(conn.outputStream).use { it.write(body) }
-        val response = conn.inputStream.bufferedReader().readText()
+        val response = httpPost(
+            "$baseUrl/rest/v1/listings", token, body,
+            extraHeaders = mapOf("Prefer" to "return=representation")
+        )
         return JSONArray(response).optJSONObject(0)?.optString("id")
     }
 
@@ -325,16 +332,10 @@ class ListingsViewModel(
             put("listing_id", listingId); put("url", url)
             put("is_cover", isCover); put("display_order", order)
         }.toString()
-        val conn = URL("$baseUrl/rest/v1/listing_photos")
-            .openConnection() as HttpURLConnection
-        conn.requestMethod = "POST"
-        conn.setRequestProperty("apikey", anonKey)
-        conn.setRequestProperty("Authorization", "Bearer $token")
-        conn.setRequestProperty("Content-Type", "application/json")
-        conn.setRequestProperty("Prefer", "return=minimal")
-        conn.doOutput = true
-        OutputStreamWriter(conn.outputStream).use { it.write(body) }
-        conn.responseCode
+        httpPost(
+            "$baseUrl/rest/v1/listing_photos", token, body,
+            extraHeaders = mapOf("Prefer" to "return=minimal")
+        )
     }
 
     // ── Parser JSON → photos ──────────────────────────────────────────────────
