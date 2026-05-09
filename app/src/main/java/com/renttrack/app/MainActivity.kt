@@ -71,6 +71,7 @@ fun CrashDialog(crashMessage: String) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainApp(viewModel: RentViewModel = viewModel()) {
+    val context             = androidx.compose.ui.platform.LocalContext.current
     val navController       = rememberNavController()
     val navBackStackEntry  by navController.currentBackStackEntryAsState()
     val currentRoute        = navBackStackEntry?.destination?.route
@@ -79,6 +80,12 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
     val activeCondominio   by viewModel.activeCondominio.collectAsState()
     val pendingCedolini    by viewModel.pendingCedolini.collectAsState()
     var showSwitchPropertyDialog by remember { mutableStateOf(false) }
+
+    // ── Onboarding check ─────────────────────────────────────────────────
+    val onboardingShown = remember {
+        context.getSharedPreferences("renttrack_prefs", android.content.Context.MODE_PRIVATE)
+            .getBoolean("onboarding_shown", false)
+    }
 
     // ── Loading ──────────────────────────────────────────────────────────
     if (isLoading) {
@@ -92,15 +99,19 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
         return
     }
 
-    val startDestination = if (activeCondominioId > 0L) Screen.Dashboard.route
-                           else Screen.CondominioSelector.route
+    val startDestination = when {
+        !onboardingShown                -> Screen.Onboarding.route
+        activeCondominioId > 0L         -> Screen.Dashboard.route
+        else                            -> Screen.CondominioSelector.route
+    }
 
-    val isInSelector = currentRoute == Screen.CondominioSelector.route
+    val isInSelector   = currentRoute == Screen.CondominioSelector.route
+    val isInOnboarding = currentRoute == Screen.Onboarding.route
 
     Scaffold(
         containerColor = DarkBg,
         topBar = {
-            if (!isInSelector) {
+            if (!isInSelector && !isInOnboarding) {
                 val currentScreen = Screen.allScreens.find { it.route == currentRoute } ?: Screen.Dashboard
                 TopAppBar(
                     title = {
@@ -152,7 +163,7 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
             }
         },
         bottomBar = {
-            if (!isInSelector) {
+            if (!isInSelector && !isInOnboarding) {
                 NavigationBar(
                     containerColor = DarkSurface,
                     contentColor = TextPrimary,
@@ -244,6 +255,17 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
             enterTransition  = { fadeIn() },
             exitTransition   = { fadeOut() }
         ) {
+            composable(Screen.Onboarding.route) {
+                OnboardingScreen(
+                    onFinished = {
+                        val dest = if (activeCondominioId > 0L) Screen.Dashboard.route
+                                   else Screen.CondominioSelector.route
+                        navController.navigate(dest) {
+                            popUpTo(Screen.Onboarding.route) { inclusive = true }
+                        }
+                    }
+                )
+            }
             composable(Screen.CondominioSelector.route) {
                 PropertySelectorScreen(
                     viewModel = viewModel,

@@ -12,6 +12,7 @@ sealed class Screen(
     val selectedIcon: ImageVector,
     val unselectedIcon: ImageVector
 ) {
+    data object Onboarding          : Screen("onboarding",          "Benvenuto",        "",                     Icons.Filled.Home,         Icons.Filled.Home)
     data object CondominioSelector : Screen("condominio_selector", "Le mie proprietà", "Seleziona immobile",    Icons.Filled.Business,     Icons.Outlined.Business)
     data object Dashboard           : Screen("dashboard",           "Casa",             "Panoramica affitti",    Icons.Filled.Home,         Icons.Outlined.Home)
     data object Tenants             : Screen("units",               "Inquilini",        "Gestione inquilini",    Icons.Filled.People,       Icons.Outlined.PeopleOutline)
@@ -23,6 +24,6 @@ sealed class Screen(
     companion object {
         /** 5 tab nella bottom bar — Pagamenti rimosso, Affitti al suo posto */
         val bottomNavItems by lazy { listOf(Dashboard, Tenants, Affitti, Expenses, Documenti) }
-        val allScreens     by lazy { listOf(CondominioSelector, Dashboard, Tenants, Affitti, Expenses, Documenti, Reports) }
+        val allScreens     by lazy { listOf(Onboarding, CondominioSelector, Dashboard, Tenants, Affitti, Expenses, Documenti, Reports) }
     }
 }

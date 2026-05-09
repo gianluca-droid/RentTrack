@@ -1,8 +1,33 @@
 # ⚠️ PLAY STORE – TODO: AGGIORNAMENTI FUTURI
 
-> Ultimo aggiornamento: 08/05/2026
+> Ultimo aggiornamento: 09/05/2026 ore 09:53
 > Queste impostazioni riflettono la versione ATTUALE dell'app.
 > Aggiorna ogni voce quando la funzionalità corrispondente viene rilasciata.
+
+---
+
+## 🔬 STATO ATTUALE – TEST CHIUSI (aggiornato 09/05/2026)
+
+| Passo | Stato | Note |
+|---|---|---|
+| ✅ Scheda Store IT | ✅ Completa | Testi, icona, screenshot, feature graphic |
+| ✅ Classificazione contenuti | ✅ **PEGI 3** | Cambiato da PEGI 18 → PEGI 3 il 09/05/2026 ✅ |
+| ✅ Dichiarazione annunci | ✅ "No annunci" | Compilato 09/05/2026 |
+| ✅ Sicurezza dei dati | ✅ Completa | Crash log + diagnostica + ID dispositivo |
+| ✅ Privacy Policy | ✅ URL impostato | Google Sites |
+| ✅ Categoria + Prezzo | ✅ Finanza / Gratuita | |
+| ✅ Classificazione PEGI | ✅ **PEGI 3** (tutti) | Inviato per revisione 09/05/2026 — era PEGI 18 |}
+| ✅ Release 1.0.0 | ✅ Bozza caricata | `.aab` con ID `com.gianlucadelfini.renttrack` |
+| ✅ Paesi | ✅ Italia selezionata | |
+| ⏳ Tester | ⚠️ **Da collegare** | Lista "Faro Incantato" (16 tester) esiste ma non ancora attivata sulla release |
+| ⏳ Invio per revisione | ❌ **Non ancora inviato** | Bisogna selezionare la lista tester → salvare → inviare per revisione |
+| ⏳ 14 giorni countdown | ❌ **Non iniziato** | Parte solo dopo approvazione Google + tester attivi |
+
+### 👉 Prossimi passi per sbloccare la produzione:
+1. **Play Console → Test chiusi → tab "Tester"** → seleziona lista "Faro Incantato" → Salva
+2. **Tab "Release"** → clicca "Modifica release" → "Invia per la revisione"
+3. Aspetta approvazione Google (1-3 giorni) → poi partono i **14 giorni**
+4. Dopo 14 giorni → richiedi accesso alla **Produzione**
 
 ---
 
@@ -10,7 +35,7 @@
 
 | # | Sezione Play Console | Impostazione attuale | Aggiorna quando... |
 |---|---|---|---|
-| 1 | Contenuti app → **Annunci** | ❌ "No, nessun annuncio" | Integri **AdMob** |
+| 1 | Contenuti app → **Annunci** | ❌ "No, nessun annuncio" ✅ compilato 09/05/2026 | Integri **AdMob** |
 | 2 | Sicurezza dati → **Account** | ❌ "Nessun account" | Integri **Supabase login** |
 | 3 | Sicurezza dati → **Informazioni personali** | 0/9 selezionati | Sincronizzi dati inquilini su cloud |
 | 4 | Sicurezza dati → **Informazioni finanziarie** | 0/4 selezionati | Sincronizzi pagamenti su cloud |
