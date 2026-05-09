@@ -197,6 +197,23 @@ class ListingsViewModel(
         }
     }
 
+    // ── Libero / Occupato ─────────────────────────────────────────────────────
+    fun toggleAvailable(listingId: String, current: Boolean) {
+        viewModelScope.launch {
+            try {
+                val token = authToken ?: return@launch
+                withContext(Dispatchers.IO) {
+                    httpPost(
+                        "$baseUrl/rest/v1/listings?id=eq.$listingId", token,
+                        """{"is_available":${!current}}""", method = "PATCH"
+                    )
+                }
+                loadMyListings(); loadPublicListings()
+                _toast.value = if (!current) "✅ Immobile segnato come libero" else "🔒 Immobile segnato come occupato"
+            } catch (e: Exception) { _toast.value = "Errore: ${e.message}" }
+        }
+    }
+
     // ── Invia richiesta (cercatore) ───────────────────────────────────────────
     fun submitInquiry(
         listingId: String, name: String, phone: String,
@@ -401,6 +418,7 @@ class ListingsViewModel(
                     contactEmail = o.optString("contact_email"),
                     contactWhatsapp = o.optString("contact_whatsapp"),
                     isActive = o.optBoolean("is_active", true),
+                    isAvailable = o.optBoolean("is_available", true),
                     createdAt = o.optString("created_at"),
                     photos = photos
                 )

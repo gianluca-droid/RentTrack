@@ -363,6 +363,14 @@ fun FeaturedListingCard(listing: Listing, onClick: () -> Unit) {
                         color = DarkBg, fontWeight = FontWeight.ExtraBold,
                         style = MaterialTheme.typography.labelSmall)
                 }
+                if (!listing.isAvailable) {
+                    Surface(shape = RoundedCornerShape(8.dp), color = Amber400.copy(alpha = 0.9f)) {
+                        Text("🔒 Occupato",
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                            color = DarkBg, fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.labelSmall)
+                    }
+                }
                 if (listing.furnished) {
                     Surface(shape = RoundedCornerShape(8.dp), color = Green400.copy(alpha = 0.9f)) {
                         Text("Arredato",

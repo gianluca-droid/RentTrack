@@ -103,6 +103,7 @@ fun MieiAnnunciScreen(
                             MyListingCard(
                                 listing = listing,
                                 onToggleActive = { viewModel.toggleActive(listing.id, listing.isActive) },
+                                onToggleAvailable = { viewModel.toggleAvailable(listing.id, listing.isAvailable) },
                                 onDelete = { toDelete = listing }
                             )
                         }
@@ -152,6 +153,7 @@ fun MieiAnnunciScreen(
 private fun MyListingCard(
     listing: Listing,
     onToggleActive: () -> Unit,
+    onToggleAvailable: () -> Unit,
     onDelete: () -> Unit
 ) {
     Surface(
@@ -176,7 +178,6 @@ private fun MyListingCard(
                         Text("🏠", fontSize = 28.sp)
                     }
                 }
-                // Overlay inattivo
                 if (!listing.isActive) {
                     Box(Modifier.fillMaxSize().background(DarkBg.copy(alpha = 0.5f)),
                         contentAlignment = Alignment.Center) {
@@ -194,27 +195,52 @@ private fun MyListingCard(
                     color = TextMuted, style = MaterialTheme.typography.bodySmall)
                 Text("€${listing.priceMonthly.toInt()}/mese",
                     color = Cyan400, fontWeight = FontWeight.Bold)
-                // Badge stato
-                Surface(shape = RoundedCornerShape(6.dp),
-                    color = if (listing.isActive) Green400.copy(alpha = 0.15f) else TextMuted.copy(alpha = 0.1f)) {
-                    Text(
-                        if (listing.isActive) "● Attivo" else "● Inattivo",
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                        color = if (listing.isActive) Green400 else TextMuted,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                // Badge stato visibilità
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Surface(shape = RoundedCornerShape(6.dp),
+                        color = if (listing.isActive) Green400.copy(alpha = 0.15f) else TextMuted.copy(alpha = 0.1f)) {
+                        Text(
+                            if (listing.isActive) "● Attivo" else "● Inattivo",
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                            color = if (listing.isActive) Green400 else TextMuted,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                    // Badge disponibilità
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = if (listing.isAvailable) Cyan400.copy(alpha = 0.15f)
+                                else Amber400.copy(alpha = 0.15f)
+                    ) {
+                        Text(
+                            if (listing.isAvailable) "🔓 Libero" else "🔒 Occupato",
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                            color = if (listing.isAvailable) Cyan400 else Amber400,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                 }
             }
 
             // Azioni
-            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                // Toggle libero/occupato
+                IconButton(onClick = onToggleAvailable, modifier = Modifier.size(36.dp)) {
+                    Icon(
+                        if (listing.isAvailable) Icons.Filled.Lock else Icons.Filled.LockOpen,
+                        contentDescription = if (listing.isAvailable) "Segna occupato" else "Segna libero",
+                        tint = if (listing.isAvailable) Cyan400 else Amber400,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
                 // Toggle attivo/inattivo
                 IconButton(onClick = onToggleActive, modifier = Modifier.size(36.dp)) {
                     Icon(
                         if (listing.isActive) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
                         contentDescription = if (listing.isActive) "Disattiva" else "Attiva",
-                        tint = if (listing.isActive) Amber400 else Green400,
+                        tint = if (listing.isActive) TextMuted else Green400,
                         modifier = Modifier.size(20.dp)
                     )
                 }

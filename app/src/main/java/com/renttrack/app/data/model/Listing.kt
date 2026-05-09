@@ -29,6 +29,7 @@ data class Listing(
     val contactEmail: String = "",
     val contactWhatsapp: String = "",
     val isActive: Boolean = true,
+    val isAvailable: Boolean = true,        // true = libero, false = occupato
     val createdAt: String = "",
     val photos: List<ListingPhoto> = emptyList()
 ) : Serializable {
