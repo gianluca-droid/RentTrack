@@ -114,31 +114,63 @@ class ListingsViewModel(
 
     init { loadPublicListings() }
 
-    // ── Feed pubblico ─────────────────────────────────────────────────────────
+    // ── Feed pubblico con paginazione ────────────────────────────────────────
+    private val PAGE_SIZE = 20
+    private var currentOffset = 0
+
+    private val _isLoadingMore = MutableStateFlow(false)
+    val isLoadingMore: StateFlow<Boolean> = _isLoadingMore.asStateFlow()
+
+    private val _hasMore = MutableStateFlow(true)
+    val hasMore: StateFlow<Boolean> = _hasMore.asStateFlow()
+
     fun loadPublicListings() {
+        currentOffset = 0
+        _hasMore.value = true
         viewModelScope.launch {
             _publicState.value = ListingsUiState.Loading
             try {
-                val list = withContext(Dispatchers.IO) {
-                    val listingsJson = httpGet(
-                        "$baseUrl/rest/v1/listings?is_active=eq.true&order=created_at.desc",
-                        anonKey
-                    )
-                    val listings = parseListings(JSONArray(listingsJson))
-                    // Carica le foto separatamente
-                    listings.map { l ->
-                        val photosJson = httpGet(
-                            "$baseUrl/rest/v1/listing_photos?listing_id=eq.${l.id}&order=display_order.asc",
-                            anonKey
-                        )
-                        val photos = parsePhotos(JSONArray(photosJson), l.id)
-                        l.copy(photos = photos)
-                    }
-                }
+                val list = withContext(Dispatchers.IO) { fetchPage(0) }
                 _publicState.value = ListingsUiState.Success(list)
+                _hasMore.value = list.size == PAGE_SIZE
+                currentOffset = list.size
             } catch (e: Exception) {
                 _publicState.value = ListingsUiState.Error("Caricamento fallito: ${e.message}")
             }
+        }
+    }
+
+    fun loadMorePublicListings() {
+        if (_isLoadingMore.value || !_hasMore.value) return
+        viewModelScope.launch {
+            _isLoadingMore.value = true
+            try {
+                val newItems = withContext(Dispatchers.IO) { fetchPage(currentOffset) }
+                val current = (_publicState.value as? ListingsUiState.Success)?.listings ?: emptyList()
+                _publicState.value = ListingsUiState.Success(current + newItems)
+                _hasMore.value = newItems.size == PAGE_SIZE
+                currentOffset += newItems.size
+            } catch (e: Exception) {
+                _toast.value = "Errore caricamento: ${e.message}"
+            } finally {
+                _isLoadingMore.value = false
+            }
+        }
+    }
+
+    private suspend fun fetchPage(offset: Int): List<com.renttrack.app.data.model.Listing> {
+        val listingsJson = httpGet(
+            "$baseUrl/rest/v1/listings?is_active=eq.true&order=created_at.desc&limit=$PAGE_SIZE&offset=$offset",
+            anonKey
+        )
+        val listings = parseListings(JSONArray(listingsJson))
+        return listings.map { l ->
+            val photosJson = httpGet(
+                "$baseUrl/rest/v1/listing_photos?listing_id=eq.${l.id}&order=display_order.asc",
+                anonKey
+            )
+            val photos = parsePhotos(JSONArray(photosJson), l.id)
+            l.copy(photos = photos)
         }
     }
 

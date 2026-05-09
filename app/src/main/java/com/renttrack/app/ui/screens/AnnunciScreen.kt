@@ -19,6 +19,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -37,13 +38,16 @@ fun AnnunciScreen(
     onLoginClick: () -> Unit,
     onCreaAnnuncio: () -> Unit
 ) {
-    val state by viewModel.publicState.collectAsState()
+    val state        by viewModel.publicState.collectAsState()
+    val isLoadingMore by viewModel.isLoadingMore.collectAsState()
+    val hasMore      by viewModel.hasMore.collectAsState()
+    val listState    = rememberLazyListState()
     val focusManager = LocalFocusManager.current
 
-    var query    by remember { mutableStateOf("") }
-    var maxPrice by remember { mutableStateOf("") }
+    var query         by remember { mutableStateOf("") }
+    var maxPrice      by remember { mutableStateOf("") }
     var onlyFurnished by remember { mutableStateOf(false) }
-    var showFilters by remember { mutableStateOf(false) }
+    var showFilters   by remember { mutableStateOf(false) }
 
     val allListings = (state as? ListingsUiState.Success)?.listings ?: emptyList()
     val listings = allListings.filter { l ->
@@ -56,8 +60,24 @@ fun AnnunciScreen(
     }
     val activeFilters = (if (maxPrice.isNotBlank()) 1 else 0) + (if (onlyFurnished) 1 else 0)
 
+    // Infinite scroll: carica più annunci quando mancano 3 item alla fine
+    // (solo quando non ci sono filtri attivi — i filtri lavorano sui dati già caricati)
+    val shouldLoadMore = remember {
+        derivedStateOf {
+            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            val total = listState.layoutInfo.totalItemsCount
+            lastVisible >= total - 3 && total > 0
+        }
+    }
+    LaunchedEffect(shouldLoadMore.value) {
+        if (shouldLoadMore.value && query.isBlank() && activeFilters == 0) {
+            viewModel.loadMorePublicListings()
+        }
+    }
+
     Scaffold(containerColor = DarkBg) { padding ->
         LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(bottom = 80.dp)
         ) {
@@ -309,6 +329,31 @@ fun AnnunciScreen(
                                     listing = listing,
                                     onClick = { onListingClick(listing) }
                                 )
+                            }
+                        }
+                        // ── Footer paginazione ─────────────────────────────
+                        item {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                when {
+                                    isLoadingMore -> {
+                                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                            verticalAlignment = Alignment.CenterVertically) {
+                                            CircularProgressIndicator(color = Cyan400,
+                                                strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
+                                            Text("Caricamento…", color = TextMuted,
+                                                style = MaterialTheme.typography.labelSmall)
+                                        }
+                                    }
+                                    !hasMore && listings.size > 1 -> {
+                                        Text("✓ Hai visto tutti gli annunci",
+                                            color = TextMuted,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            textAlign = TextAlign.Center)
+                                    }
+                                }
                             }
                         }
                     }
