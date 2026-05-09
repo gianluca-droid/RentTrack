@@ -14,6 +14,10 @@ sealed class Screen(
 ) {
     data object Login               : Screen("login",              "Accedi",           "",                     Icons.Filled.Lock,         Icons.Filled.Lock)
     data object Onboarding          : Screen("onboarding",          "Benvenuto",        "",                     Icons.Filled.Home,         Icons.Filled.Home)
+    data object Annunci             : Screen("annunci",             "Annunci",          "Trova affitto",         Icons.Filled.Search,       Icons.Filled.Search)
+    data object DettaglioAnnuncio   : Screen("dettaglio_annuncio",  "Annuncio",         "",                     Icons.Filled.Home,         Icons.Filled.Home)
+    data object CreaAnnuncio        : Screen("crea_annuncio",       "Pubblica",         "",                     Icons.Filled.Add,          Icons.Filled.Add)
+    data object MieiAnnunci         : Screen("miei_annunci",        "I miei annunci",   "",                     Icons.Filled.List,         Icons.Filled.List)
     data object CondominioSelector : Screen("condominio_selector", "Le mie proprietà", "Seleziona immobile",    Icons.Filled.Business,     Icons.Outlined.Business)
     data object Dashboard           : Screen("dashboard",           "Casa",             "Panoramica affitti",    Icons.Filled.Home,         Icons.Outlined.Home)
     data object Tenants             : Screen("units",               "Inquilini",        "Gestione inquilini",    Icons.Filled.People,       Icons.Outlined.PeopleOutline)

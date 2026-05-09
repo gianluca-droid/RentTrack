@@ -24,6 +24,8 @@ import com.renttrack.app.ui.theme.*
 import com.renttrack.app.viewmodel.AuthViewModel
 import com.renttrack.app.viewmodel.AuthViewModelFactory
 import com.renttrack.app.viewmodel.AuthState
+import com.renttrack.app.viewmodel.ListingsViewModel
+import com.renttrack.app.viewmodel.ListingsViewModelFactory
 import com.renttrack.app.viewmodel.RentViewModel
 
 class MainActivity : ComponentActivity() {
@@ -102,28 +104,32 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
         return
     }
 
-    // ── Auth check ───────────────────────────────────────────────────────
-    val authViewModel: AuthViewModel = viewModel(
-        factory = AuthViewModelFactory(context)
-    )
+    val authViewModel: AuthViewModel = viewModel(factory = AuthViewModelFactory(context))
+    val listingsViewModel: ListingsViewModel = viewModel(factory = ListingsViewModelFactory(context))
     val authState by authViewModel.authState.collectAsState()
     val isLoggedIn = authState is AuthState.LoggedIn
 
     val startDestination = when {
-        !onboardingShown                -> Screen.Onboarding.route
-        !isLoggedIn                     -> Screen.Login.route
-        activeCondominioId > 0L         -> Screen.Dashboard.route
-        else                            -> Screen.CondominioSelector.route
+        !onboardingShown            -> Screen.Onboarding.route
+        isLoggedIn && activeCondominioId > 0L -> Screen.Dashboard.route
+        isLoggedIn                  -> Screen.CondominioSelector.route
+        else                        -> Screen.Annunci.route
     }
 
     val isInSelector   = currentRoute == Screen.CondominioSelector.route
     val isInOnboarding = currentRoute == Screen.Onboarding.route
     val isInLogin      = currentRoute == Screen.Login.route
+    val isInAnnunci    = currentRoute == Screen.Annunci.route
+    val isInDettaglio  = currentRoute == Screen.DettaglioAnnuncio.route
+    val isInCrea       = currentRoute == Screen.CreaAnnuncio.route
+    val isInMiei       = currentRoute == Screen.MieiAnnunci.route
+    val hideChrome     = isInSelector || isInOnboarding || isInLogin ||
+                         isInAnnunci || isInDettaglio || isInCrea || isInMiei
 
     Scaffold(
         containerColor = DarkBg,
         topBar = {
-            if (!isInSelector && !isInOnboarding && !isInLogin) {
+            if (!hideChrome) {
                 val currentScreen = Screen.allScreens.find { it.route == currentRoute } ?: Screen.Dashboard
                 TopAppBar(
                     title = {
@@ -141,6 +147,20 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
                         containerColor = DarkBg, titleContentColor = TextPrimary
                     ),
                     actions = {
+                        // Annunci (feed pubblico)
+                        IconButton(onClick = {
+                            navController.navigate(Screen.Annunci.route) { launchSingleTop = true }
+                        }) {
+                            Icon(Icons.Filled.Search, "Annunci", tint = TextMuted)
+                        }
+                        // I miei annunci
+                        if (isLoggedIn) {
+                            IconButton(onClick = {
+                                navController.navigate(Screen.MieiAnnunci.route) { launchSingleTop = true }
+                            }) {
+                                Icon(Icons.Filled.Home, "I miei annunci", tint = TextMuted)
+                            }
+                        }
                         // Guida — riapre l'onboarding
                         IconButton(
                             onClick = {
@@ -214,7 +234,7 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
             }
         },
         bottomBar = {
-            if (!isInSelector && !isInOnboarding && !isInLogin) {
+            if (!hideChrome) {
                 NavigationBar(
                     containerColor = DarkSurface,
                     contentColor = TextPrimary,
@@ -306,6 +326,48 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
             enterTransition  = { fadeIn() },
             exitTransition   = { fadeOut() }
         ) {
+            composable(Screen.Annunci.route) {
+                AnnunciScreen(
+                    viewModel = listingsViewModel,
+                    isLoggedIn = isLoggedIn,
+                    onListingClick = { listing ->
+                        listingsViewModel.loadPublicListings()
+                        navController.currentBackStackEntry
+                            ?.savedStateHandle?.set("listing", listing)
+                        navController.navigate(Screen.DettaglioAnnuncio.route)
+                    },
+                    onLoginClick = {
+                        navController.navigate(Screen.Login.route)
+                    },
+                    onCreaAnnuncio = {
+                        navController.navigate(Screen.CreaAnnuncio.route)
+                    }
+                )
+            }
+            composable(Screen.DettaglioAnnuncio.route) { backStack ->
+                val listing = navController.previousBackStackEntry
+                    ?.savedStateHandle?.get<com.renttrack.app.data.model.Listing>("listing")
+                if (listing != null) {
+                    DettaglioAnnuncioScreen(
+                        listing = listing,
+                        viewModel = listingsViewModel,
+                        onBack = { navController.popBackStack() }
+                    )
+                }
+            }
+            composable(Screen.CreaAnnuncio.route) {
+                CreaAnnuncioScreen(
+                    viewModel = listingsViewModel,
+                    onBack = { navController.popBackStack() }
+                )
+            }
+            composable(Screen.MieiAnnunci.route) {
+                MieiAnnunciScreen(
+                    viewModel = listingsViewModel,
+                    onCreaAnnuncio = { navController.navigate(Screen.CreaAnnuncio.route) },
+                    onBack = { navController.popBackStack() }
+                )
+            }
             composable(Screen.Login.route) {
                 LoginScreen(
                     viewModel = authViewModel,
