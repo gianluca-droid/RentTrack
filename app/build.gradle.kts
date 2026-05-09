@@ -2,6 +2,7 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("com.google.devtools.ksp")
+    id("org.jetbrains.kotlin.plugin.serialization")
 }
 
 android {
@@ -97,5 +98,16 @@ dependencies {
     // Debug
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
+
+    // ── Supabase — verrà abilitato nella prossima sessione ──────────────
+    // implementation("io.github.jan-tennert.supabase:gotrue-kt:2.5.4")
+    // implementation("io.github.jan-tennert.supabase:postgrest-kt:2.5.4")
+    // implementation("io.ktor:ktor-client-android:2.3.12")
+    // implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
+
+    // ── Google Sign-In (Credential Manager — nativo Android) ─────────
+    implementation("androidx.credentials:credentials:1.3.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
 }
 
