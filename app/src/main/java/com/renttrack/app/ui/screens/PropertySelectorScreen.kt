@@ -38,14 +38,16 @@ fun PropertySelectorScreen(
     viewModel: RentViewModel,
     onCondominioSelected: (Long) -> Unit,
     onResidentAccess: () -> Unit = {},
-    onShowOnboarding: () -> Unit = {}
+    onShowOnboarding: () -> Unit = {},
+    onLogout: () -> Unit = {}
 ) {
     val proprieta by viewModel.allCondomini.collectAsState()
     val summaryMap by viewModel.propertySummaryMap.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
-    var showAddSheet by remember { mutableStateOf(false) }
-    var toEdit by remember { mutableStateOf<Condominio?>(null) }
-    var toDelete by remember { mutableStateOf<Condominio?>(null) }
+    var showAddSheet    by remember { mutableStateOf(false) }
+    var toEdit          by remember { mutableStateOf<Condominio?>(null) }
+    var toDelete        by remember { mutableStateOf<Condominio?>(null) }
+    var showLogoutDialog by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize().background(DarkBg)) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -73,21 +75,38 @@ fun PropertySelectorScreen(
                         color = TextMuted
                     )
                 }
-                // ── Pulsante "Come funziona" ────────────────────────
-                IconButton(
-                    onClick = onShowOnboarding,
-                    modifier = Modifier.align(Alignment.TopEnd)
+                // ── Pulsanti in alto a destra ──────────────────────
+                Row(
+                    modifier = Modifier.align(Alignment.TopEnd),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Surface(
-                        shape = androidx.compose.foundation.shape.CircleShape,
-                        color = Cyan400.copy(alpha = 0.12f)
-                    ) {
-                        Icon(
-                            Icons.Filled.HelpOutline,
-                            contentDescription = "Come funziona RentTrack",
-                            tint = Cyan400,
-                            modifier = Modifier.padding(8.dp).size(20.dp)
-                        )
+                    // Guida
+                    IconButton(onClick = onShowOnboarding) {
+                        Surface(
+                            shape = androidx.compose.foundation.shape.CircleShape,
+                            color = Cyan400.copy(alpha = 0.12f)
+                        ) {
+                            Icon(
+                                Icons.Filled.HelpOutline,
+                                contentDescription = "Come funziona RentTrack",
+                                tint = Cyan400,
+                                modifier = Modifier.padding(8.dp).size(20.dp)
+                            )
+                        }
+                    }
+                    // Logout
+                    IconButton(onClick = { showLogoutDialog = true }) {
+                        Surface(
+                            shape = androidx.compose.foundation.shape.CircleShape,
+                            color = Red400.copy(alpha = 0.12f)
+                        ) {
+                            Icon(
+                                Icons.Filled.Logout,
+                                contentDescription = "Esci dall'account",
+                                tint = Red400,
+                                modifier = Modifier.padding(8.dp).size(20.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -190,6 +209,28 @@ fun PropertySelectorScreen(
             onConfirm = { nome, indirizzo, citta, note ->
                 viewModel.updateCondominio(prop.copy(nome = nome, indirizzo = indirizzo, citta = citta, note = note))
                 toEdit = null
+            }
+        )
+    }
+
+    // ── Dialog logout ─────────────────────────────────────────────────────
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            containerColor   = DarkSurface,
+            icon    = { Icon(Icons.Filled.Logout, null, tint = Red400) },
+            title   = { Text("Esci dall'account", color = TextPrimary, fontWeight = FontWeight.Bold) },
+            text    = { Text("Vuoi davvero uscire?", color = TextSecondary) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showLogoutDialog = false
+                    onLogout()
+                }) { Text("Esci", color = Red400, fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutDialog = false }) {
+                    Text("Rimani qui", color = TextSecondary)
+                }
             }
         )
     }

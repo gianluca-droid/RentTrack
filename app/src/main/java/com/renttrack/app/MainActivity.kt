@@ -340,6 +340,12 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
                         navController.navigate(Screen.Onboarding.route) {
                             launchSingleTop = true
                         }
+                    },
+                    onLogout = {
+                        authViewModel.signOut()
+                        navController.navigate(Screen.Login.route) {
+                            popUpTo(0) { inclusive = true }
+                        }
                     }
                 )
             }
