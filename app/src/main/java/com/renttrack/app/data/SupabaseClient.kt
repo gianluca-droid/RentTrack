@@ -23,7 +23,8 @@ object AppSupabase {
             supabaseKey = SUPABASE_ANON_KEY
         ) {
             install(Postgrest)
-            // TODO: aggiungere GoTrue (auth) quando risolto conflict API gotrue-kt
+            // Auth gestita via HTTP REST diretto in AuthViewModel (Supabase /auth/v1/).
+            // Il plugin GoTrue del SDK non viene usato per evitare conflitti di versione.
         }
     }
 }
