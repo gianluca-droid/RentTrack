@@ -394,6 +394,9 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
                         navController.navigate(dest) {
                             popUpTo(Screen.Login.route) { inclusive = true }
                         }
+                    },
+                    onShowHelp = {
+                        navController.navigate(Screen.Onboarding.route) { launchSingleTop = true }
                     }
                 )
             }

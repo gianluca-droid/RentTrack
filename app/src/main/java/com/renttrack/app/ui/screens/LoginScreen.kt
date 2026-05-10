@@ -35,7 +35,8 @@ import com.renttrack.app.viewmodel.AuthViewModel
 @Composable
 fun LoginScreen(
     viewModel: AuthViewModel,
-    onLoginSuccess: () -> Unit
+    onLoginSuccess: () -> Unit,
+    onShowHelp: () -> Unit = {}
 ) {
     val authState by viewModel.authState.collectAsState()
     val context = LocalContext.current
@@ -194,6 +195,19 @@ fun LoginScreen(
                 )
             )
     ) {
+        // Pulsante "?" in alto a destra
+        IconButton(
+            onClick = onShowHelp,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 12.dp, end = 8.dp)
+        ) {
+            Icon(
+                Icons.Filled.HelpOutline,
+                contentDescription = "Come funziona",
+                tint = TextMuted
+            )
+        }
         // ── Decorazione sfondo ────────────────────────────────────────────
         Box(
             modifier = Modifier
