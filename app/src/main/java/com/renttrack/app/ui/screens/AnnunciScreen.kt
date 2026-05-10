@@ -318,22 +318,26 @@ fun AnnunciScreen(
                             }
                         }
                     } else {
-                        // Prima card in grande (featured)
-                        item {
-                            FeaturedListingCard(
-                                listing = listings.first(),
-                                onClick = { onListingClick(listings.first()) }
-                            )
-                            Spacer(Modifier.height(4.dp))
-                        }
-                        // Resto delle card
-                        if (listings.size > 1) {
-                            items(listings.drop(1)) { listing ->
-                                ListingCard(
-                                    listing = listing,
-                                    onClick = { onListingClick(listing) }
+                        val featuredListings = listings.filter { it.isFeatured }
+                        val regularListings  = listings.filter { !it.isFeatured }
+
+                        // Card grande solo per annunci promossi (is_featured = true)
+                        featuredListings.forEach { featured ->
+                            item(key = "featured_${featured.id}") {
+                                FeaturedListingCard(
+                                    listing = featured,
+                                    onClick  = { onListingClick(featured) }
                                 )
+                                Spacer(Modifier.height(4.dp))
                             }
+                        }
+
+                        // Tutti gli altri in formato normale
+                        items(regularListings, key = { it.id }) { listing ->
+                            ListingCard(
+                                listing = listing,
+                                onClick  = { onListingClick(listing) }
+                            )
                         }
                         // ── Footer paginazione ─────────────────────────────
                         item {
