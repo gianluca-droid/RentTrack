@@ -43,28 +43,28 @@ private val onboardingPages = listOf(
         icon        = Icons.Filled.Home,
         title       = "Benvenuto in RentTrack",
         subtitle    = "Il gestionale per proprietari di casa",
-        description = "Dimentica fogli Excel e quaderni di carta. Con RentTrack hai tutto quello che ti serve direttamente sul tuo smartphone.",
+        description = "Accedi in un tap con Google o con email e password. I tuoi dati sono al sicuro nel cloud — sempre disponibili, su qualsiasi dispositivo.",
         accentColor = Cyan400
+    ),
+    OnboardingPage(
+        icon        = Icons.Filled.Storefront,
+        title       = "Pubblica la tua vetrina",
+        subtitle    = "Annunci online per i tuoi immobili",
+        description = "Crea annunci pubblici per le tue proprietà libere con foto, prezzo e dettagli. Gli interessati possono contattarti direttamente dall'app.",
+        accentColor = Color(0xFF7C83FD)
     ),
     OnboardingPage(
         icon        = Icons.Filled.Business,
         title       = "Gestisci le proprietà",
         subtitle    = "Immobili, unità e inquilini",
-        description = "Aggiungi i tuoi immobili, crea le unità abitative e registra ogni inquilino con i dettagli del contratto in pochi tap.",
-        accentColor = Color(0xFF7C83FD)
+        description = "Aggiungi i tuoi immobili, crea le unità abitative e registra ogni inquilino con i dettagli del contratto. Tutto organizzato in un unico posto.",
+        accentColor = Green400
     ),
     OnboardingPage(
         icon        = Icons.Filled.EuroSymbol,
         title       = "Monitora i pagamenti",
         subtitle    = "Affitti, spese e report finanziari",
-        description = "Genera avvisi di pagamento mensili, registra le spese di manutenzione e ottieni report finanziari con export CSV.",
-        accentColor = Green400
-    ),
-    OnboardingPage(
-        icon        = Icons.Filled.NotificationsActive,
-        title       = "Tutto sotto controllo",
-        subtitle    = "Scadenze, morosità e notifiche",
-        description = "Ricevi avvisi automatici per contratti in scadenza, monitora la morosità e mantieni sempre il controllo dei tuoi affitti.",
+        description = "Genera avvisi di pagamento mensili, registra le spese di manutenzione e ottieni report finanziari con export CSV. Morosità sempre sotto controllo.",
         accentColor = Amber400
     )
 )
