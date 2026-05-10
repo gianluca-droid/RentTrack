@@ -161,7 +161,7 @@ class ListingsViewModel(
 
     private suspend fun fetchPage(offset: Int): List<com.renttrack.app.data.model.Listing> {
         val listingsJson = httpGet(
-            "$baseUrl/rest/v1/listings?is_active=eq.true&order=created_at.desc&limit=$PAGE_SIZE&offset=$offset",
+            "$baseUrl/rest/v1/listings?is_active=eq.true&order=is_featured.desc,created_at.desc&limit=$PAGE_SIZE&offset=$offset",
             anonKey
         )
         val listings = parseListings(JSONArray(listingsJson))
@@ -181,9 +181,12 @@ class ListingsViewModel(
             _myListingsLoading.value = true
             try {
                 val token = authToken ?: return@launch
+                // Filtra per landlord_id estratto dal JWT → ogni proprietario vede solo i propri annunci
+                val userId = getUserIdFromToken(token)
+                    ?: run { _toast.value = "Errore lettura utente"; return@launch }
                 val list = withContext(Dispatchers.IO) {
                     val listingsJson = httpGet(
-                        "$baseUrl/rest/v1/listings?order=created_at.desc",
+                        "$baseUrl/rest/v1/listings?landlord_id=eq.$userId&order=is_featured.desc,created_at.desc",
                         token
                     )
                     val listings = parseListings(JSONArray(listingsJson))
@@ -261,6 +264,27 @@ class ListingsViewModel(
     }
 
     // ── Attiva / disattiva annuncio ───────────────────────────────────────────
+
+    /** Imposta o revoca la promozione "In evidenza" su un annuncio.
+     *  In futuro questo sarà collegato al pagamento: il backend attiverà
+     *  is_featured=true e scriverà featured_until dopo la conferma di pagamento.
+     *  Per ora il toggle è manuale (solo uso interno/admin). */
+    fun toggleFeatured(listingId: String, current: Boolean) {
+        viewModelScope.launch {
+            try {
+                val token = authToken ?: return@launch
+                withContext(Dispatchers.IO) {
+                    httpPost(
+                        "$baseUrl/rest/v1/listings?id=eq.$listingId", token,
+                        """{"is_featured":${!current}}""", method = "PATCH"
+                    )
+                }
+                loadMyListings()
+                _toast.value = if (!current) "⭐ Annuncio messo in evidenza!" else "Promozione rimossa"
+            } catch (e: Exception) { _toast.value = "Errore: ${e.message}" }
+        }
+    }
+
     fun toggleActive(listingId: String, current: Boolean) {
         viewModelScope.launch {
             try {
@@ -498,6 +522,8 @@ class ListingsViewModel(
                     contactWhatsapp = o.optString("contact_whatsapp"),
                     isActive = o.optBoolean("is_active", true),
                     isAvailable = o.optBoolean("is_available", true),
+                    isFeatured = o.optBoolean("is_featured", false),
+                    featuredUntil = o.optString("featured_until").takeIf { it.isNotBlank() },
                     createdAt = o.optString("created_at"),
                     photos = photos
                 )

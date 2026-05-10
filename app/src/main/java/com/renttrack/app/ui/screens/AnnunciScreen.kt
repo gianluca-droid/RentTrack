@@ -245,7 +245,8 @@ fun AnnunciScreen(
                     ) {
                         Text(
                             if (listings.isEmpty()) "Nessun annuncio trovato"
-                            else "${listings.size} annunci trovati",
+                            else if (query.isBlank() && activeFilters == 0) "${allListings.size} annunci trovati"
+                            else "${listings.size} risultati",
                             color = TextMuted, style = MaterialTheme.typography.bodySmall
                         )
                         if (query.isNotBlank() || activeFilters > 0) {
@@ -405,11 +406,14 @@ fun FeaturedListingCard(listing: Listing, onClick: () -> Unit) {
                 modifier = Modifier.align(Alignment.TopStart).padding(14.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Surface(shape = RoundedCornerShape(8.dp), color = Cyan400) {
-                    Text("✨ In evidenza",
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                        color = DarkBg, fontWeight = FontWeight.ExtraBold,
-                        style = MaterialTheme.typography.labelSmall)
+                // Badge "In evidenza" SOLO se l'annuncio è pagato/promosso
+                if (listing.isFeatured) {
+                    Surface(shape = RoundedCornerShape(8.dp), color = Cyan400) {
+                        Text("✨ In evidenza",
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                            color = DarkBg, fontWeight = FontWeight.ExtraBold,
+                            style = MaterialTheme.typography.labelSmall)
+                    }
                 }
                 if (!listing.isAvailable) {
                     Surface(shape = RoundedCornerShape(8.dp), color = Amber400.copy(alpha = 0.9f)) {

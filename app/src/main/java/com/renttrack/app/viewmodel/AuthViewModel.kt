@@ -63,10 +63,13 @@ class AuthViewModel(private val prefs: SharedPreferences) : ViewModel() {
                 }
                 if (result.has("access_token")) {
                     val token     = result.getString("access_token")
-                    val userEmail = result.optJSONObject("user")?.optString("email") ?: email
+                    val userObj   = result.optJSONObject("user")
+                    val userEmail = userObj?.optString("email") ?: email
+                    val userId    = userObj?.optString("id") ?: ""
                     prefs.edit()
                         .putString("auth_token", token)
                         .putString("auth_email", userEmail)
+                        .putString("auth_user_id", userId)
                         .apply()
                     _authState.value = AuthState.LoggedIn(userEmail)
                 } else {
@@ -102,10 +105,13 @@ class AuthViewModel(private val prefs: SharedPreferences) : ViewModel() {
                     // Email confirmation DISABILITATA → access_token diretto
                     result.has("access_token") -> {
                         val token     = result.getString("access_token")
-                        val userEmail = result.optJSONObject("user")?.optString("email") ?: email
+                        val userObj   = result.optJSONObject("user")
+                        val userEmail = userObj?.optString("email") ?: email
+                        val userId    = userObj?.optString("id") ?: ""
                         prefs.edit()
                             .putString("auth_token", token)
                             .putString("auth_email", userEmail)
+                            .putString("auth_user_id", userId)
                             .apply()
                         _authState.value = AuthState.LoggedIn(userEmail)
                     }
@@ -127,7 +133,11 @@ class AuthViewModel(private val prefs: SharedPreferences) : ViewModel() {
 
     // ── Logout ────────────────────────────────────────────────────────────────
     fun signOut() {
-        prefs.edit().remove("auth_token").remove("auth_email").apply()
+        prefs.edit()
+            .remove("auth_token")
+            .remove("auth_email")
+            .remove("auth_user_id")
+            .apply()
         _authState.value = AuthState.LoggedOut
     }
 

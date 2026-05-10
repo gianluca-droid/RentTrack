@@ -146,7 +146,7 @@ fun TenantsScreen(viewModel: RentViewModel) {
 
         GradientFab(
             icon = Icons.Filled.Add,
-            contentDescription = "Aggiungi inquilino",
+            contentDescription = "Nuovo appartamento / inquilino",
             onClick = { editingUnit = null; showDialog = true },
             modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)
         )
@@ -310,8 +310,30 @@ private fun TenantCard(
             }
         }
 
-        // Bottone "Cambia Inquilino"
-        Spacer(Modifier.height(6.dp))
+        // ── Sezione cambio inquilino ─────────────────────────────
+        Spacer(Modifier.height(10.dp))
+        HorizontalDivider(
+            color = Amber400.copy(alpha = 0.15f)
+        )
+        Spacer(Modifier.height(8.dp))
+        // Label esplicativa
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Icon(Icons.Filled.SwapHoriz, null, tint = Amber400, modifier = Modifier.size(14.dp))
+            Text(
+                "Fine locazione",
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = Amber400
+            )
+        }
+        Text(
+            "Archivia l'inquilino attuale e registra il nuovo subentrante",
+            style = MaterialTheme.typography.labelSmall,
+            color = TextMuted,
+            modifier = Modifier.padding(start = 2.dp, top = 2.dp, bottom = 6.dp)
+        )
         OutlinedButton(
             onClick = onChangeTenant,
             modifier = Modifier.fillMaxWidth(),
@@ -321,7 +343,10 @@ private fun TenantCard(
         ) {
             Icon(Icons.Filled.SwapHoriz, null, modifier = Modifier.size(14.dp))
             Spacer(Modifier.width(6.dp))
-            Text("Cambia inquilino", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold))
+            Text(
+                "Cambio inquilino (subentro)",
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold)
+            )
         }
 
         // Sezione storico inquilini collassabile
@@ -555,7 +580,7 @@ private fun TenantFormDialog(unit: CondoUnit?, condominioId: Long, onDismiss: ()
                         ownerName    = ownerName,
                         ownerEmail   = ownerEmail,
                         ownerPhone   = ownerPhone,
-                        scala        = "",
+                        scala        = unit?.scala ?: "",
                         leaseStartDate     = leaseStart,
                         leaseEndDate       = leaseEnd,
                         paymentDayOfMonth  = paymentDay.toIntOrNull()?.coerceIn(1, 28) ?: 5
@@ -626,6 +651,32 @@ private fun DatePickerField(label: String, dateMillis: Long?, onDateSelected: (L
     }
 }
 
+// ─── Badge step numerato ──────────────────────────────────────────────
+@Composable
+private fun StepBadge(number: String, label: String, color: Color) {
+    Surface(
+        shape = RoundedCornerShape(6.dp),
+        color = color.copy(alpha = 0.12f)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(5.dp)
+        ) {
+            Surface(
+                shape = CircleShape,
+                color = color,
+                modifier = Modifier.size(16.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(number, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.ExtraBold), color = DarkBg)
+                }
+            }
+            Text(label, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold), color = color)
+        }
+    }
+}
+
 // ─── Dialog Cambia Inquilino ───────────────────────────────────────────
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -649,20 +700,44 @@ private fun ChangeTenantDialog(
         containerColor = DarkSurface,
         icon = { Icon(Icons.Filled.SwapHoriz, null, tint = Amber400) },
         title = {
-            Column {
-                Text("Cambia inquilino", color = TextPrimary, fontWeight = FontWeight.Bold)
-                Text("Int. ${unit.number}", style = MaterialTheme.typography.bodySmall, color = TextMuted)
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("Cambio inquilino", color = TextPrimary, fontWeight = FontWeight.Bold)
+                Text(
+                    "Appartamento: ${unit.number}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextMuted
+                )
+                // Step visivi
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    StepBadge("1", "Archivia uscente", Color(0xFFFF6B6B))
+                    Icon(Icons.Filled.ArrowForward, null, tint = TextMuted, modifier = Modifier.size(12.dp))
+                    StepBadge("2", "Inserisci nuovo", Cyan400)
+                }
             }
         },
         text = {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                // ── Uscita inquilino attuale ──
+                // ── Step 1: Uscita inquilino attuale ──
                 item {
-                    Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFFFF6B6B).copy(alpha = 0.08f)) {
-                        Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text("Inquilino uscente", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold), color = Color(0xFFFF6B6B))
-                            Text(unit.ownerName, style = MaterialTheme.typography.bodyMedium, color = TextPrimary)
-                            if (unit.millesimi > 0) Text("Canone: ${Formatters.currency(unit.millesimi)}/mese", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                    Surface(shape = RoundedCornerShape(10.dp), color = Color(0xFFFF6B6B).copy(alpha = 0.08f)) {
+                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Surface(shape = CircleShape, color = Color(0xFFFF6B6B), modifier = Modifier.size(16.dp)) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Text("1", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.ExtraBold), color = DarkBg)
+                                    }
+                                }
+                                Text("Chi lascia l'appartamento", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold), color = Color(0xFFFF6B6B))
+                            }
+                            Text(unit.ownerName, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold), color = TextPrimary)
+                            if (unit.millesimi > 0) Text("Canone attuale: ${Formatters.currency(unit.millesimi)}/mese", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                            if (unit.leaseEndDate != null) Text(
+                                "Contratto fino al: ${dateFmt.format(java.util.Date(unit.leaseEndDate!!))}",
+                                style = MaterialTheme.typography.labelSmall, color = TextMuted
+                            )
                         }
                     }
                 }
@@ -676,10 +751,17 @@ private fun ChangeTenantDialog(
                     )
                 }
 
-                // ── Nuovo inquilino ──
+                // ── Step 2: Nuovo inquilino ──
                 item { Spacer(Modifier.height(4.dp)) }
                 item {
-                    Text("Nuovo inquilino *", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold), color = Cyan400)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Surface(shape = CircleShape, color = Cyan400, modifier = Modifier.size(16.dp)) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text("2", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.ExtraBold), color = DarkBg)
+                            }
+                        }
+                        Text("Chi subentra nell'appartamento", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold), color = Cyan400)
+                    }
                 }
                 item {
                     OutlinedTextField(

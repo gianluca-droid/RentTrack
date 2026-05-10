@@ -590,8 +590,9 @@ class RentViewModel(application: Application) : AndroidViewModel(application) {
 
             // ── 1. Cedolini CSV ──────────────────────────────────────
             val cedFile = File(dir, "cedolini_${condName}_$stamp.csv")
-            cedFile.bufferedWriter().use { w ->
-                w.write("Periodo;Inquilino;Appartamento;Totale (€);Stato;Data Pagamento;Importo Pagato (€)\n")
+            cedFile.bufferedWriter(Charsets.UTF_8).use { w ->
+                w.write("\uFEFF") // UTF-8 BOM — necessario per Excel su Windows
+                w.write("Periodo;Inquilino;Appartamento;Totale (EUR);Stato;Data Pagamento;Importo Pagato (EUR)\n")
                 cedolini.value.sortedBy { it.dueDate }.forEach { c ->
                     val unit = unitMap[c.unitId]
                     val paidDate = c.paidDate?.let { fmt.format(Date(it)) } ?: ""
@@ -602,8 +603,9 @@ class RentViewModel(application: Application) : AndroidViewModel(application) {
 
             // ── 2. Spese CSV ─────────────────────────────────────────
             val expFile = File(dir, "spese_${condName}_$stamp.csv")
-            expFile.bufferedWriter().use { w ->
-                w.write("Data;Categoria;Descrizione;Importo (€);Note\n")
+            expFile.bufferedWriter(Charsets.UTF_8).use { w ->
+                w.write("\uFEFF") // UTF-8 BOM — necessario per Excel su Windows
+                w.write("Data;Categoria;Descrizione;Importo (EUR);Note\n")
                 expenses.value.sortedBy { it.date }.forEach { e ->
                     w.write("${fmt.format(Date(e.date))};${e.category};${e.description};" +
                         "${"%,.2f".format(e.amount)};${e.notes}\n")

@@ -111,6 +111,7 @@ fun MieiAnnunciScreen(
                                 listing = listing,
                                 onToggleActive = { viewModel.toggleActive(listing.id, listing.isActive) },
                                 onToggleAvailable = { viewModel.toggleAvailable(listing.id, listing.isAvailable) },
+                                onToggleFeatured = { viewModel.toggleFeatured(listing.id, listing.isFeatured) },
                                 onDelete = { toDelete = listing }
                             )
                         }
@@ -161,6 +162,7 @@ private fun MyListingCard(
     listing: Listing,
     onToggleActive: () -> Unit,
     onToggleAvailable: () -> Unit,
+    onToggleFeatured: () -> Unit,
     onDelete: () -> Unit
 ) {
     Surface(
@@ -196,8 +198,19 @@ private fun MyListingCard(
 
             // Info
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(listing.title, color = TextPrimary, fontWeight = FontWeight.SemiBold,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(listing.title, color = TextPrimary, fontWeight = FontWeight.SemiBold,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                    // Badge In evidenza
+                    if (listing.isFeatured) {
+                        Surface(shape = RoundedCornerShape(6.dp), color = Cyan400.copy(alpha = 0.2f)) {
+                            Text("⭐ In evidenza",
+                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
+                                color = Cyan400, style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
                 Text("${listing.city}${if (listing.zone.isNotBlank()) " · ${listing.zone}" else ""}",
                     color = TextMuted, style = MaterialTheme.typography.bodySmall)
                 Text("€${listing.priceMonthly.toInt()}/mese",
@@ -233,6 +246,15 @@ private fun MyListingCard(
 
             // Azioni
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                // Toggle "In evidenza" (futuro paywall)
+                IconButton(onClick = onToggleFeatured, modifier = Modifier.size(36.dp)) {
+                    Icon(
+                        Icons.Filled.Star,
+                        contentDescription = if (listing.isFeatured) "Rimuovi promozione" else "Metti in evidenza",
+                        tint = if (listing.isFeatured) Cyan400 else TextMuted.copy(alpha = 0.4f),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
                 // Toggle libero/occupato
                 IconButton(onClick = onToggleAvailable, modifier = Modifier.size(36.dp)) {
                     Icon(

@@ -131,15 +131,31 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
         topBar = {
             if (!hideChrome) {
                 val currentScreen = Screen.allScreens.find { it.route == currentRoute } ?: Screen.Dashboard
+
+                // Stato per il menu overflow
+                var showOverflowMenu by remember { mutableStateOf(false) }
+                var showLogoutDialog  by remember { mutableStateOf(false) }
+
                 TopAppBar(
                     title = {
-                        Column {
-                            Text(currentScreen.title,
-                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold))
+                        Column(modifier = Modifier.padding(end = 4.dp)) {
+                            Text(
+                                currentScreen.title,
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                maxLines = 1
+                            )
                             activeCondominio?.let {
-                                Text("🏠 ${it.nome}",
+                                Text(
+                                    buildString {
+                                        append("🏠 ${it.nome}")
+                                        if (it.indirizzo.isNotBlank()) append("  ${it.indirizzo}")
+                                        if (it.citta.isNotBlank()) append(", ${it.citta}")
+                                    },
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = Cyan400)
+                                    color = Cyan400,
+                                    maxLines = 1,
+                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                )
                             }
                         }
                     },
@@ -147,64 +163,59 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
                         containerColor = DarkBg, titleContentColor = TextPrimary
                     ),
                     actions = {
-                        // Guida — riapre l'onboarding
-                        IconButton(
-                            onClick = {
-                                navController.navigate(Screen.Onboarding.route) {
-                                    launchSingleTop = true
-                                }
-                            }
-                        ) {
-                            Icon(
-                                Icons.Filled.HelpOutline,
-                                contentDescription = "Come funziona",
-                                tint = TextMuted
-                            )
-                        }
-                        // Cambia proprietà
-                        TextButton(
-                            onClick = { showSwitchPropertyDialog = true },
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-                        ) {
-                            Icon(Icons.Filled.Business, null, tint = TextSecondary, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text("Proprietà", color = TextSecondary, style = MaterialTheme.typography.labelMedium)
-                        }
-                        // Annunci
-                        TextButton(
-                            onClick = {
-                                navController.navigate(Screen.Annunci.route) {
-                                    launchSingleTop = true
-                                }
-                            },
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-                        ) {
-                            Icon(Icons.Filled.Apartment, null, tint = TextSecondary, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text("Annunci", color = TextSecondary, style = MaterialTheme.typography.labelMedium)
-                        }
-                        // Report
+                        // Report — icona compatta, visibile solo quando NON si è già su Report
                         if (currentRoute != Screen.Reports.route) {
-                            TextButton(
-                                onClick = {
-                                    navController.navigate(Screen.Reports.route) {
-                                        popUpTo(Screen.Dashboard.route) { saveState = true }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
-                                },
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-                            ) {
-                                Icon(Icons.Filled.BarChart, null, tint = TextSecondary, modifier = Modifier.size(16.dp))
-                                Spacer(Modifier.width(4.dp))
-                                Text("Report", color = TextSecondary, style = MaterialTheme.typography.labelMedium)
+                            IconButton(onClick = {
+                                navController.navigate(Screen.Reports.route) {
+                                    popUpTo(Screen.Dashboard.route) { saveState = true }
+                                    launchSingleTop = true; restoreState = true
+                                }
+                            }) {
+                                Icon(Icons.Filled.BarChart, "Report", tint = TextMuted)
                             }
                         }
-                        // Logout
-                        var showLogoutDialog by remember { mutableStateOf(false) }
-                        IconButton(onClick = { showLogoutDialog = true }) {
-                            Icon(Icons.Filled.Logout, contentDescription = "Logout", tint = TextMuted)
+
+                        // Menu overflow (3 puntini): Proprietà, Guida, Logout
+                        Box {
+                            IconButton(onClick = { showOverflowMenu = true }) {
+                                Icon(Icons.Filled.MoreVert, "Menu", tint = TextMuted)
+                            }
+                            DropdownMenu(
+                                expanded = showOverflowMenu,
+                                onDismissRequest = { showOverflowMenu = false }
+                            ) {
+                                // Cambia proprietà
+                                DropdownMenuItem(
+                                    text = { Text("Cambia proprietà", color = TextPrimary) },
+                                    leadingIcon = { Icon(Icons.Filled.Business, null, tint = Cyan400) },
+                                    onClick = {
+                                        showOverflowMenu = false
+                                        showSwitchPropertyDialog = true
+                                    }
+                                )
+                                // Guida
+                                DropdownMenuItem(
+                                    text = { Text("Come funziona", color = TextPrimary) },
+                                    leadingIcon = { Icon(Icons.Filled.HelpOutline, null, tint = TextSecondary) },
+                                    onClick = {
+                                        showOverflowMenu = false
+                                        navController.navigate(Screen.Onboarding.route) { launchSingleTop = true }
+                                    }
+                                )
+                                HorizontalDivider(color = TextMuted.copy(alpha = 0.15f))
+                                // Logout
+                                DropdownMenuItem(
+                                    text = { Text("Esci", color = Red400) },
+                                    leadingIcon = { Icon(Icons.Filled.Logout, null, tint = Red400) },
+                                    onClick = {
+                                        showOverflowMenu = false
+                                        showLogoutDialog = true
+                                    }
+                                )
+                            }
                         }
+
+                        // Dialog logout
                         if (showLogoutDialog) {
                             AlertDialog(
                                 onDismissRequest = { showLogoutDialog = false },
