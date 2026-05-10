@@ -3,6 +3,7 @@ package com.renttrack.app.ui.screens
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,6 +21,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.*
@@ -36,6 +38,7 @@ fun LoginScreen(
     onLoginSuccess: () -> Unit
 ) {
     val authState by viewModel.authState.collectAsState()
+    val context = LocalContext.current
 
     var email        by remember { mutableStateOf("") }
     var password     by remember { mutableStateOf("") }
@@ -45,8 +48,9 @@ fun LoginScreen(
     val focusManager      = LocalFocusManager.current
     val passwordFocusReq  = remember { FocusRequester() }
 
-    val isLoading = authState is AuthState.Loading
-    val errorMsg  = (authState as? AuthState.Error)?.message
+    val isLoading       = authState is AuthState.Loading
+    val isGoogleLoading = authState is AuthState.GoogleLoading
+    val errorMsg        = (authState as? AuthState.Error)?.message
 
     // Naviga all'app quando il login va a buon fine
     LaunchedEffect(authState) {
@@ -265,7 +269,7 @@ fun LoginScreen(
 
                     Spacer(Modifier.height(4.dp))
 
-                    // Pulsante principale
+                    // Pulsante principale email/password
                     Button(
                         onClick = {
                             focusManager.clearFocus()
@@ -275,7 +279,7 @@ fun LoginScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(52.dp),
-                        enabled = !isLoading && email.isNotBlank() && password.isNotBlank(),
+                        enabled = !isLoading && !isGoogleLoading && email.isNotBlank() && password.isNotBlank(),
                         shape = RoundedCornerShape(14.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Cyan400,
@@ -301,6 +305,70 @@ fun LoginScreen(
                                 text       = if (isRegister) "Crea account" else "Accedi",
                                 fontWeight = FontWeight.Bold,
                                 fontSize   = 16.sp
+                            )
+                        }
+                    }
+
+                    // ── Separatore "oppure" ──
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        HorizontalDivider(modifier = Modifier.weight(1f), color = Color(0xFF2D3748))
+                        Text(
+                            "  oppure  ",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = TextMuted
+                        )
+                        HorizontalDivider(modifier = Modifier.weight(1f), color = Color(0xFF2D3748))
+                    }
+
+                    // ── Pulsante Google Sign-In ──
+                    OutlinedButton(
+                        onClick = { viewModel.signInWithGoogle(context) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp),
+                        enabled = !isLoading && !isGoogleLoading,
+                        shape = RoundedCornerShape(14.dp),
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp, Color(0xFF2D3748)
+                        ),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = Color(0xFF1A1A2E),
+                            contentColor   = TextPrimary
+                        )
+                    ) {
+                        if (isGoogleLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(22.dp),
+                                color    = Cyan400,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            // Logo G di Google (SVG-like con testo)
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = Color.White,
+                                modifier = Modifier.size(22.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(
+                                        "G",
+                                        style = MaterialTheme.typography.labelMedium.copy(
+                                            fontWeight = FontWeight.ExtraBold,
+                                            fontSize = 14.sp
+                                        ),
+                                        color = Color(0xFF4285F4)  // Google blu
+                                    )
+                                }
+                            }
+                            Spacer(Modifier.width(10.dp))
+                            Text(
+                                "Accedi con Google",
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize   = 15.sp,
+                                color      = TextPrimary
                             )
                         }
                     }

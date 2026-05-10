@@ -2,8 +2,13 @@ package com.renttrack.app.viewmodel
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.credentials.CredentialManager
+import androidx.credentials.GetCredentialRequest
+import androidx.credentials.exceptions.GetCredentialException
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,8 +22,9 @@ import java.net.URL
 
 // ─── Auth state ───────────────────────────────────────────────────────────────
 sealed class AuthState {
-    data object Loading   : AuthState()
-    data object LoggedOut : AuthState()
+    data object Loading        : AuthState()
+    data object LoggedOut      : AuthState()
+    data object GoogleLoading  : AuthState()  // attesa Google Sign-In
     data class  LoggedIn(val email: String)  : AuthState()
     data class  Error(val message: String)   : AuthState()
     data class  EmailSent(val email: String) : AuthState()  // dopo registrazione
@@ -26,6 +32,12 @@ sealed class AuthState {
 
 // ─── ViewModel ────────────────────────────────────────────────────────────────
 class AuthViewModel(private val prefs: SharedPreferences) : ViewModel() {
+
+    // Web Client ID Google — da impostare dopo la configurazione in Google Cloud Console
+    // Formato: "XXXXXXXXXX-xxxxxxxxxxxx.apps.googleusercontent.com"
+    companion object {
+        const val GOOGLE_WEB_CLIENT_ID = "763544456219-e4lr7lt8nrqdcdgocfkd35nv6fpt5sed.apps.googleusercontent.com"
+    }
 
     private val _authState = MutableStateFlow<AuthState>(AuthState.Loading)
     val authState: StateFlow<AuthState> = _authState.asStateFlow()
@@ -127,6 +139,64 @@ class AuthViewModel(private val prefs: SharedPreferences) : ViewModel() {
                 }
             } catch (e: Exception) {
                 _authState.value = AuthState.Error("Errore di rete: ${e.message}")
+            }
+        }
+    }
+
+    // ── Google Sign-In ─────────────────────────────────────────────────────────
+    fun signInWithGoogle(context: Context) {
+        if (GOOGLE_WEB_CLIENT_ID.isBlank()) {
+            _authState.value = AuthState.Error("Google Sign-In non ancora configurato. Aggiungi il Web Client ID.")
+            return
+        }
+        viewModelScope.launch {
+            _authState.value = AuthState.GoogleLoading
+            try {
+                // 1. Richiedi credenziale Google tramite Credential Manager
+                val credentialManager = CredentialManager.create(context)
+                val googleIdOption = GetGoogleIdOption.Builder()
+                    .setFilterByAuthorizedAccounts(false)  // mostra tutti gli account Google
+                    .setServerClientId(GOOGLE_WEB_CLIENT_ID)
+                    .setAutoSelectEnabled(false)
+                    .build()
+                val request = GetCredentialRequest.Builder()
+                    .addCredentialOption(googleIdOption)
+                    .build()
+
+                val result = credentialManager.getCredential(context, request)
+                val credential = result.credential
+                val googleIdToken = GoogleIdTokenCredential
+                    .createFrom(credential.data)
+                    .idToken
+
+                // 2. Scambia il Google ID token con Supabase
+                val supabaseResult = withContext(Dispatchers.IO) {
+                    callSupabaseAuth(
+                        endpoint = "$supabaseUrl/auth/v1/token?grant_type=id_token",
+                        body = """{"provider":"google","id_token":"$googleIdToken"}"""
+                    )
+                }
+
+                if (supabaseResult.has("access_token")) {
+                    val token     = supabaseResult.getString("access_token")
+                    val userObj   = supabaseResult.optJSONObject("user")
+                    val userEmail = userObj?.optString("email") ?: "utente Google"
+                    val userId    = userObj?.optString("id") ?: ""
+                    prefs.edit()
+                        .putString("auth_token", token)
+                        .putString("auth_email", userEmail)
+                        .putString("auth_user_id", userId)
+                        .apply()
+                    _authState.value = AuthState.LoggedIn(userEmail)
+                } else {
+                    val msg = supabaseResult.optString("error_description",
+                        supabaseResult.optString("msg", "Accesso con Google non riuscito"))
+                    _authState.value = AuthState.Error(msg)
+                }
+            } catch (e: GetCredentialException) {
+                _authState.value = AuthState.Error("Accesso con Google annullato")
+            } catch (e: Exception) {
+                _authState.value = AuthState.Error("Errore Google Sign-In: ${e.message}")
             }
         }
     }
