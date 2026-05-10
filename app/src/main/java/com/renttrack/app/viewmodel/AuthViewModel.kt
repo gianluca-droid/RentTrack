@@ -213,7 +213,7 @@ class AuthViewModel(private val prefs: SharedPreferences) : ViewModel() {
 
     // ── Reset errore (es. quando si passa da login a registrazione) ───────────
     fun resetError() {
-        if (_authState.value is AuthState.Error) {
+        if (_authState.value is AuthState.Error || _authState.value is AuthState.EmailSent) {
             _authState.value = AuthState.LoggedOut
         }
     }

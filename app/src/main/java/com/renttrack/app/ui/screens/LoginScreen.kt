@@ -50,11 +50,135 @@ fun LoginScreen(
 
     val isLoading       = authState is AuthState.Loading
     val isGoogleLoading = authState is AuthState.GoogleLoading
+    val isEmailSent     = authState is AuthState.EmailSent
+    val emailSentTo     = (authState as? AuthState.EmailSent)?.email
     val errorMsg        = (authState as? AuthState.Error)?.message
 
     // Naviga all'app quando il login va a buon fine
     LaunchedEffect(authState) {
         if (authState is AuthState.LoggedIn) onLoginSuccess()
+    }
+
+    // ── Schermata "Email di conferma inviata" ─────────────────────────────
+    if (isEmailSent) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(Color(0xFF050810), DarkBg, Color(0xFF0D1B2A))
+                    )
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(20.dp)
+            ) {
+                // Icona
+                Box(
+                    modifier = Modifier
+                        .size(88.dp)
+                        .clip(RoundedCornerShape(28.dp))
+                        .background(
+                            Brush.linearGradient(listOf(Color(0xFF00C896), Cyan400))
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Filled.Email,
+                        contentDescription = null,
+                        tint = Color.Black,
+                        modifier = Modifier.size(48.dp)
+                    )
+                }
+
+                Text(
+                    "Controlla la tua email!",
+                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                    color = TextPrimary,
+                    textAlign = TextAlign.Center
+                )
+
+                Surface(
+                    color = DarkSurface,
+                    shape = RoundedCornerShape(20.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(24.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text(
+                            "Abbiamo inviato un link di conferma a:",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = TextMuted,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Text(
+                            emailSentTo ?: "",
+                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                            color = Cyan400,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        HorizontalDivider(color = Color(0xFF2D3748))
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            Text("1️⃣", style = MaterialTheme.typography.bodyMedium)
+                            Text(
+                                "Apri la tua casella email",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = TextPrimary
+                            )
+                        }
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            Text("2️⃣", style = MaterialTheme.typography.bodyMedium)
+                            Text(
+                                "Clicca il link \"Confirm your email\"",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = TextPrimary
+                            )
+                        }
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            Text("3️⃣", style = MaterialTheme.typography.bodyMedium)
+                            Text(
+                                "Torna qui e accedi con la tua email e password",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = TextPrimary
+                            )
+                        }
+                    }
+                }
+
+                Button(
+                    onClick = { viewModel.resetError() },
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Cyan400,
+                        contentColor   = Color.Black
+                    )
+                ) {
+                    Icon(Icons.Filled.Login, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Vai al login", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                }
+            }
+        }
+        return
     }
 
     Box(
