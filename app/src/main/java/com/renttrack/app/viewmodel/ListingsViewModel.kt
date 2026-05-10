@@ -132,6 +132,7 @@ class ListingsViewModel(
             _publicState.value = ListingsUiState.Loading
             try {
                 val list = withContext(Dispatchers.IO) { fetchPage(0) }
+                    .distinctBy { it.id }  // deduplicazione per UUID
                 _publicState.value = ListingsUiState.Success(list)
                 _hasMore.value = list.size == PAGE_SIZE
                 currentOffset = list.size
@@ -148,7 +149,8 @@ class ListingsViewModel(
             try {
                 val newItems = withContext(Dispatchers.IO) { fetchPage(currentOffset) }
                 val current = (_publicState.value as? ListingsUiState.Success)?.listings ?: emptyList()
-                _publicState.value = ListingsUiState.Success(current + newItems)
+                val merged = (current + newItems).distinctBy { it.id }  // evita duplicati da paginazione
+                _publicState.value = ListingsUiState.Success(merged)
                 _hasMore.value = newItems.size == PAGE_SIZE
                 currentOffset += newItems.size
             } catch (e: Exception) {
