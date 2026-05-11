@@ -20,7 +20,7 @@ sealed class Screen(
     data object MieiAnnunci         : Screen("miei_annunci",        "I miei annunci",   "",                     Icons.Filled.List,         Icons.Filled.List)
     data object Richieste           : Screen("richieste",            "Richieste",        "",                     Icons.Filled.MarkEmailUnread, Icons.Filled.MarkEmailUnread)
     data object CondominioSelector : Screen("condominio_selector", "Le mie proprietà", "Seleziona immobile",    Icons.Filled.Business,     Icons.Outlined.Business)
-    data object Dashboard           : Screen("dashboard",           "Casa",             "Panoramica affitti",    Icons.Filled.Home,         Icons.Outlined.Home)
+    data object Dashboard           : Screen("dashboard",           "Home",             "Panoramica affitti",    Icons.Filled.Home,         Icons.Outlined.Home)
     data object Tenants             : Screen("units",               "Inquilini",        "Gestione inquilini",    Icons.Filled.People,       Icons.Outlined.PeopleOutline)
     data object Affitti             : Screen("cedolini",            "Affitti",          "Avvisi e pagamenti",    Icons.Filled.EuroSymbol,   Icons.Outlined.EuroSymbol)
     data object Expenses            : Screen("expenses",            "Spese",            "Spese immobile",        Icons.Filled.Receipt,      Icons.Outlined.Receipt)

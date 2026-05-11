@@ -68,12 +68,19 @@ class ListingsViewModel(
             _inquiriesLoading.value = true
             try {
                 val token = authToken ?: return@launch
-                val listings = _myListings.value
-                if (listings.isEmpty()) {
-                    // Carica prima gli annunci se non presenti
-                    loadMyListings()
+                val userId = getUserIdFromToken(token)
+                    ?: run { _toast.value = "Errore lettura utente"; return@launch }
+
+                // Carica i listing IDs direttamente (sincrono, senza race condition)
+                val ids = withContext(Dispatchers.IO) {
+                    val listingsJson = httpGet(
+                        "$baseUrl/rest/v1/listings?landlord_id=eq.$userId&select=id",
+                        token
+                    )
+                    val arr = JSONArray(listingsJson)
+                    (0 until arr.length()).joinToString(",") { arr.getJSONObject(it).optString("id") }
                 }
-                val ids = _myListings.value.joinToString(",") { it.id }
+
                 if (ids.isBlank()) {
                     _myInquiries.value = emptyList()
                     return@launch
@@ -105,6 +112,7 @@ class ListingsViewModel(
             }
         }
     }
+
 
     private val _isSubmitting = MutableStateFlow(false)
     val isSubmitting: StateFlow<Boolean> = _isSubmitting.asStateFlow()
@@ -298,7 +306,9 @@ class ListingsViewModel(
                     )
                 }
                 loadMyListings(); loadPublicListings()
-            } catch (e: Exception) { _toast.value = "Errore toggle: ${e.message}" }
+                _toast.value = if (!current) "✅ Annuncio ora visibile in vetrina"
+                               else "🙈 Annuncio nascosto dalla vetrina"
+            } catch (e: Exception) { _toast.value = "Errore: ${e.message}" }
         }
     }
 

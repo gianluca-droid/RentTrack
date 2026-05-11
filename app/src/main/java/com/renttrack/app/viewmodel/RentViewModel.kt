@@ -41,9 +41,9 @@ class RentViewModel(application: Application) : AndroidViewModel(application) {
     )
 
     // ─── Condominio Attivo ───────────────────────────────────────
-    private val _activeCondominioId = MutableStateFlow(
-        PropertyManager.getActiveCondominioId(application)
-    )
+    // NOTA: RentViewModel è legacy (Room). PropertyManager ora usa String UUID.
+    // activeCondominioId è mantenuto come Long per compatibilità interna.
+    private val _activeCondominioId = MutableStateFlow(-1L)
     val activeCondominioId: StateFlow<Long> = _activeCondominioId
 
     val activeCondominio: StateFlow<Condominio?> = _activeCondominioId
@@ -56,13 +56,11 @@ class RentViewModel(application: Application) : AndroidViewModel(application) {
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     fun setActiveCondominio(id: Long) {
-        PropertyManager.setActiveCondominioId(getApplication(), id)
         _activeCondominioId.value = id
-        resetUiState()  // reset filtri/viste al cambio condominio
+        resetUiState()
     }
 
     fun clearActiveCondominio() {
-        PropertyManager.clearActiveCondominio(getApplication())
         _activeCondominioId.value = -1L
         resetUiState()
     }

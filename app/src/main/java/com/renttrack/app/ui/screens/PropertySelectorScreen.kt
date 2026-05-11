@@ -16,12 +16,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.renttrack.app.data.model.Condominio
+import com.renttrack.app.data.model.SCondominio
 import com.renttrack.app.ui.components.Formatters
 import com.renttrack.app.ui.components.condoTextFieldColors
 import com.renttrack.app.ui.theme.*
-import com.renttrack.app.viewmodel.PropertySummary
-import com.renttrack.app.viewmodel.RentViewModel
+import com.renttrack.app.viewmodel.SPropertySummaryEntry
+import com.renttrack.app.viewmodel.SupabaseRentViewModel
 
 private val propertyGradients = listOf(
     listOf(Color(0xFF00D4FF), Color(0xFF6C63FF)),
@@ -35,8 +35,8 @@ private val propertyGradients = listOf(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PropertySelectorScreen(
-    viewModel: RentViewModel,
-    onCondominioSelected: (Long) -> Unit,
+    viewModel: SupabaseRentViewModel,
+    onCondominioSelected: (String) -> Unit,
     onResidentAccess: () -> Unit = {},
     onShowOnboarding: () -> Unit = {},
     onLogout: () -> Unit = {}
@@ -44,12 +44,49 @@ fun PropertySelectorScreen(
     val proprieta by viewModel.allCondomini.collectAsState()
     val summaryMap by viewModel.propertySummaryMap.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val activeCondominioId by viewModel.activeCondominioId.collectAsState()
+    val vmError by viewModel.error.collectAsState()
     var showAddSheet    by remember { mutableStateOf(false) }
-    var toEdit          by remember { mutableStateOf<Condominio?>(null) }
-    var toDelete        by remember { mutableStateOf<Condominio?>(null) }
+    var toEdit          by remember { mutableStateOf<SCondominio?>(null) }
+    var toDelete        by remember { mutableStateOf<SCondominio?>(null) }
     var showLogoutDialog by remember { mutableStateOf(false) }
+    var pendingNavigate  by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    Box(modifier = Modifier.fillMaxSize().background(DarkBg)) {
+    // Mostra errori del ViewModel come Snackbar
+    LaunchedEffect(vmError) {
+        vmError?.let { msg ->
+            snackbarHostState.showSnackbar(
+                message = "Errore: $msg",
+                duration = SnackbarDuration.Long
+            )
+        }
+    }
+
+    // Navigazione al Dashboard dopo la creazione di una nuova proprietà
+    LaunchedEffect(activeCondominioId, pendingNavigate) {
+        if (pendingNavigate && activeCondominioId.isNotBlank()) {
+            pendingNavigate = false
+            onCondominioSelected(activeCondominioId)
+        }
+    }
+
+    // Nota: la navigazione al Dashboard viene gestita solo dal click sulla card
+    // (il LaunchedEffect causava una doppia navigazione che bloccava l'app)
+
+    Scaffold(
+        containerColor = DarkBg,
+        snackbarHost = {
+            SnackbarHost(snackbarHostState) { data ->
+                Snackbar(
+                    snackbarData = data,
+                    containerColor = androidx.compose.ui.graphics.Color(0xFF2D1B1B),
+                    contentColor = androidx.compose.ui.graphics.Color(0xFFFF6B6B)
+                )
+            }
+        }
+    ) { scaffoldPadding ->
+    Box(modifier = Modifier.fillMaxSize().background(DarkBg).padding(scaffoldPadding)) {
         Column(modifier = Modifier.fillMaxSize()) {
 
             // ── Hero Header ──────────────────────────────────────────
@@ -136,26 +173,33 @@ fun PropertySelectorScreen(
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = androidx.compose.ui.Modifier.padding(32.dp)
                     ) {
                         Text("🏗️", fontSize = 56.sp)
                         Text(
-                            "Nessuna proprietà ancora",
-                            color = TextMuted,
-                            style = MaterialTheme.typography.bodyLarge
+                            "Benvenuto in RentTrack!",
+                            color = TextPrimary,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
                         )
                         Text(
-                            "Aggiungi il tuo primo immobile per iniziare",
-                            color = TextMuted.copy(alpha = 0.6f),
-                            style = MaterialTheme.typography.bodySmall
+                            "Per iniziare, aggiungi il tuo primo immobile da gestire.\n" +
+                            "Potrai poi inserire inquilini, affitti e documenti.",
+                            color = TextMuted,
+                            style = MaterialTheme.typography.bodySmall,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
+                        Spacer(Modifier.height(8.dp))
                         Button(
                             onClick = { showAddSheet = true },
-                            colors = ButtonDefaults.buttonColors(containerColor = Cyan400, contentColor = DarkBg)
+                            colors = ButtonDefaults.buttonColors(containerColor = Cyan400, contentColor = DarkBg),
+                            modifier = androidx.compose.ui.Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp)
                         ) {
                             Icon(Icons.Filled.Add, null)
                             Spacer(Modifier.width(8.dp))
-                            Text("Aggiungi prima proprietà", fontWeight = FontWeight.Bold)
+                            Text("Aggiungi il tuo primo immobile", fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -187,15 +231,17 @@ fun PropertySelectorScreen(
         ) { Icon(Icons.Filled.Add, "Aggiungi proprietà") }
         // RIMOSSO: bottone "Area Condomino"
     }
+    } // fine Scaffold
 
     if (showAddSheet) {
         PropertyFormSheet(
             proprieta = null,
             onDismiss = { showAddSheet = false },
             onConfirm = { nome, indirizzo, citta, note ->
+                pendingNavigate = true
                 viewModel.addCondominio(
-                    Condominio(nome = nome, indirizzo = indirizzo, citta = citta, note = note),
-                    andSelect = false
+                    SCondominio(nome = nome, indirizzo = indirizzo, citta = citta, note = note),
+                    andSelect = true
                 )
                 showAddSheet = false
             }
@@ -262,8 +308,8 @@ fun PropertySelectorScreen(
 // ─── Card proprietà ──────────────────────────────────────────────────────
 @Composable
 fun PropertyCard(
-    proprieta: Condominio,
-    summary: PropertySummary?,
+    proprieta: SCondominio,
+    summary: SPropertySummaryEntry?,
     gradient: List<Color>,
     onClick: () -> Unit,
     onEdit: () -> Unit,
@@ -382,7 +428,7 @@ fun PropertyCard(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PropertyFormSheet(
-    proprieta: Condominio?,
+    proprieta: SCondominio?,
     onDismiss: () -> Unit,
     onConfirm: (nome: String, indirizzo: String, citta: String, note: String) -> Unit
 ) {

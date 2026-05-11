@@ -23,18 +23,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.renttrack.app.data.dao.MonthTotal
-import com.renttrack.app.data.dao.YearTotal
+import com.renttrack.app.viewmodel.MonthlyTotal
+import com.renttrack.app.viewmodel.YearlyTotal
 import com.renttrack.app.ui.components.Formatters
 import com.renttrack.app.ui.components.SummaryCard
 import com.renttrack.app.ui.theme.*
-import com.renttrack.app.viewmodel.RentViewModel
+import com.renttrack.app.viewmodel.SupabaseRentViewModel
 
 private val MONTHS = listOf("Gen","Feb","Mar","Apr","Mag","Giu","Lug","Ago","Set","Ott","Nov","Dic")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ReportsScreen(viewModel: RentViewModel) {
+fun ReportsScreen(viewModel: SupabaseRentViewModel) {
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("📊 Panoramica", "📅 Mensile", "📁 Archivio")
 
@@ -86,7 +86,7 @@ fun ReportsScreen(viewModel: RentViewModel) {
 
 // ─── TAB 1: Panoramica ───────────────────────────────────────────────
 @Composable
-private fun PanoramicaTab(viewModel: RentViewModel) {
+private fun PanoramicaTab(viewModel: SupabaseRentViewModel) {
     val expenses by viewModel.expenses.collectAsState()
     val payments by viewModel.payments.collectAsState()
     val totalExpenses by viewModel.totalExpenses.collectAsState()
@@ -265,7 +265,7 @@ private fun PanoramicaTab(viewModel: RentViewModel) {
 
 // ─── TAB 2: Mensile ──────────────────────────────────────────────────
 @Composable
-private fun MensileTab(viewModel: RentViewModel) {
+private fun MensileTab(viewModel: SupabaseRentViewModel) {
     val selectedYear by viewModel.selectedYear.collectAsState()
     val monthlyExp by viewModel.monthlyExpenses.collectAsState()
     val monthlyPay by viewModel.monthlyPayments.collectAsState()
@@ -352,7 +352,7 @@ private fun MensileTab(viewModel: RentViewModel) {
 
 // ─── TAB 3: Archivio ─────────────────────────────────────────────────
 @Composable
-private fun ArchivioTab(viewModel: RentViewModel, onViewMensile: (Int) -> Unit) {
+private fun ArchivioTab(viewModel: SupabaseRentViewModel, onViewMensile: (Int) -> Unit) {
     val yearlyExp by viewModel.yearlyExpenses.collectAsState()
     val yearlyPay by viewModel.yearlyPayments.collectAsState()
 

@@ -16,16 +16,16 @@ import androidx.compose.ui.unit.dp
 import com.renttrack.app.data.model.*
 import com.renttrack.app.ui.components.*
 import com.renttrack.app.ui.theme.*
-import com.renttrack.app.viewmodel.RentViewModel
+import com.renttrack.app.viewmodel.SupabaseRentViewModel
 
 @Composable
-fun ExpensesScreen(viewModel: RentViewModel) {
+fun ExpensesScreen(viewModel: SupabaseRentViewModel) {
     val expenses by viewModel.expenses.collectAsState()
     val totalExpenses by viewModel.totalExpenses.collectAsState()
     val activeCondominioId by viewModel.activeCondominioId.collectAsState()
     var showDialog by remember { mutableStateOf(false) }
-    var editingExpense by remember { mutableStateOf<Expense?>(null) }
-    var deleteTarget by remember { mutableStateOf<Expense?>(null) }
+    var editingExpense by remember { mutableStateOf<SExpense?>(null) }
+    var deleteTarget by remember { mutableStateOf<SExpense?>(null) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         if (expenses.isEmpty()) {
@@ -101,44 +101,20 @@ fun ExpensesScreen(viewModel: RentViewModel) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ExpenseFormDialog(expense: Expense?, condominioId: Long, onDismiss: () -> Unit, onSave: (Expense) -> Unit) {
+private fun ExpenseFormDialog(
+    expense: SExpense?,
+    condominioId: String,
+    onDismiss: () -> Unit,
+    onSave: (SExpense) -> Unit
+) {
     var category    by remember { mutableStateOf(expense?.category ?: ExpenseCategories.categories.first().first) }
     var description by remember { mutableStateOf(expense?.description ?: "") }
     var amount      by remember { mutableStateOf(expense?.amount?.toString() ?: "") }
     var notes       by remember { mutableStateOf(expense?.notes ?: "") }
-    var categoryExpanded  by remember { mutableStateOf(false) }
-    var showDiscardDialog by remember { mutableStateOf(false) }
-
-    val hasChanges = remember(category, description, amount, notes) {
-        category    != (expense?.category ?: ExpenseCategories.categories.first().first) ||
-        description != (expense?.description ?: "") ||
-        amount      != (expense?.amount?.toString() ?: "") ||
-        notes       != (expense?.notes ?: "")
-    }
-
-    if (showDiscardDialog) {
-        AlertDialog(
-            onDismissRequest = { showDiscardDialog = false },
-            containerColor = DarkSurface,
-            icon = { Icon(Icons.Filled.Warning, null, tint = Amber400) },
-            title = { Text("Modifiche non salvate", color = TextPrimary, fontWeight = FontWeight.Bold) },
-            text = { Text("Hai inserito dei dati che non sono stati salvati. Vuoi uscire lo stesso?", color = TextSecondary) },
-            confirmButton = {
-                Button(
-                    onClick = { showDiscardDialog = false; onDismiss() },
-                    colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color(0xFFFF6B6B))
-                ) { Text("Esci senza salvare", fontWeight = FontWeight.Bold) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDiscardDialog = false }) {
-                    Text("Continua a modificare", color = Cyan400)
-                }
-            }
-        )
-    }
+    var categoryExpanded by remember { mutableStateOf(false) }
 
     AlertDialog(
-        onDismissRequest = { /* blocca chiusura accidentale — usare Annulla */ },
+        onDismissRequest = { /* blocca chiusura accidentale */ },
         title = { Text(if (expense != null) "Modifica Spesa" else "Nuova Spesa") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -166,14 +142,13 @@ private fun ExpenseFormDialog(expense: Expense?, condominioId: Long, onDismiss: 
         confirmButton = {
             TextButton(
                 onClick = {
-                    val e = Expense(
-                        id = expense?.id ?: 0,
+                    onSave(SExpense(
+                        id = expense?.id ?: "",
                         condominioId = expense?.condominioId ?: condominioId,
                         date = expense?.date ?: System.currentTimeMillis(),
                         category = category, description = description,
                         amount = amount.toDoubleOrNull() ?: 0.0, notes = notes
-                    )
-                    onSave(e)
+                    ))
                 },
                 enabled = description.isNotBlank() && (amount.toDoubleOrNull() ?: 0.0) > 0
             ) { Text("Salva") }

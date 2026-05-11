@@ -3,16 +3,16 @@ package com.renttrack.app.notifications
 import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.renttrack.app.data.database.AppDatabase
-import com.renttrack.app.data.repository.RentRepository
-import kotlinx.coroutines.flow.first
+import com.renttrack.app.data.repository.SupabaseRentRepository
 
 /**
  * Worker eseguito ogni giorno da WorkManager.
- * Controlla il DB e invia notifiche per:
+ * Controlla Supabase e invia notifiche per:
  *  - Contratti scaduti
  *  - Contratti in scadenza entro 30 giorni
  *  - Cedolini scaduti non pagati
+ *
+ * Migrato da Room → SupabaseRentRepository (cloud-first).
  */
 class RentCheckWorker(
     private val context: Context,
@@ -21,51 +21,64 @@ class RentCheckWorker(
 
     override suspend fun doWork(): Result {
         return try {
-            val db = AppDatabase.getDatabase(context)
-            val repo = RentRepository(
-                db.condominioDao(), db.unitDao(), db.expenseDao(),
-                db.paymentDao(), db.cedolinoDao(), db.documentoDao(),
-                db.tenantHistoryDao()
-            )
+            val prefs = context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
+            val token = prefs.getString("auth_token", null)
+
+            // Nessun token → utente non loggato, niente notifiche
+            if (token.isNullOrBlank()) return Result.success()
+
+            val repo = SupabaseRentRepository(prefs)
 
             val now  = System.currentTimeMillis()
             val day  = 24L * 60 * 60 * 1000
             val in30 = now + 30 * day
 
-            // ── Recupera tutte le unità e cedolini (globale, tutti i condomini) ──
-            val allUnits    = repo.getAllUnitsGlobal().first()
-            val allCedolini = repo.getAllCedoliniGlobal().first()
+            // ── Recupera tutti i condomini dell'utente ─────────────────────────
+            val condomini = repo.getCondomini()
+            if (condomini.isEmpty()) return Result.success()
 
-            // ── Contratti scaduti ──────────────────────────────────────────────
-            val scaduti = allUnits.filter {
-                it.leaseEndDate != null && it.leaseEndDate < now
+            var unitsScadute    = mutableListOf<String>()   // nomi inquilini contratto scaduto
+            var unitsInScadenza = mutableListOf<String>()   // nomi inquilini contratto in scadenza
+            var cedoliniScadutiCount = 0
+            var cedoliniScadutiTotale = 0.0
+
+            for (condo in condomini) {
+                val units    = repo.getUnitsByCondominio(condo.id)
+                val cedolini = repo.getCedoliniByCondominio(condo.id)
+
+                // ── Contratti scaduti ──────────────────────────────────────────
+                units.filter { it.leaseEndDate != null && it.leaseEndDate < now }
+                    .forEach { unitsScadute.add(it.ownerName) }
+
+                // ── Contratti in scadenza entro 30 giorni ─────────────────────
+                units.filter {
+                    it.leaseEndDate != null &&
+                    it.leaseEndDate >= now &&
+                    it.leaseEndDate <= in30
+                }.forEach { unitsInScadenza.add(it.ownerName) }
+
+                // ── Cedolini scaduti non pagati ───────────────────────────────
+                cedolini.filter { it.status != "Pagato" && it.dueDate < now }
+                    .forEach {
+                        cedoliniScadutiCount++
+                        cedoliniScadutiTotale += (it.total - it.paidAmount)
+                    }
             }
-            if (scaduti.isNotEmpty()) {
+
+            // ── Invia notifiche ────────────────────────────────────────────────
+            if (unitsScadute.isNotEmpty()) {
                 NotificationHelper.notifyContrattiScaduti(
-                    context, scaduti.size, scaduti.map { it.ownerName }
+                    context, unitsScadute.size, unitsScadute
                 )
             }
-
-            // ── Contratti in scadenza entro 30 giorni ─────────────────────────
-            val inScadenza = allUnits.filter {
-                it.leaseEndDate != null &&
-                it.leaseEndDate >= now &&
-                it.leaseEndDate <= in30
-            }
-            if (inScadenza.isNotEmpty()) {
+            if (unitsInScadenza.isNotEmpty()) {
                 NotificationHelper.notifyContrattiInScadenza(
-                    context, inScadenza.size, 30, inScadenza.map { it.ownerName }
+                    context, unitsInScadenza.size, 30, unitsInScadenza
                 )
             }
-
-            // ── Cedolini scaduti non pagati ───────────────────────────────────
-            val cedoliniScaduti = allCedolini.filter {
-                it.status != "Pagato" && it.dueDate < now
-            }
-            if (cedoliniScaduti.isNotEmpty()) {
-                val totale = cedoliniScaduti.sumOf { it.total - it.paidAmount }
+            if (cedoliniScadutiCount > 0) {
                 NotificationHelper.notifyCedoliniScaduti(
-                    context, cedoliniScaduti.size, totale
+                    context, cedoliniScadutiCount, cedoliniScadutiTotale
                 )
             }
 

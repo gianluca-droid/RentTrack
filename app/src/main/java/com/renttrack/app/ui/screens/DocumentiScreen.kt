@@ -26,13 +26,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import coil.compose.AsyncImage
-import com.renttrack.app.data.model.Documento
+import com.renttrack.app.data.model.SDocumento
+import com.renttrack.app.data.model.SCondoUnit
 import com.renttrack.app.data.model.DocumentCategories
 import com.renttrack.app.data.model.FileTypes
 import com.renttrack.app.ui.components.CategoryChip
 import com.renttrack.app.ui.components.condoTextFieldColors
 import com.renttrack.app.ui.theme.*
-import com.renttrack.app.viewmodel.RentViewModel
+import com.renttrack.app.viewmodel.SupabaseRentViewModel
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
@@ -63,7 +64,7 @@ class GetMultiTypeContent : ActivityResultContract<Array<String>, Pair<Uri, Stri
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DocumentiScreen(viewModel: RentViewModel) {
+fun DocumentiScreen(viewModel: SupabaseRentViewModel) {
     val context = LocalContext.current
     val documenti by viewModel.documenti.collectAsState()
     val documentCount by viewModel.documentCount.collectAsState()
@@ -71,8 +72,8 @@ fun DocumentiScreen(viewModel: RentViewModel) {
 
     var selectedCategoria by remember { mutableStateOf<String?>(null) }
     var showAddSheet by remember { mutableStateOf(false) }
-    var documentoToDelete by remember { mutableStateOf<Documento?>(null) }
-    var documentoToEdit by remember { mutableStateOf<Documento?>(null) }
+    var documentoToDelete by remember { mutableStateOf<SDocumento?>(null) }
+    var documentoToEdit by remember { mutableStateOf<SDocumento?>(null) }
     var pickedUri by remember { mutableStateOf<Uri?>(null) }
     var pickedMimeType by remember { mutableStateOf("") }
     var searchQuery by remember { mutableStateOf("") }
@@ -80,26 +81,23 @@ fun DocumentiScreen(viewModel: RentViewModel) {
     var showSortMenu by remember { mutableStateOf(false) }
     var searchActive by remember { mutableStateOf(false) }
     var gridMode by remember { mutableStateOf(false) }
-    var photoViewer by remember { mutableStateOf<Documento?>(null) }
-    var selectedUnitFilter by remember { mutableStateOf<Long?>(null) }
+    var photoViewer by remember { mutableStateOf<SDocumento?>(null) }
+    var selectedUnitFilter by remember { mutableStateOf<String?>(null) }
 
     val documentiFiltrati = documenti
         .filter { doc ->
-            // Filtro categoria
             (selectedCategoria == null || doc.categoria == selectedCategoria) &&
-            // Filtro ricerca testo
             (searchQuery.isBlank() || doc.titolo.contains(searchQuery, ignoreCase = true) ||
              doc.note.contains(searchQuery, ignoreCase = true) ||
              doc.categoria.contains(searchQuery, ignoreCase = true) ||
              doc.sommario.contains(searchQuery, ignoreCase = true)) &&
-            // Filtro inquilino: mostra doc "Tutti" o quelli che includono l'unità selezionata
             (selectedUnitFilter == null || doc.visibilita == "Tutti" ||
-             doc.destinatariUnitIds.split(",").mapNotNull { it.trim().toLongOrNull() }.contains(selectedUnitFilter))
+             doc.destinatariUnitIds.split(",").map { it.trim() }.contains(selectedUnitFilter))
         }
         .let { list ->
             when (sortOrder) {
-                DocSortOrder.DATE_DESC -> list.sortedByDescending { it.dataInserimento }
-                DocSortOrder.DATE_ASC  -> list.sortedBy { it.dataInserimento }
+                DocSortOrder.DATE_DESC -> list.sortedByDescending { it.createdAt }
+                DocSortOrder.DATE_ASC  -> list.sortedBy { it.createdAt }
                 DocSortOrder.NAME_ASC  -> list.sortedBy { it.titolo.lowercase() }
                 DocSortOrder.NAME_DESC -> list.sortedByDescending { it.titolo.lowercase() }
                 DocSortOrder.TYPE      -> list.sortedBy { it.fileType }
@@ -259,7 +257,7 @@ fun DocumentiScreen(viewModel: RentViewModel) {
                     items(units.sortedBy { it.number }) { unit ->
                         val docCount = documenti.count { doc ->
                             doc.visibilita == "Tutti" ||
-                            doc.destinatariUnitIds.split(",").mapNotNull { it.trim().toLongOrNull() }.contains(unit.id)
+                            doc.destinatariUnitIds.split(",").map { it.trim() }.contains(unit.id)
                         }
                         val isSelected = selectedUnitFilter == unit.id
                         FilterChip(
@@ -553,8 +551,8 @@ fun DocumentiScreen(viewModel: RentViewModel) {
 
 @Composable
 fun DocumentCard(
-    documento: Documento,
-    units: List<com.renttrack.app.data.model.CondoUnit> = emptyList(),
+    documento: SDocumento,
+    units: List<SCondoUnit> = emptyList(),
     onOpen: () -> Unit,
     onEdit: () -> Unit = {},
     onDelete: () -> Unit,
@@ -564,13 +562,13 @@ fun DocumentCard(
     catch (e: Exception) { Cyan400 }
     val fileColor = try { Color(android.graphics.Color.parseColor(FileTypes.getColorHex(documento.fileType))) }
     catch (e: Exception) { Cyan400 }
-    val dateStr = remember { SimpleDateFormat("dd MMM yyyy", Locale.ITALIAN).format(Date(documento.dataInserimento)) }
+    val dateStr = remember { documento.createdAt.ifBlank { "—" } }
 
     // Calcola etichetta destinatari
     val destinatariLabel = remember(documento, units) {
         if (documento.visibilita == "Tutti") "🌐 Tutti gli inquilini"
         else {
-            val ids = documento.destinatariUnitIds.split(",").mapNotNull { it.trim().toLongOrNull() }
+            val ids = documento.destinatariUnitIds.split(",").map { it.trim() }.filter { it.isNotBlank() }
             if (ids.isEmpty()) "🌐 Tutti gli inquilini"
             else {
                 val nomi = ids.mapNotNull { id -> units.find { it.id == id }?.let { "Int.${it.number}" } }
@@ -695,7 +693,7 @@ fun DocumentCard(
 // ─── Card compatta per vista GRIGLIA ─────────────────────────────────
 @Composable
 fun DocumentGridCard(
-    documento: Documento,
+    documento: SDocumento,
     onOpen: () -> Unit,
     onEdit: () -> Unit = {},
     onDelete: () -> Unit
@@ -799,7 +797,7 @@ fun DocumentGridCard(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    SimpleDateFormat("dd MMM yyyy", Locale.ITALIAN).format(Date(documento.dataInserimento)),
+                    documento.createdAt.ifBlank { "—" },
                     style = MaterialTheme.typography.labelSmall,
                     color = if (isPhoto) Color.White.copy(alpha = 0.7f) else TextMuted
                 )
@@ -813,7 +811,7 @@ fun DocumentGridCard(
 fun AddDocumentoSheet(
     uri: Uri,
     mimeType: String,
-    units: List<com.renttrack.app.data.model.CondoUnit> = emptyList(),
+    units: List<SCondoUnit> = emptyList(),
     onDismiss: () -> Unit,
     onConfirm: (titolo: String, categoria: String, note: String, sommario: String, visibilita: String, destinatariIds: String) -> Unit
 ) {
@@ -824,7 +822,7 @@ fun AddDocumentoSheet(
     var note by remember { mutableStateOf("") }
     var sommario by remember { mutableStateOf("") }
     var visibilita by remember { mutableStateOf("Tutti") }     // "Tutti" o "Singoli"
-    var selectedUnitIds by remember { mutableStateOf(setOf<Long>()) }
+    var selectedUnitIds by remember { mutableStateOf(setOf<String>()) }
     var showCategoriaMenu by remember { mutableStateOf(false) }
 
     ModalBottomSheet(onDismissRequest = { /* blocca chiusura accidentale — usare Annulla */ }, containerColor = DarkSurface) {
@@ -1053,8 +1051,8 @@ fun formatFileSize(bytes: Long): String = when {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditDocumentoSheet(
-    documento: Documento,
-    units: List<com.renttrack.app.data.model.CondoUnit> = emptyList(),
+    documento: SDocumento,
+    units: List<SCondoUnit> = emptyList(),
     onDismiss: () -> Unit,
     onConfirm: (titolo: String, categoria: String, note: String, sommario: String, visibilita: String, destinatariIds: String) -> Unit
 ) {
@@ -1064,7 +1062,7 @@ fun EditDocumentoSheet(
     var sommario by remember { mutableStateOf(documento.sommario) }
     var visibilita by remember { mutableStateOf(documento.visibilita) }
     var selectedUnitIds by remember {
-        mutableStateOf(documento.destinatariUnitIds.split(",").mapNotNull { it.trim().toLongOrNull() }.toSet())
+        mutableStateOf(documento.destinatariUnitIds.split(",").map { it.trim() }.filter { it.isNotBlank() }.toSet())
     }
     var showCategoriaMenu by remember { mutableStateOf(false) }
 

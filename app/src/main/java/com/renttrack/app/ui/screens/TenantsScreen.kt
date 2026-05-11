@@ -25,23 +25,26 @@ import androidx.compose.ui.unit.sp
 import com.renttrack.app.data.model.*
 import com.renttrack.app.ui.components.*
 import com.renttrack.app.ui.theme.*
-import com.renttrack.app.viewmodel.RentViewModel
+import com.renttrack.app.viewmodel.SupabaseRentViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
 private val dateFmt = SimpleDateFormat("dd/MM/yyyy", Locale.ITALIAN)
 
 @Composable
-fun TenantsScreen(viewModel: RentViewModel) {
+fun TenantsScreen(
+    viewModel: SupabaseRentViewModel,
+    onCreaAnnuncio: (() -> Unit)? = null
+) {
     val units by viewModel.units.collectAsState()
     val activeCondominioId by viewModel.activeCondominioId.collectAsState()
     val morositaByUnit by viewModel.morositaByUnit.collectAsState()
     val mesiArretratiByUnit by viewModel.mesiArretratiByUnit.collectAsState()
 
     var showDialog by remember { mutableStateOf(false) }
-    var editingUnit by remember { mutableStateOf<CondoUnit?>(null) }
-    var deleteTarget by remember { mutableStateOf<CondoUnit?>(null) }
-    var changeTenantUnit by remember { mutableStateOf<CondoUnit?>(null) }
+    var editingUnit by remember { mutableStateOf<SCondoUnit?>(null) }
+    var deleteTarget by remember { mutableStateOf<SCondoUnit?>(null) }
+    var changeTenantUnit by remember { mutableStateOf<SCondoUnit?>(null) }
     var searchQuery by rememberSaveable { mutableStateOf("") }
     val tenantHistory by viewModel.tenantHistory.collectAsState()
 
@@ -138,7 +141,8 @@ fun TenantsScreen(viewModel: RentViewModel) {
                         onDelete = { deleteTarget = unit },
                         onChangeTenant = { changeTenantUnit = unit },
                         onGeneratePlan = { viewModel.generateMonthlyPaymentPlan(unit) },
-                        onDeleteHistory = { viewModel.deleteTenantHistory(it) }
+                        onDeleteHistory = { viewModel.deleteTenantHistory(it) },
+                        onCreaAnnuncio = onCreaAnnuncio
                     )
                 }
             }
@@ -197,15 +201,16 @@ fun TenantsScreen(viewModel: RentViewModel) {
 // ─── Card inquilino ───────────────────────────────────────────────────
 @Composable
 private fun TenantCard(
-    unit: CondoUnit,
+    unit: SCondoUnit,
     morosita: Double,
     mesiArretrati: Int,
-    tenantHistory: List<TenantHistory>,
+    tenantHistory: List<STenantHistory>,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onChangeTenant: () -> Unit,
     onGeneratePlan: () -> Unit,
-    onDeleteHistory: (TenantHistory) -> Unit
+    onDeleteHistory: (STenantHistory) -> Unit,
+    onCreaAnnuncio: (() -> Unit)? = null
 ) {
     val canone = unit.millesimi
     val now = System.currentTimeMillis()
@@ -349,6 +354,29 @@ private fun TenantCard(
             )
         }
 
+        // ── Pubblica in vetrina ──────────────────────────────────
+        if (onCreaAnnuncio != null) {
+            Spacer(Modifier.height(6.dp))
+            HorizontalDivider(color = Cyan400.copy(alpha = 0.1f))
+            Spacer(Modifier.height(6.dp))
+            Button(
+                onClick = onCreaAnnuncio,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Cyan400.copy(alpha = 0.12f),
+                    contentColor = Cyan400
+                ),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Icon(Icons.Filled.Campaign, null, modifier = Modifier.size(14.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    "Pubblica in vetrina",
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold)
+                )
+            }
+        }
+
         // Sezione storico inquilini collassabile
         if (tenantHistory.isNotEmpty()) {
             var expanded by remember { mutableStateOf(false) }
@@ -379,9 +407,9 @@ private fun TenantCard(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text(h.ownerName, style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold), color = TextSecondary)
-                                    val start = h.leaseStartDate?.let { dateFmt.format(Date(it)) } ?: "?"
-                                    val end   = h.leaseEndDate?.let { dateFmt.format(Date(it)) } ?: "?"
+                                    Text(h.tenantName, style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold), color = TextSecondary)
+                                    val start = h.leaseStart?.let { dateFmt.format(Date(it)) } ?: "?"
+                                    val end   = h.leaseEnd?.let { dateFmt.format(Date(it)) } ?: "?"
                                     Text("$start → $end", style = MaterialTheme.typography.labelSmall, color = TextMuted)
                                     if (h.monthlyRent > 0) Text("${Formatters.currency(h.monthlyRent)}/mese", style = MaterialTheme.typography.labelSmall, color = TextMuted)
                                     if (h.exitNotes.isNotBlank()) Text("Note: ${h.exitNotes}", style = MaterialTheme.typography.labelSmall, color = TextMuted)
@@ -401,7 +429,7 @@ private fun TenantCard(
 // ─── Form dialog inquilino ─────────────────────────────────────────────
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TenantFormDialog(unit: CondoUnit?, condominioId: Long, onDismiss: () -> Unit, onSave: (CondoUnit) -> Unit) {
+private fun TenantFormDialog(unit: SCondoUnit?, condominioId: String, onDismiss: () -> Unit, onSave: (SCondoUnit) -> Unit) {
     var ownerName    by remember { mutableStateOf(unit?.ownerName ?: "") }
     var ownerEmail   by remember { mutableStateOf(unit?.ownerEmail ?: "") }
     var ownerPhone   by remember { mutableStateOf(unit?.ownerPhone ?: "") }
@@ -569,8 +597,8 @@ private fun TenantFormDialog(unit: CondoUnit?, condominioId: Long, onDismiss: ()
         confirmButton = {
             Button(
                 onClick = {
-                    onSave(CondoUnit(
-                        id           = unit?.id ?: 0,
+                    onSave(SCondoUnit(
+                        id           = unit?.id ?: "",
                         condominioId = unit?.condominioId ?: condominioId,
                         number       = number.ifBlank { "Ap. 1" },
                         floor        = 0,
@@ -681,7 +709,7 @@ private fun StepBadge(number: String, label: String, color: Color) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ChangeTenantDialog(
-    unit: CondoUnit,
+    unit: SCondoUnit,
     onDismiss: () -> Unit,
     onConfirm: (exitNotes: String, newName: String, newEmail: String, newPhone: String,
                 newLeaseStart: Long?, newLeaseEnd: Long?, newRent: Double, newPaymentDay: Int) -> Unit

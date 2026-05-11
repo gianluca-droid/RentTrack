@@ -26,7 +26,7 @@ import com.renttrack.app.viewmodel.AuthViewModelFactory
 import com.renttrack.app.viewmodel.AuthState
 import com.renttrack.app.viewmodel.ListingsViewModel
 import com.renttrack.app.viewmodel.ListingsViewModelFactory
-import com.renttrack.app.viewmodel.RentViewModel
+import com.renttrack.app.viewmodel.SupabaseRentViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -75,7 +75,7 @@ fun CrashDialog(crashMessage: String) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainApp(viewModel: RentViewModel = viewModel()) {
+fun MainApp(viewModel: SupabaseRentViewModel = viewModel()) {
     val context             = androidx.compose.ui.platform.LocalContext.current
     val navController       = rememberNavController()
     val navBackStackEntry  by navController.currentBackStackEntryAsState()
@@ -85,6 +85,8 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
     val activeCondominio   by viewModel.activeCondominio.collectAsState()
     val pendingCedolini    by viewModel.pendingCedolini.collectAsState()
     var showSwitchPropertyDialog by remember { mutableStateOf(false) }
+    var showOverflowMenu by remember { mutableStateOf(false) }
+    var showLogoutDialog  by remember { mutableStateOf(false) }
 
     // ── Onboarding check ─────────────────────────────────────────────────
     val onboardingShown = remember {
@@ -110,10 +112,10 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
     val isLoggedIn = authState is AuthState.LoggedIn
 
     val startDestination = when {
-        !onboardingShown            -> Screen.Onboarding.route
-        isLoggedIn && activeCondominioId > 0L -> Screen.Dashboard.route
-        isLoggedIn                  -> Screen.CondominioSelector.route
-        else                        -> Screen.Annunci.route
+        !onboardingShown                         -> Screen.Onboarding.route
+        isLoggedIn && activeCondominioId.isNotBlank() -> Screen.Dashboard.route
+        isLoggedIn                               -> Screen.CondominioSelector.route
+        else                                     -> Screen.Annunci.route
     }
 
     val isInSelector   = currentRoute == Screen.CondominioSelector.route
@@ -132,29 +134,34 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
             if (!hideChrome) {
                 val currentScreen = Screen.allScreens.find { it.route == currentRoute } ?: Screen.Dashboard
 
-                // Stato per il menu overflow
-                var showOverflowMenu by remember { mutableStateOf(false) }
-                var showLogoutDialog  by remember { mutableStateOf(false) }
-
                 TopAppBar(
                     title = {
                         Column(modifier = Modifier.padding(end = 4.dp)) {
-                            Text(
-                                currentScreen.title,
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                maxLines = 1
-                            )
-                            activeCondominio?.let {
+                            // Se c'è una proprietà attiva, mostrala come titolo principale
+                            if (activeCondominio != null) {
+                                Text(
+                                    activeCondominio!!.nome,
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = TextPrimary,
+                                    maxLines = 1,
+                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                )
                                 Text(
                                     buildString {
-                                        append("🏠 ${it.nome}")
-                                        if (it.indirizzo.isNotBlank()) append("  ${it.indirizzo}")
-                                        if (it.citta.isNotBlank()) append(", ${it.citta}")
+                                        append(currentScreen.title)
+                                        if (activeCondominio!!.citta.isNotBlank())
+                                            append("  ·  ${activeCondominio!!.citta}")
                                     },
                                     style = MaterialTheme.typography.labelSmall,
                                     color = Cyan400,
                                     maxLines = 1,
                                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                )
+                            } else {
+                                Text(
+                                    currentScreen.title,
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    maxLines = 1
                                 )
                             }
                         }
@@ -213,31 +220,6 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
                                     }
                                 )
                             }
-                        }
-
-                        // Dialog logout
-                        if (showLogoutDialog) {
-                            AlertDialog(
-                                onDismissRequest = { showLogoutDialog = false },
-                                containerColor = DarkSurface,
-                                icon = { Icon(Icons.Filled.Logout, null, tint = Red400) },
-                                title = { Text("Esci dall'account", color = TextPrimary, fontWeight = FontWeight.Bold) },
-                                text = { Text("Vuoi davvero uscire?", color = TextSecondary) },
-                                confirmButton = {
-                                    TextButton(onClick = {
-                                        showLogoutDialog = false
-                                        authViewModel.signOut()
-                                        navController.navigate(Screen.Login.route) {
-                                            popUpTo(0) { inclusive = true }
-                                        }
-                                    }) { Text("Esci", color = Red400, fontWeight = FontWeight.Bold) }
-                                },
-                                dismissButton = {
-                                    TextButton(onClick = { showLogoutDialog = false }) {
-                                        Text("Annulla", color = TextSecondary)
-                                    }
-                                }
-                            )
                         }
                     }
                 )
@@ -329,6 +311,31 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
         )
     }
 
+    // ── Dialog conferma logout ───────────────────────────────────────────────
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            containerColor = DarkSurface,
+            icon = { Icon(Icons.Filled.Logout, null, tint = Red400) },
+            title = { Text("Esci dall'account", color = TextPrimary, fontWeight = FontWeight.Bold) },
+            text = { Text("Vuoi davvero uscire?", color = TextSecondary) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showLogoutDialog = false
+                    authViewModel.signOut()
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }) { Text("Esci", color = Red400, fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutDialog = false }) {
+                    Text("Annulla", color = TextSecondary)
+                }
+            }
+        )
+    }
+
     NavHost(
             navController    = navController,
             startDestination = startDestination,
@@ -389,7 +396,7 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
                 LoginScreen(
                     viewModel = authViewModel,
                     onLoginSuccess = {
-                        val dest = if (activeCondominioId > 0L) Screen.Dashboard.route
+                        val dest = if (activeCondominioId.isNotBlank()) Screen.Dashboard.route
                                    else Screen.CondominioSelector.route
                         navController.navigate(dest) {
                             popUpTo(Screen.Login.route) { inclusive = true }
@@ -401,10 +408,18 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
                 )
             }
             composable(Screen.Onboarding.route) {
+                // Se siamo qui come primo avvio (nessuna schermata precedente),
+                // onFinished porta al login. Se invece è stata aperta dalla guida
+                // (utente già loggato), popBackStack() torna alla schermata precedente.
+                val isFirstLaunch = !isLoggedIn
                 OnboardingScreen(
                     onFinished = {
-                        navController.navigate(Screen.Login.route) {
-                            popUpTo(Screen.Onboarding.route) { inclusive = true }
+                        if (isFirstLaunch) {
+                            navController.navigate(Screen.Login.route) {
+                                popUpTo(Screen.Onboarding.route) { inclusive = true }
+                            }
+                        } else {
+                            navController.popBackStack()
                         }
                     }
                 )
@@ -419,9 +434,7 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
                         }
                     },
                     onShowOnboarding = {
-                        navController.navigate(Screen.Onboarding.route) {
-                            launchSingleTop = true
-                        }
+                        navController.navigate(Screen.Onboarding.route) { launchSingleTop = true }
                     },
                     onLogout = {
                         authViewModel.signOut()
@@ -443,7 +456,12 @@ fun MainApp(viewModel: RentViewModel = viewModel()) {
                     }
                 )
             }
-            composable(Screen.Tenants.route)    { TenantsScreen(viewModel) }
+            composable(Screen.Tenants.route)    {
+                TenantsScreen(
+                    viewModel = viewModel,
+                    onCreaAnnuncio = { navController.navigate(Screen.CreaAnnuncio.route) { launchSingleTop = true } }
+                )
+            }
             composable(Screen.Affitti.route)    { RentNoticesScreen(viewModel) }
             composable(Screen.Expenses.route)   { ExpensesScreen(viewModel) }
             composable(Screen.Documenti.route)  { DocumentiScreen(viewModel) }

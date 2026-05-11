@@ -195,19 +195,8 @@ fun LoginScreen(
                 )
             )
     ) {
-        // Pulsante "?" in alto a destra
-        IconButton(
-            onClick = onShowHelp,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = 12.dp, end = 8.dp)
-        ) {
-            Icon(
-                Icons.Filled.HelpOutline,
-                contentDescription = "Come funziona",
-                tint = TextMuted
-            )
-        }
+        // ⚠️ Il pulsante "?" è posizionato DOPO la Column nel Box
+        // per essere sopra nello z-order e ricevere i touch correttamente
         // ── Decorazione sfondo ────────────────────────────────────────────
         Box(
             modifier = Modifier
@@ -554,6 +543,20 @@ fun LoginScreen(
             )
 
             Spacer(Modifier.height(32.dp))
+        }
+
+        // Pulsante "?" SOPRA la Column (z-order corretto)
+        IconButton(
+            onClick = onShowHelp,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 12.dp, end = 8.dp)
+        ) {
+            Icon(
+                Icons.Filled.HelpOutline,
+                contentDescription = "Come funziona",
+                tint = TextMuted
+            )
         }
     }
 }

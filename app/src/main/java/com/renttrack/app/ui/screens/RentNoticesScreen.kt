@@ -21,12 +21,12 @@ import androidx.compose.ui.unit.dp
 import com.renttrack.app.data.model.*
 import com.renttrack.app.ui.components.*
 import com.renttrack.app.ui.theme.*
-import com.renttrack.app.viewmodel.RentViewModel
+import com.renttrack.app.viewmodel.SupabaseRentViewModel
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RentNoticesScreen(viewModel: RentViewModel) {
+fun RentNoticesScreen(viewModel: SupabaseRentViewModel) {
     val cedolini by viewModel.cedolini.collectAsState()
     val cedoliniWithItems by viewModel.cedoliniWithItems.collectAsState()
     val pendingCount by viewModel.pendingCedolini.collectAsState()
@@ -36,10 +36,10 @@ fun RentNoticesScreen(viewModel: RentViewModel) {
     var showGenerateDialog by remember { mutableStateOf(false) }
     var showSingleDialog by remember { mutableStateOf(false) }
     var showQuotaDialog by remember { mutableStateOf(false) }
-    var showDetailDialog by remember { mutableStateOf<CedolinoWithItems?>(null) }
-    var showConfirmSendDialog by remember { mutableStateOf<Cedolino?>(null) }
-    var showPagamentoDialog by remember { mutableStateOf<Cedolino?>(null) }
-    var deleteTarget by remember { mutableStateOf<Cedolino?>(null) }
+    var showDetailDialog by remember { mutableStateOf<SCedolinoWithItems?>(null) }
+    var showConfirmSendDialog by remember { mutableStateOf<SCedolino?>(null) }
+    var showPagamentoDialog by remember { mutableStateOf<SCedolino?>(null) }
+    var deleteTarget by remember { mutableStateOf<SCedolino?>(null) }
     var filterStatus by remember { mutableStateOf<String?>(null) }
     var showArchive by remember { mutableStateOf(false) }
 
@@ -486,9 +486,9 @@ fun RentNoticesScreen(viewModel: RentViewModel) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SingleCedolinoDialog(
-    units: List<CondoUnit>,
+    units: List<SCondoUnit>,
     onDismiss: () -> Unit,
-    onCreate: (Cedolino, List<CedolinoItem>) -> Unit
+    onCreate: (SCedolino, List<SCedolinoItem>) -> Unit
 ) {
     var selectedUnit by remember { mutableStateOf(units.first()) }
     var unitExpanded by remember { mutableStateOf(false) }
@@ -608,15 +608,16 @@ private fun SingleCedolinoDialog(
             val isValid = period.isNotBlank() && total > 0 && items.all { it.first.isNotBlank() && (it.second.toDoubleOrNull() ?: 0.0) > 0 }
             Button(
                 onClick = {
-                    val cedolino = Cedolino(
+                    val cedolino = SCedolino(
                         unitId = selectedUnit.id,
+                        condominioId = "", // will be set by ViewModel
                         period = period,
                         issueDate = System.currentTimeMillis(),
                         dueDate = dueDate,
                         total = total,
                         status = "Emesso"
                     )
-                    val cedItems = items.map { CedolinoItem(cedolinoId = 0, description = it.first, amount = it.second.toDoubleOrNull() ?: 0.0) }
+                    val cedItems = items.map { SCedolinoItem(description = it.first, amount = it.second.toDoubleOrNull() ?: 0.0) }
                     onCreate(cedolino, cedItems)
                 },
                 enabled = isValid,
@@ -869,7 +870,7 @@ private fun GenerateCedoliniDialog(
 
 // ─── Dialog: Dettaglio cedolino ──────────────────────────────────────
 @Composable
-private fun CedolinoDetailDialog(cwi: CedolinoWithItems, unitName: String, onDismiss: () -> Unit) {
+private fun CedolinoDetailDialog(cwi: SCedolinoWithItems, unitName: String, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Avviso Affitto — ${cwi.cedolino.period}") },
@@ -918,9 +919,9 @@ private fun CedolinoDetailDialog(cwi: CedolinoWithItems, unitName: String, onDis
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun QuotaDirectaDialog(
-    units: List<com.renttrack.app.data.model.CondoUnit>,
+    units: List<SCondoUnit>,
     onDismiss: () -> Unit,
-    onCreate: (unitId: Long, importo: Double, descrizione: String, categoria: String, periodo: String, dueDate: Long) -> Unit
+    onCreate: (unitId: String, importo: Double, descrizione: String, categoria: String, periodo: String, dueDate: Long) -> Unit
 ) {
     var selectedUnit by remember { mutableStateOf(units.firstOrNull()) }
     var importo by remember { mutableStateOf("") }
@@ -1009,7 +1010,7 @@ fun QuotaDirectaDialog(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegistraPagamentoDialog(
-    cedolino: com.renttrack.app.data.model.Cedolino,
+    cedolino: SCedolino,
     unitName: String,
     onDismiss: () -> Unit,
     onConfirm: (method: String, reference: String) -> Unit

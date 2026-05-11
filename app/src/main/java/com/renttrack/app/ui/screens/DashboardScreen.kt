@@ -15,17 +15,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.renttrack.app.data.model.CedolinoWithItems
+import com.renttrack.app.data.model.SCedolinoWithItems
 import com.renttrack.app.data.model.ExpenseCategories
 import com.renttrack.app.ui.components.*
 import com.renttrack.app.ui.theme.*
 import com.renttrack.app.viewmodel.ListingsViewModel
-import com.renttrack.app.viewmodel.RentViewModel
+import com.renttrack.app.viewmodel.SupabaseRentViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
-    viewModel: RentViewModel,
+    viewModel: SupabaseRentViewModel,
     listingsViewModel: ListingsViewModel,
     onNavigateToAnnunci: () -> Unit,
     onCreaAnnuncio: () -> Unit
@@ -116,46 +116,106 @@ fun DashboardScreen(
         item {
             val myListings by listingsViewModel.myListings.collectAsState()
             val activeCount = myListings.count { it.isActive }
-            Surface(
-                modifier = Modifier.fillMaxWidth().clickable { onNavigateToAnnunci() },
-                shape = RoundedCornerShape(16.dp),
-                color = DarkCard,
-                border = BorderStroke(1.dp, Cyan400.copy(alpha = 0.2f))
-            ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+
+            if (myListings.isEmpty()) {
+                // ── Banner CTA: nessun annuncio ancora pubblicato ──
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    color = Cyan400.copy(alpha = 0.08f),
+                    border = BorderStroke(1.5.dp, Cyan400.copy(alpha = 0.5f))
                 ) {
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = Cyan400.copy(alpha = 0.12f),
-                        modifier = Modifier.size(48.dp)
+                    Column(
+                        modifier = Modifier.padding(20.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                            Icon(Icons.Filled.Apartment, null, tint = Cyan400, modifier = Modifier.size(24.dp))
-                        }
-                    }
-                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text("I miei annunci", fontWeight = FontWeight.Bold, color = TextPrimary)
-                        Text(
-                            if (myListings.isEmpty()) "Nessun annuncio pubblicato"
-                            else "$activeCount attivi · ${myListings.size} totali",
-                            color = TextMuted, style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = onCreaAnnuncio, modifier = Modifier.size(36.dp)) {
-                            Surface(shape = RoundedCornerShape(8.dp), color = Cyan400) {
-                                Icon(Icons.Filled.Add, null, tint = DarkBg,
-                                    modifier = Modifier.padding(6.dp).size(18.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Icon(Icons.Filled.Campaign, null, tint = Cyan400, modifier = Modifier.size(28.dp))
+                            Column {
+                                Text(
+                                    "Pubblica in vetrina",
+                                    fontWeight = FontWeight.Bold,
+                                    color = TextPrimary,
+                                    style = MaterialTheme.typography.titleSmall
+                                )
+                                Text(
+                                    "Questo immobile non è ancora visibile al pubblico",
+                                    color = TextMuted,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
                             }
                         }
-                        Icon(Icons.Filled.ChevronRight, null, tint = TextMuted)
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Button(
+                                onClick = onCreaAnnuncio,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Cyan400,
+                                    contentColor = DarkBg
+                                ),
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Icon(Icons.Filled.Add, null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text("Crea annuncio", fontWeight = FontWeight.Bold)
+                            }
+                            OutlinedButton(
+                                onClick = onNavigateToAnnunci,
+                                border = BorderStroke(1.dp, Cyan400.copy(alpha = 0.4f)),
+                                shape = RoundedCornerShape(10.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Cyan400)
+                            ) {
+                                Text("Vedi vetrina")
+                            }
+                        }
+                    }
+                }
+            } else {
+                // ── Card compatta quando ci sono già annunci ──
+                Surface(
+                    modifier = Modifier.fillMaxWidth().clickable { onNavigateToAnnunci() },
+                    shape = RoundedCornerShape(16.dp),
+                    color = DarkCard,
+                    border = BorderStroke(1.dp, Cyan400.copy(alpha = 0.2f))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = Cyan400.copy(alpha = 0.12f),
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                Icon(Icons.Filled.Apartment, null, tint = Cyan400, modifier = Modifier.size(24.dp))
+                            }
+                        }
+                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text("I miei annunci", fontWeight = FontWeight.Bold, color = TextPrimary)
+                            Text(
+                                "$activeCount attivi · ${myListings.size} totali",
+                                color = TextMuted, style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(onClick = onCreaAnnuncio, modifier = Modifier.size(36.dp)) {
+                                Surface(shape = RoundedCornerShape(8.dp), color = Cyan400) {
+                                    Icon(Icons.Filled.Add, null, tint = DarkBg,
+                                        modifier = Modifier.padding(6.dp).size(18.dp))
+                                }
+                            }
+                            Icon(Icons.Filled.ChevronRight, null, tint = TextMuted)
+                        }
                     }
                 }
             }
         }
+
 
         // ─── Alert Scadenze Contratti ────────────────────────────
         if (expiredUnits.isNotEmpty() || urgentUnits.isNotEmpty() || soonUnits.isNotEmpty()) {
@@ -369,10 +429,10 @@ fun DashboardScreen(
 // ─── Bottom Sheet content ─────────────────────────────────────────────
 @Composable
 private fun OpenCedoliniSheet(
-    openCedolini: List<CedolinoWithItems>,
+    openCedolini: List<SCedolinoWithItems>,
     totalOpen: Double,
-    units: List<com.renttrack.app.data.model.CondoUnit>,
-    viewModel: RentViewModel
+    units: List<com.renttrack.app.data.model.SCondoUnit>,
+    viewModel: SupabaseRentViewModel
 ) {
     // Raggruppa per unità
     val byUnit = remember(openCedolini) {
@@ -381,7 +441,7 @@ private fun OpenCedoliniSheet(
             .toList()
             .sortedBy { (unitId, _) ->
                 val u = units.find { it.id == unitId }
-                "${u?.scala}_${u?.number}"
+                "${u?.number}"
             }
     }
 
@@ -436,10 +496,7 @@ private fun OpenCedoliniSheet(
             byUnit.forEach { (unitId, ceds) ->
                 val unit = units.find { it.id == unitId }
                 val ownerLabel = unit?.let {
-                    buildString {
-                        if (it.scala.isNotBlank()) append("${it.scala} · ")
-                        append("${it.ownerName} — ${it.number}")
-                    }
+                    buildString { append("${it.ownerName} — ${it.number}") }
                 } ?: "Inquilino sconosciuto"
                 val unitTotal = ceds.sumOf { it.cedolino.total }
 
