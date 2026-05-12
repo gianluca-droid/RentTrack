@@ -202,7 +202,16 @@ fun MainApp(viewModel: SupabaseRentViewModel = viewModel()) {
                                 expanded = showOverflowMenu,
                                 onDismissRequest = { showOverflowMenu = false }
                             ) {
-                                // Cambia proprietà
+                            // Vetrina pubblica
+                            DropdownMenuItem(
+                                text = { Text("Vetrina pubblica", color = TextPrimary) },
+                                leadingIcon = { Icon(Icons.Filled.Search, null, tint = Cyan400) },
+                                onClick = {
+                                    showOverflowMenu = false
+                                    navController.navigate(Screen.Annunci.route) { launchSingleTop = true }
+                                }
+                            )
+                            // Cambia proprietà
                                 DropdownMenuItem(
                                     text = { Text("Cambia proprietà", color = TextPrimary) },
                                     leadingIcon = { Icon(Icons.Filled.Business, null, tint = Cyan400) },
@@ -460,7 +469,12 @@ fun MainApp(viewModel: SupabaseRentViewModel = viewModel()) {
                     viewModel = viewModel,
                     listingsViewModel = listingsViewModel,
                     onNavigateToAnnunci = {
+                        // Card "I miei annunci" → gestione annunci del proprietario
                         navController.navigate(Screen.MieiAnnunci.route) { launchSingleTop = true }
+                    },
+                    onVediVetrina = {
+                        // Pulsante "Vedi vetrina" → vetrina pubblica
+                        navController.navigate(Screen.Annunci.route) { launchSingleTop = true }
                     },
                     onCreaAnnuncio = {
                         navController.navigate(Screen.CreaAnnuncio.route) { launchSingleTop = true }

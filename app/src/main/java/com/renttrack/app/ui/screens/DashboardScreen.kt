@@ -27,7 +27,8 @@ import com.renttrack.app.viewmodel.SupabaseRentViewModel
 fun DashboardScreen(
     viewModel: SupabaseRentViewModel,
     listingsViewModel: ListingsViewModel,
-    onNavigateToAnnunci: () -> Unit,
+    onNavigateToAnnunci: () -> Unit,   // → I miei annunci (gestione)
+    onVediVetrina: () -> Unit = {},    // → Vetrina pubblica
     onCreaAnnuncio: () -> Unit
 ) {
     val totalExpenses by viewModel.totalExpenses.collectAsState()
@@ -63,6 +64,10 @@ fun DashboardScreen(
     }
 
     var showOpenCedoliniSheet by remember { mutableStateOf(false) }
+
+    // Carica i listing del proprietario appena si apre il Dashboard
+    // così il banner "Pubblica in vetrina" appare solo se non ci sono davvero annunci
+    LaunchedEffect(Unit) { listingsViewModel.loadMyListings() }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -163,7 +168,7 @@ fun DashboardScreen(
                                 Text("Crea annuncio", fontWeight = FontWeight.Bold)
                             }
                             OutlinedButton(
-                                onClick = onNavigateToAnnunci,
+                                onClick = onVediVetrina,
                                 border = BorderStroke(1.dp, Cyan400.copy(alpha = 0.4f)),
                                 shape = RoundedCornerShape(10.dp),
                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = Cyan400)
