@@ -201,6 +201,56 @@ fun PropertySelectorScreen(
                             Spacer(Modifier.width(8.dp))
                             Text("Aggiungi il tuo primo immobile", fontWeight = FontWeight.Bold)
                         }
+
+                        // ── Hint: account mismatch ──────────────────────────
+                        // Aiuta chi si è registrato con email/password ma è entrato con Google
+                        // (o viceversa) e non vede i propri dati
+                        androidx.compose.material3.Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = androidx.compose.ui.graphics.Color(0xFF1A2744),
+                            modifier = androidx.compose.ui.Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = androidx.compose.ui.Modifier.padding(12.dp),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalAlignment = Alignment.Top
+                            ) {
+                                Icon(
+                                    Icons.Filled.Info,
+                                    contentDescription = null,
+                                    tint = Cyan400,
+                                    modifier = androidx.compose.ui.Modifier.size(18.dp).padding(top = 1.dp)
+                                )
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Text(
+                                        "Hai già un account?",
+                                        color = TextPrimary,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        "Se ti sei registrato con email/password, " +
+                                        "assicurati di accedere con lo stesso metodo e la stessa email. " +
+                                        "Account Google e account email sono separati.",
+                                        color = TextMuted,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        textAlign = androidx.compose.ui.text.style.TextAlign.Start
+                                    )
+                                    TextButton(
+                                        onClick = { showLogoutDialog = true },
+                                        contentPadding = PaddingValues(0.dp),
+                                        modifier = androidx.compose.ui.Modifier.height(28.dp)
+                                    ) {
+                                        Text(
+                                            "← Esci e prova con un altro metodo",
+                                            color = Cyan400,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             } else {
