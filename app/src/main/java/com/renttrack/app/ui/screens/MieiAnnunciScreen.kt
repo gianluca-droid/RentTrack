@@ -436,6 +436,13 @@ private fun MyListingCard(
                         color = TextMuted,
                         style = MaterialTheme.typography.labelSmall
                     )
+                    if (listing.address.isNotBlank()) {
+                        Text(
+                            listing.address,
+                            color = TextMuted.copy(alpha = 0.7f),
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    }
                     Text(
                         "€${listing.priceMonthly.toInt()}/mese",
                         color = Cyan400,
@@ -599,7 +606,8 @@ private fun EditListingSheet(
 ) {
     val isSubmitting by viewModel.isSubmitting.collectAsState()
     var title         by remember { mutableStateOf(listing.title) }
-    var city          by remember { mutableStateOf(listing.city) }
+    var address        by remember { mutableStateOf(listing.address) }
+    var city           by remember { mutableStateOf(listing.city) }
     var zone          by remember { mutableStateOf(listing.zone) }
     var price         by remember { mutableStateOf(listing.priceMonthly.toInt().toString()) }
     var description   by remember { mutableStateOf(listing.description) }
@@ -639,6 +647,13 @@ private fun EditListingSheet(
                 label = { Text("Titolo annuncio") },
                 modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp),
                 colors = fieldColors, singleLine = true
+            )
+            OutlinedTextField(
+                value = address, onValueChange = { address = it },
+                label = { Text("Via / Indirizzo") },
+                modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp),
+                colors = fieldColors, singleLine = true,
+                placeholder = { androidx.compose.material3.Text("es. Via Roma 12", color = TextMuted) }
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
@@ -681,7 +696,7 @@ private fun EditListingSheet(
                     val priceVal = price.toDoubleOrNull() ?: listing.priceMonthly
                     viewModel.updateListing(
                         listingId = listing.id,
-                        title = title, city = city, zone = zone,
+                        title = title, address = address, city = city, zone = zone,
                         priceMonthly = priceVal, description = description,
                         availableFrom = availableFrom,
                         onSuccess = onDismiss

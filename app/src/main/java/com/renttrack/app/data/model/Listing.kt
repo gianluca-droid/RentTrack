@@ -14,6 +14,7 @@ data class Listing(
     val id: String = "",
     val landlordId: String = "",
     val title: String = "",
+    val address: String = "",
     val city: String = "",
     val zone: String = "",
     val priceMonthly: Double = 0.0,

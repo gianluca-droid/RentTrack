@@ -36,6 +36,7 @@ fun CreaAnnuncioScreen(
 
     // Campi form
     var title          by remember { mutableStateOf("") }
+    var address        by remember { mutableStateOf("") }
     var city           by remember { mutableStateOf("") }
     var zone           by remember { mutableStateOf("") }
     var price          by remember { mutableStateOf("") }
@@ -137,6 +138,10 @@ fun CreaAnnuncioScreen(
                 modifier = Modifier.fillMaxWidth(), singleLine = true,
                 shape = RoundedCornerShape(12.dp), colors = fieldColors,
                 placeholder = { Text("es. Bilocale luminoso in centro", color = TextMuted) })
+            OutlinedTextField(address, { address = it }, label = { Text("Via / Indirizzo") },
+                modifier = Modifier.fillMaxWidth(), singleLine = true,
+                shape = RoundedCornerShape(12.dp), colors = fieldColors,
+                placeholder = { Text("es. Via Roma 12", color = TextMuted) })
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(city, { city = it }, label = { Text("Città *") },
                     modifier = Modifier.weight(1f), singleLine = true,
@@ -235,7 +240,8 @@ fun CreaAnnuncioScreen(
             Button(
                 onClick = {
                     viewModel.createListing(
-                        title = title.trim(), city = city.trim(), zone = zone.trim(),
+                        title = title.trim(), address = address.trim(),
+                        city = city.trim(), zone = zone.trim(),
                         priceMonthly = price.toDoubleOrNull() ?: 0.0,
                         sqm = sqm.toIntOrNull(), rooms = rooms.toIntOrNull(), bathrooms = bathrooms.toIntOrNull(),
                         floor = floor.trim(), furnished = furnished, availableFrom = availableFrom.trim(),

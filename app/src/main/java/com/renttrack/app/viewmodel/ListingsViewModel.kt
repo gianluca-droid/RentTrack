@@ -220,7 +220,7 @@ class ListingsViewModel(
 
     // ── Crea annuncio ─────────────────────────────────────────────────────────
     fun createListing(
-        title: String, city: String, zone: String,
+        title: String, address: String, city: String, zone: String,
         priceMonthly: Double, sqm: Int?, rooms: Int?, bathrooms: Int?,
         floor: String, furnished: Boolean, availableFrom: String,
         description: String, contactType: String,
@@ -234,7 +234,7 @@ class ListingsViewModel(
                 val token = authToken ?: throw Exception("Non autenticato")
                 val listingId = withContext(Dispatchers.IO) {
                     postListing(
-                        token, title, city, zone, priceMonthly, sqm, rooms, bathrooms,
+                        token, title, address, city, zone, priceMonthly, sqm, rooms, bathrooms,
                         floor, furnished, availableFrom, description, contactType,
                         contactPhone, contactEmail, contactWhatsapp
                     )
@@ -276,7 +276,7 @@ class ListingsViewModel(
     // ── Modifica annuncio ─────────────────────────────────────────────────────
     fun updateListing(
         listingId: String,
-        title: String, city: String, zone: String,
+        title: String, address: String, city: String, zone: String,
         priceMonthly: Double, description: String, availableFrom: String,
         onSuccess: () -> Unit
     ) {
@@ -287,6 +287,7 @@ class ListingsViewModel(
                 withContext(Dispatchers.IO) {
                     val body = JSONObject().apply {
                         put("title", title.trim())
+                        put("address", address.trim())
                         put("city", city.trim())
                         put("zone", zone.trim())
                         put("price_monthly", priceMonthly)
@@ -451,7 +452,7 @@ class ListingsViewModel(
 
     // ── Helpers HTTP ──────────────────────────────────────────────────────────
     private fun postListing(
-        token: String, title: String, city: String, zone: String,
+        token: String, title: String, address: String, city: String, zone: String,
         price: Double, sqm: Int?, rooms: Int?, bathrooms: Int?,
         floor: String, furnished: Boolean, availableFrom: String,
         description: String, contactType: String,
@@ -460,8 +461,8 @@ class ListingsViewModel(
         val userId = getUserIdFromToken(token)
             ?: throw Exception("Impossibile leggere l'ID utente dal token")
         val body = JSONObject().apply {
-            put("landlord_id", userId)          // <─ obbligatorio per RLS
-            put("title", title); put("city", city); put("zone", zone)
+            put("landlord_id", userId)
+            put("title", title); put("address", address); put("city", city); put("zone", zone)
             put("price_monthly", price)
             if (sqm != null) put("sqm", sqm)
             if (rooms != null) put("rooms", rooms)
@@ -555,6 +556,7 @@ class ListingsViewModel(
                     id = o.optString("id"),
                     landlordId = o.optString("landlord_id"),
                     title = o.optString("title"),
+                    address = o.optString("address"),
                     city = o.optString("city"),
                     zone = o.optString("zone"),
                     priceMonthly = o.optDouble("price_monthly", 0.0),
