@@ -199,30 +199,113 @@ class SupabaseRentViewModel(application: Application) : AndroidViewModel(applica
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    // ── Report Scope (multi-proprieta) ─────────────────────────────────────
+    enum class ReportScope { ACTIVE, ALL, CUSTOM }
+    private val _reportScope = MutableStateFlow(ReportScope.ACTIVE)
+    val reportScope: StateFlow<ReportScope> = _reportScope
+    private val _reportSelectedIds = MutableStateFlow<Set<String>>(emptySet())
+    val reportSelectedIds: StateFlow<Set<String>> = _reportSelectedIds
+    private val _reportExpenses = MutableStateFlow<List<SExpense>>(emptyList())
+    private val _reportPayments = MutableStateFlow<List<SPayment>>(emptyList())
+    private val _reportIsLoading = MutableStateFlow(false)
+    val reportIsLoading: StateFlow<Boolean> = _reportIsLoading
+
+    val reportTotalExpenses: StateFlow<Double> = _reportExpenses
+        .map { it.sumOf { e -> e.amount } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
+    val reportTotalPayments: StateFlow<Double> = _reportPayments
+        .map { it.sumOf { p -> p.amount } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
+    val reportExpensesByCategory: StateFlow<List<CategorySummary>> = _reportExpenses
+        .map { list -> list.groupBy { it.category }
+            .map { (cat, items) -> CategorySummary(cat, items.sumOf { it.amount }) }
+            .sortedByDescending { it.total } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val reportMonthlyExpenses: StateFlow<List<MonthlyTotal>> =
+        combine(_reportExpenses, _selectedYear) { exp, year ->
+            val cal = Calendar.getInstance()
+            exp.filter { cal.apply { timeInMillis = it.date }.get(Calendar.YEAR) == year }
+                .groupBy { cal.apply { timeInMillis = it.date }.get(Calendar.MONTH) + 1 }
+                .map { (month, items) -> MonthlyTotal(month, items.sumOf { it.amount }) }
+                .sortedBy { it.month }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val reportMonthlyPayments: StateFlow<List<MonthlyTotal>> =
+        combine(_reportPayments, _selectedYear) { pay, year ->
+            val cal = Calendar.getInstance()
+            pay.filter { cal.apply { timeInMillis = it.date }.get(Calendar.YEAR) == year }
+                .groupBy { cal.apply { timeInMillis = it.date }.get(Calendar.MONTH) + 1 }
+                .map { (month, items) -> MonthlyTotal(month, items.sumOf { it.amount }) }
+                .sortedBy { it.month }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val reportYearlyExpenses: StateFlow<List<YearlyTotal>> = _reportExpenses
+        .map { list -> val cal = Calendar.getInstance()
+            list.groupBy { cal.apply { timeInMillis = it.date }.get(Calendar.YEAR) }
+                .map { (year, items) -> YearlyTotal(year, items.sumOf { it.amount }, items.size) }
+                .sortedByDescending { it.year } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val reportYearlyPayments: StateFlow<List<YearlyTotal>> = _reportPayments
+        .map { list -> val cal = Calendar.getInstance()
+            list.groupBy { cal.apply { timeInMillis = it.date }.get(Calendar.YEAR) }
+                .map { (year, items) -> YearlyTotal(year, items.sumOf { it.amount }, items.size) }
+                .sortedByDescending { it.year } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val reportAvailableYears: StateFlow<List<Int>> =
+        combine(_reportExpenses, _reportPayments) { exp, pay ->
+            val cal = Calendar.getInstance()
+            val ey = exp.map { cal.apply { timeInMillis = it.date }.get(Calendar.YEAR) }
+            val py = pay.map { cal.apply { timeInMillis = it.date }.get(Calendar.YEAR) }
+            (ey + py).distinct().sortedDescending()
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun setReportScope(scope: ReportScope, customIds: Set<String> = emptySet()) {
+        _reportScope.value = scope
+        _reportSelectedIds.value = customIds
+        viewModelScope.launch {
+            _reportIsLoading.value = true
+            try {
+                val condIds = when (scope) {
+                    ReportScope.ACTIVE -> listOf(_activeCondominioId.value).filter { it.isNotBlank() }
+                    ReportScope.ALL    -> _allCondomini.value.map { it.id }
+                    ReportScope.CUSTOM -> customIds.toList()
+                }
+                val allExp = mutableListOf<SExpense>()
+                val allPay = mutableListOf<SPayment>()
+                withContext(Dispatchers.IO) {
+                    condIds.forEach { id ->
+                        allExp += repo.getExpensesByCondominio(id)
+                        allPay += repo.getPaymentsByCondominio(id)
+                    }
+                }
+                _reportExpenses.value = allExp
+                _reportPayments.value = allPay
+            } catch (e: Exception) { _error.value = e.message
+            } finally { _reportIsLoading.value = false }
+        }
+    }
+
     // ── Documenti ─────────────────────────────────────────────────────────
-    private val _documenti = MutableStateFlow<List<SDocumento>>(emptyList())
-    val documenti: StateFlow<List<SDocumento>> = _documenti
-    val documentCount: StateFlow<Int> = _documenti.map { it.size }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
-
-    // ── Backup status ─────────────────────────────────────────────────
-    private val _backupStatus = MutableStateFlow<String?>(null)
-    val backupStatus: StateFlow<String?> = _backupStatus
-    fun clearBackupStatus() { _backupStatus.value = null }
-
     fun exportCSV(context: Context) = viewModelScope.launch {
         try {
-            val condId = _activeCondominioId.value.ifBlank { return@launch }
-            val sb = StringBuilder()
-            sb.appendLine("Tipo,Data,Importo,Descrizione,Stato")
-            _cedolini.value.filter { it.condominioId == condId }.forEach { c ->
-                val unit = _units.value.find { it.id == c.unitId }
-                val dateFmt = SimpleDateFormat("dd/MM/yyyy", Locale.ITALIAN)
-                sb.appendLine("Cedolino,${dateFmt.format(Date(c.issueDate))},${c.total},\"${c.period} - ${unit?.ownerName ?: ""}\",${c.status}")
+            val dateFmt = SimpleDateFormat("dd/MM/yyyy", Locale.ITALIAN)
+            val scopeLabel = when (_reportScope.value) {
+                ReportScope.ACTIVE -> _allCondomini.value.find { it.id == _activeCondominioId.value }
+                    ?.let { "${it.nome}${if (it.indirizzo.isNotBlank()) " - ${it.indirizzo}" else ""}" }
+                    ?: "Proprieta attiva"
+                ReportScope.ALL    -> "Tutte le proprieta (${_allCondomini.value.size})"
+                ReportScope.CUSTOM -> "${_reportSelectedIds.value.size} proprieta selezionate"
             }
-            _expenses.value.filter { it.condominioId == condId }.forEach { e ->
-                val dateFmt = SimpleDateFormat("dd/MM/yyyy", Locale.ITALIAN)
-                sb.appendLine("Spesa,${dateFmt.format(Date(e.date))},${e.amount},\"${e.description}\",")
+            val sb = StringBuilder()
+            sb.appendLine("# RentTrack Export - $scopeLabel")
+            sb.appendLine("Tipo,Data,Importo,Descrizione,Stato,Proprieta")
+            _reportPayments.value.forEach { p ->
+                val condo = _allCondomini.value.find { it.id == p.condominioId }
+                val label = condo?.let { "${it.nome}${if (it.indirizzo.isNotBlank()) " - ${it.indirizzo}" else ""}" } ?: ""
+                sb.appendLine("Affitto,${dateFmt.format(Date(p.date))},${p.amount},\"${p.reference}\",Pagato,\"$label\"")
+            }
+            _reportExpenses.value.forEach { e ->
+                val condo = _allCondomini.value.find { it.id == e.condominioId }
+                val label = condo?.let { "${it.nome}${if (it.indirizzo.isNotBlank()) " - ${it.indirizzo}" else ""}" } ?: ""
+                sb.appendLine("Spesa,${dateFmt.format(Date(e.date))},${e.amount},\"${e.category} - ${e.description}\",-,\"$label\"")
             }
             val file = withContext(Dispatchers.IO) {
                 File(context.cacheDir, "export_renttrack.csv").also { it.writeText(sb.toString()) }
@@ -234,11 +317,21 @@ class SupabaseRentViewModel(application: Application) : AndroidViewModel(applica
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
             context.startActivity(Intent.createChooser(intent, "Esporta CSV").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-            _backupStatus.value = "✅ CSV esportato con successo"
+            _backupStatus.value = "CSV: ${_reportPayments.value.size + _reportExpenses.value.size} righe - $scopeLabel"
         } catch (e: Exception) {
-            _backupStatus.value = "❌ Errore esportazione: ${e.message}"
+            _backupStatus.value = "Errore esportazione: ${e.message}"
         }
     }
+
+    private val _documenti = MutableStateFlow<List<SDocumento>>(emptyList())
+    val documenti: StateFlow<List<SDocumento>> = _documenti
+    val documentCount: StateFlow<Int> = _documenti.map { it.size }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    // ── Backup status ─────────────────────────────────────────────────
+    private val _backupStatus = MutableStateFlow<String?>(null)
+    val backupStatus: StateFlow<String?> = _backupStatus
+    fun clearBackupStatus() { _backupStatus.value = null }
 
     fun backupDatabase(context: Context) {
         _backupStatus.value = "ℹ️ I dati sono su Supabase cloud — nessun backup locale necessario"
@@ -330,6 +423,11 @@ class SupabaseRentViewModel(application: Application) : AndroidViewModel(applica
                     }
                     _tenantHistory.value = repo.getTenantHistory(condId)
                     _documenti.value = repo.getDocumenti(condId)
+                    // Sync report data when scope is ACTIVE
+                    if (_reportScope.value == ReportScope.ACTIVE) {
+                        _reportExpenses.value = _expenses.value
+                        _reportPayments.value = _payments.value
+                    }
                 }
             } catch (e: Exception) {
                 _error.value = e.message

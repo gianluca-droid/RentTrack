@@ -36,9 +36,61 @@ private val MONTHS = listOf("Gen","Feb","Mar","Apr","Mag","Giu","Lug","Ago","Set
 @Composable
 fun ReportsScreen(viewModel: SupabaseRentViewModel) {
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("📊 Panoramica", "📅 Mensile", "📁 Archivio")
+    val tabs = listOf("Panoramica", "Mensile", "Archivio")
+    val allCondomini    by viewModel.allCondomini.collectAsState()
+    val reportScope     by viewModel.reportScope.collectAsState()
+    val reportIds       by viewModel.reportSelectedIds.collectAsState()
+    val reportIsLoading by viewModel.reportIsLoading.collectAsState()
+    var showCustomPicker by remember { mutableStateOf(false) }
+
+    // Inizializza report dati al primo lancio
+    LaunchedEffect(Unit) { viewModel.setReportScope(SupabaseRentViewModel.ReportScope.ACTIVE) }
 
     Column(modifier = Modifier.fillMaxSize().background(DarkBg)) {
+        // ── Scope selector ───────────────────────────────────────────────
+        Row(
+            modifier = Modifier.fillMaxWidth().background(DarkSurface)
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("📊", style = MaterialTheme.typography.labelSmall)
+            FilterChip(
+                selected = reportScope == SupabaseRentViewModel.ReportScope.ACTIVE,
+                onClick = { viewModel.setReportScope(SupabaseRentViewModel.ReportScope.ACTIVE) },
+                label = { Text("Solo questa", style = MaterialTheme.typography.labelSmall) },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = Cyan400.copy(alpha = 0.2f),
+                    selectedLabelColor = Cyan400
+                )
+            )
+            FilterChip(
+                selected = reportScope == SupabaseRentViewModel.ReportScope.ALL,
+                onClick = { viewModel.setReportScope(SupabaseRentViewModel.ReportScope.ALL) },
+                label = { Text("Tutte (${allCondomini.size})", style = MaterialTheme.typography.labelSmall) },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = Cyan400.copy(alpha = 0.2f),
+                    selectedLabelColor = Cyan400
+                )
+            )
+            FilterChip(
+                selected = reportScope == SupabaseRentViewModel.ReportScope.CUSTOM,
+                onClick = { showCustomPicker = true },
+                label = { Text(
+                    if (reportScope == SupabaseRentViewModel.ReportScope.CUSTOM) "${reportIds.size} scelte"
+                    else "Seleziona",
+                    style = MaterialTheme.typography.labelSmall
+                ) },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = Cyan400.copy(alpha = 0.2f),
+                    selectedLabelColor = Cyan400
+                )
+            )
+            if (reportIsLoading) {
+                CircularProgressIndicator(modifier = Modifier.size(14.dp), color = Cyan400, strokeWidth = 2.dp)
+            }
+        }
+
         // ── Tab Row ──────────────────────────────────────────────────
         TabRow(
             selectedTabIndex = selectedTab,
@@ -66,14 +118,10 @@ fun ReportsScreen(viewModel: SupabaseRentViewModel) {
             }
         }
 
-        // Callback per navigare al tab Mensile con un anno specifico
         val navigateToMensile: (Int) -> Unit = { year ->
             viewModel.setSelectedYear(year)
             selectedTab = 1
         }
-
-        // Crossfade è più stabile di AnimatedContent con LazyColumn dentro i tab:
-        // evita il crash quando si cambia tab mentre il LazyColumn sta ancora componendo.
         Crossfade(targetState = selectedTab, label = "report_tabs") { tab ->
             when (tab) {
                 0 -> PanoramicaTab(viewModel)
@@ -82,17 +130,61 @@ fun ReportsScreen(viewModel: SupabaseRentViewModel) {
             }
         }
     }
+
+    // ── Custom picker dialog ────────────────────────────────────────
+    if (showCustomPicker) {
+        var picked by remember { mutableStateOf(reportIds.toMutableSet()) }
+        AlertDialog(
+            onDismissRequest = { showCustomPicker = false },
+            containerColor = DarkSurface,
+            title = { Text("Seleziona proprieta", color = TextPrimary, fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    allCondomini.forEach { condo ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Checkbox(
+                                checked = condo.id in picked,
+                                onCheckedChange = { checked ->
+                                    picked = picked.toMutableSet().also {
+                                        if (checked) it.add(condo.id) else it.remove(condo.id)
+                                    }
+                                },
+                                colors = CheckboxDefaults.colors(checkedColor = Cyan400)
+                            )
+                            Column {
+                                Text(condo.nome, color = TextPrimary, style = MaterialTheme.typography.bodySmall)
+                                if (condo.indirizzo.isNotBlank())
+                                    Text(condo.indirizzo, color = TextMuted, style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.setReportScope(SupabaseRentViewModel.ReportScope.CUSTOM, picked)
+                    showCustomPicker = false
+                }) { Text("Applica", color = Cyan400, fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCustomPicker = false }) { Text("Annulla", color = TextMuted) }
+            }
+        )
+    }
 }
 
 // ─── TAB 1: Panoramica ───────────────────────────────────────────────
 @Composable
 private fun PanoramicaTab(viewModel: SupabaseRentViewModel) {
-    val expenses by viewModel.expenses.collectAsState()
-    val payments by viewModel.payments.collectAsState()
-    val totalExpenses by viewModel.totalExpenses.collectAsState()
-    val totalPayments by viewModel.totalPayments.collectAsState()
-    val expensesByCategory by viewModel.expensesByCategory.collectAsState()
-    val units by viewModel.units.collectAsState()
+    val totalExpenses   by viewModel.reportTotalExpenses.collectAsState()
+    val totalPayments   by viewModel.reportTotalPayments.collectAsState()
+    val expByCategory   by viewModel.reportExpensesByCategory.collectAsState()
+    val units           by viewModel.units.collectAsState()
+    val expenses        by viewModel.expenses.collectAsState()
+    val payments        by viewModel.payments.collectAsState()
 
     val saldo = totalPayments - totalExpenses
     val saldoPositive = saldo >= 0
@@ -145,14 +237,10 @@ private fun PanoramicaTab(viewModel: SupabaseRentViewModel) {
             }
         }
         // Spese per categoria
-        if (expensesByCategory.isNotEmpty()) {
-            item {
-                Text("Spese per categoria", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = TextPrimary)
-            }
-            val maxCat = expensesByCategory.maxOfOrNull { it.total } ?: 1.0
-            items(expensesByCategory) { cat ->
-                CategoryBar(cat.category, cat.total, maxCat)
-            }
+        if (expByCategory.isNotEmpty()) {
+            item { Text("Spese per categoria", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = TextPrimary) }
+            val maxCat = expByCategory.maxOfOrNull { it.total } ?: 1.0
+            items(expByCategory) { cat -> CategoryBar(cat.category, cat.total, maxCat) }
         }
         // Statistiche generali
         item {
@@ -181,8 +269,16 @@ private fun PanoramicaTab(viewModel: SupabaseRentViewModel) {
                 Icon(Icons.Filled.Download, null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Column {
-                    Text("Esporta CSV", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
-                    Text("Affitti + Spese dell'immobile attivo", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                    Text(
+                    "Esporta CSV",
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold)
+                )
+                val scopeLabel = when (viewModel.reportScope.value) {
+                    SupabaseRentViewModel.ReportScope.ACTIVE -> "Proprieta attiva"
+                    SupabaseRentViewModel.ReportScope.ALL    -> "Tutte le proprieta"
+                    SupabaseRentViewModel.ReportScope.CUSTOM -> "${viewModel.reportSelectedIds.value.size} proprieta"
+                }
+                Text(scopeLabel, style = MaterialTheme.typography.labelSmall, color = TextMuted)
                 }
             }
         }
@@ -266,10 +362,10 @@ private fun PanoramicaTab(viewModel: SupabaseRentViewModel) {
 // ─── TAB 2: Mensile ──────────────────────────────────────────────────
 @Composable
 private fun MensileTab(viewModel: SupabaseRentViewModel) {
-    val selectedYear by viewModel.selectedYear.collectAsState()
-    val monthlyExp by viewModel.monthlyExpenses.collectAsState()
-    val monthlyPay by viewModel.monthlyPayments.collectAsState()
-    val availableYears by viewModel.availableYears.collectAsState()
+    val selectedYear    by viewModel.selectedYear.collectAsState()
+    val monthlyExp      by viewModel.reportMonthlyExpenses.collectAsState()
+    val monthlyPay      by viewModel.reportMonthlyPayments.collectAsState()
+    val availableYears  by viewModel.reportAvailableYears.collectAsState()
 
     val currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
     val yearsToShow = (availableYears + currentYear).distinct().sortedDescending()
@@ -353,8 +449,8 @@ private fun MensileTab(viewModel: SupabaseRentViewModel) {
 // ─── TAB 3: Archivio ─────────────────────────────────────────────────
 @Composable
 private fun ArchivioTab(viewModel: SupabaseRentViewModel, onViewMensile: (Int) -> Unit) {
-    val yearlyExp by viewModel.yearlyExpenses.collectAsState()
-    val yearlyPay by viewModel.yearlyPayments.collectAsState()
+    val yearlyExp by viewModel.reportYearlyExpenses.collectAsState()
+    val yearlyPay by viewModel.reportYearlyPayments.collectAsState()
 
     val allYears = (yearlyExp.map { it.year } + yearlyPay.map { it.year })
         .distinct().sortedDescending()
