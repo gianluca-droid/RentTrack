@@ -182,7 +182,7 @@ private fun PanoramicaTab(viewModel: SupabaseRentViewModel) {
                 Spacer(Modifier.width(8.dp))
                 Column {
                     Text("Esporta CSV", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
-                    Text("Cedolini + Spese del condominio attivo", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                    Text("Affitti + Spese dell'immobile attivo", style = MaterialTheme.typography.labelSmall, color = TextMuted)
                 }
             }
         }

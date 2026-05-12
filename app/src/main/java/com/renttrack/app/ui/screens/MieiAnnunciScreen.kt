@@ -37,6 +37,7 @@ fun MieiAnnunciScreen(
     val toast       by viewModel.toast.collectAsState()
     val myInquiries by viewModel.myInquiries.collectAsState()
     var toDelete by remember { mutableStateOf<Listing?>(null) }
+    var toEdit   by remember { mutableStateOf<Listing?>(null) }
 
     LaunchedEffect(Unit) {
         viewModel.loadMyListings()
@@ -216,7 +217,8 @@ fun MieiAnnunciScreen(
                                     onToggleFeatured = {
                                         viewModel.toggleFeatured(listing.id, listing.isFeatured)
                                     },
-                                    onDelete = { toDelete = listing }
+                                    onDelete = { toDelete = listing },
+                                    onEdit   = { toEdit = listing }
                                 )
                             }
                         }
@@ -319,6 +321,15 @@ fun MieiAnnunciScreen(
             }
         )
     }
+
+    // Edit bottom sheet
+    toEdit?.let { listing ->
+        EditListingSheet(
+            listing  = listing,
+            viewModel = viewModel,
+            onDismiss = { toEdit = null }
+        )
+    }
 }
 
 // ─── Card annuncio riprogettata ──────────────────────────────────────────────
@@ -328,7 +339,8 @@ private fun MyListingCard(
     onToggleActive: () -> Unit,
     onToggleAvailable: () -> Unit,
     onToggleFeatured: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onEdit: () -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
@@ -498,6 +510,14 @@ private fun MyListingCard(
                             },
                             onClick = { showMenu = false; onToggleFeatured() }
                         )
+                        // Modifica
+                        DropdownMenuItem(
+                            text = { Text("Modifica annuncio", color = TextPrimary) },
+                            leadingIcon = {
+                                Icon(Icons.Filled.Edit, null, tint = Cyan400)
+                            },
+                            onClick = { showMenu = false; onEdit() }
+                        )
                         HorizontalDivider(color = TextMuted.copy(alpha = 0.15f))
                         // Elimina
                         DropdownMenuItem(
@@ -564,6 +584,121 @@ private fun MyListingCard(
                         uncheckedTrackColor = DarkSurfaceVariant
                     )
                 )
+            }
+        }
+    }
+}
+
+// ─── Bottom sheet modifica annuncio ─────────────────────────────────────────
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EditListingSheet(
+    listing: Listing,
+    viewModel: ListingsViewModel,
+    onDismiss: () -> Unit
+) {
+    val isSubmitting by viewModel.isSubmitting.collectAsState()
+    var title         by remember { mutableStateOf(listing.title) }
+    var city          by remember { mutableStateOf(listing.city) }
+    var zone          by remember { mutableStateOf(listing.zone) }
+    var price         by remember { mutableStateOf(listing.priceMonthly.toInt().toString()) }
+    var description   by remember { mutableStateOf(listing.description) }
+    var availableFrom by remember { mutableStateOf(listing.availableFrom) }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = DarkSurface,
+        tonalElevation = 0.dp
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                "Modifica annuncio",
+                color = TextPrimary,
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleMedium
+            )
+            HorizontalDivider(color = TextMuted.copy(alpha = 0.15f))
+
+            val fieldColors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor    = Cyan400,
+                unfocusedBorderColor  = androidx.compose.ui.graphics.Color(0xFF2D3748),
+                focusedLabelColor     = Cyan400,
+                unfocusedLabelColor   = TextMuted,
+                focusedTextColor      = TextPrimary,
+                unfocusedTextColor    = TextPrimary,
+                cursorColor           = Cyan400
+            )
+            OutlinedTextField(
+                value = title, onValueChange = { title = it },
+                label = { Text("Titolo annuncio") },
+                modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp),
+                colors = fieldColors, singleLine = true
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = city, onValueChange = { city = it },
+                    label = { Text("Città") },
+                    modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp),
+                    colors = fieldColors, singleLine = true
+                )
+                OutlinedTextField(
+                    value = zone, onValueChange = { zone = it },
+                    label = { Text("Zona") },
+                    modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp),
+                    colors = fieldColors, singleLine = true
+                )
+            }
+            OutlinedTextField(
+                value = price, onValueChange = { price = it.filter { c -> c.isDigit() } },
+                label = { Text("Prezzo mensile (€)") },
+                modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp),
+                colors = fieldColors, singleLine = true,
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+                )
+            )
+            OutlinedTextField(
+                value = availableFrom, onValueChange = { availableFrom = it },
+                label = { Text("Disponibile dal (es. 2024-07-01)") },
+                modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp),
+                colors = fieldColors, singleLine = true
+            )
+            OutlinedTextField(
+                value = description, onValueChange = { description = it },
+                label = { Text("Descrizione") },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 100.dp),
+                shape = RoundedCornerShape(12.dp), colors = fieldColors, maxLines = 6
+            )
+
+            Button(
+                onClick = {
+                    val priceVal = price.toDoubleOrNull() ?: listing.priceMonthly
+                    viewModel.updateListing(
+                        listingId = listing.id,
+                        title = title, city = city, zone = zone,
+                        priceMonthly = priceVal, description = description,
+                        availableFrom = availableFrom,
+                        onSuccess = onDismiss
+                    )
+                },
+                enabled = !isSubmitting && title.isNotBlank() && city.isNotBlank(),
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = Cyan400, contentColor = DarkBg),
+                shape = RoundedCornerShape(14.dp)
+            ) {
+                if (isSubmitting) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), color = DarkBg, strokeWidth = 2.dp)
+                } else {
+                    Icon(Icons.Filled.Save, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Salva modifiche", fontWeight = FontWeight.Bold)
+                }
             }
         }
     }

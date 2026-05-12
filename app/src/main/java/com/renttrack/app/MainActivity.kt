@@ -148,19 +148,19 @@ fun MainApp(viewModel: SupabaseRentViewModel = viewModel()) {
                 TopAppBar(
                     title = {
                         Column(modifier = Modifier.padding(end = 4.dp)) {
-                            // Se c'è una proprietà attiva, mostrala come titolo principale
+                            // Titolo principale = sezione corrente (es. "Home", "Inquilini")
                             if (activeCondominio != null) {
                                 Text(
-                                    activeCondominio!!.nome,
+                                    currentScreen.title,
                                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                     color = TextPrimary,
                                     maxLines = 1,
                                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                 )
                                 Text(
-                                    currentScreen.title,
+                                    activeCondominio!!.nome,
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = Cyan400,
+                                    color = TextMuted,
                                     maxLines = 1,
                                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                 )

@@ -300,28 +300,6 @@ fun LoginScreen(
 
                     Spacer(Modifier.height(4.dp))
 
-                    // Campo Email
-                    OutlinedTextField(
-                        value         = email,
-                        onValueChange = { email = it },
-                        label         = { Text("Email") },
-                        leadingIcon   = {
-                            Icon(Icons.Filled.Email, null, tint = TextMuted)
-                        },
-                        singleLine    = true,
-                        enabled       = !isLoading,
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Email,
-                            imeAction    = ImeAction.Next
-                        ),
-                        keyboardActions = KeyboardActions(
-                            onNext = { passwordFocusReq.requestFocus() }
-                        ),
-                        modifier = Modifier.fillMaxWidth(),
-                        shape    = RoundedCornerShape(14.dp),
-                        colors   = loginFieldColors()
-                    )
-
                     // ── Avviso account Google visibile solo in modalità registrazione ──
                     AnimatedVisibility(
                         visible = isRegister,
@@ -351,6 +329,28 @@ fun LoginScreen(
                             )
                         }
                     }
+
+                    // Campo Email
+                    OutlinedTextField(
+                        value         = email,
+                        onValueChange = { email = it },
+                        label         = { Text("Email") },
+                        leadingIcon   = {
+                            Icon(Icons.Filled.Email, null, tint = TextMuted)
+                        },
+                        singleLine    = true,
+                        enabled       = !isLoading,
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Email,
+                            imeAction    = ImeAction.Next
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onNext = { passwordFocusReq.requestFocus() }
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape    = RoundedCornerShape(14.dp),
+                        colors   = loginFieldColors()
+                    )
 
                     // Campo Password
                     OutlinedTextField(

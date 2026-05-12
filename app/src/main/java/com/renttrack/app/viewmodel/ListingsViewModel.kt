@@ -273,6 +273,43 @@ class ListingsViewModel(
         }
     }
 
+    // ── Modifica annuncio ─────────────────────────────────────────────────────
+    fun updateListing(
+        listingId: String,
+        title: String, city: String, zone: String,
+        priceMonthly: Double, description: String, availableFrom: String,
+        onSuccess: () -> Unit
+    ) {
+        viewModelScope.launch {
+            _isSubmitting.value = true
+            try {
+                val token = authToken ?: throw Exception("Non autenticato")
+                withContext(Dispatchers.IO) {
+                    val body = JSONObject().apply {
+                        put("title", title.trim())
+                        put("city", city.trim())
+                        put("zone", zone.trim())
+                        put("price_monthly", priceMonthly)
+                        put("description", description.trim())
+                        put("available_from", availableFrom.trim())
+                    }.toString()
+                    httpPost(
+                        "$baseUrl/rest/v1/listings?id=eq.$listingId", token, body,
+                        method = "PATCH",
+                        extraHeaders = mapOf("Prefer" to "return=minimal")
+                    )
+                }
+                loadMyListings(); loadPublicListings()
+                _toast.value = "Annuncio aggiornato ✅"
+                onSuccess()
+            } catch (e: Exception) {
+                _toast.value = "Errore aggiornamento: ${e.message}"
+            } finally {
+                _isSubmitting.value = false
+            }
+        }
+    }
+
     // ── Attiva / disattiva annuncio ───────────────────────────────────────────
 
     /** Imposta o revoca la promozione "In evidenza" su un annuncio.
