@@ -221,8 +221,21 @@ class AuthViewModel(
                         _authState.value = AuthState.EmailSent(email)
                     }
                     else -> {
-                        val msg = result.optString("error_description",
-                            result.optString("msg", "Registrazione fallita"))
+                        val errorCode = result.optString("error_code", "")
+                        val errDesc   = result.optString("error_description",
+                            result.optString("msg", ""))
+                        val msg = when {
+                            // Email già registrata (con Google o altro provider)
+                            errorCode == "email_exists" ||
+                            errDesc.contains("already registered", ignoreCase = true) ||
+                            errDesc.contains("already exists",    ignoreCase = true) ||
+                            errDesc.contains("User already",      ignoreCase = true) ->
+                                "Questa email è già registrata con un altro metodo (es. Google).\n" +
+                                "Accedi con Google oppure controlla la tua email: " +
+                                "ti abbiamo inviato un link per aggiungere anche l'accesso con password."
+                            errDesc.isNotBlank() -> errDesc
+                            else -> "Registrazione non riuscita. Riprova."
+                        }
                         _authState.value = AuthState.Error(msg)
                     }
                 }
