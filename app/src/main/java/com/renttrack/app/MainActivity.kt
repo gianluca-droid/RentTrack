@@ -158,11 +158,7 @@ fun MainApp(viewModel: SupabaseRentViewModel = viewModel()) {
                                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                 )
                                 Text(
-                                    buildString {
-                                        append(currentScreen.title)
-                                        if (activeCondominio!!.citta.isNotBlank())
-                                            append("  ·  ${activeCondominio!!.citta}")
-                                    },
+                                    currentScreen.title,
                                     style = MaterialTheme.typography.labelSmall,
                                     color = Cyan400,
                                     maxLines = 1,
