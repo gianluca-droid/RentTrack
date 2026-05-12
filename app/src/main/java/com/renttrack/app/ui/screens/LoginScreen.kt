@@ -322,6 +322,36 @@ fun LoginScreen(
                         colors   = loginFieldColors()
                     )
 
+                    // ── Avviso account Google visibile solo in modalità registrazione ──
+                    AnimatedVisibility(
+                        visible = isRegister,
+                        enter   = fadeIn() + expandVertically(),
+                        exit    = fadeOut() + shrinkVertically()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(Color(0xFF1A2744))
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            Icon(
+                                Icons.Filled.Info, null,
+                                tint = Cyan400,
+                                modifier = Modifier.size(15.dp).padding(top = 1.dp)
+                            )
+                            Text(
+                                "💡 Usa la stessa email del tuo account Google " +
+                                "se vuoi poter accedere anche con Google in futuro. " +
+                                "Email diverse creano account separati.",
+                                color = TextSecondary,
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        }
+                    }
+
                     // Campo Password
                     OutlinedTextField(
                         value         = password,
