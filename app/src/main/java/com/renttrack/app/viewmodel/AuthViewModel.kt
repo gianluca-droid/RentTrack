@@ -2,6 +2,7 @@ package com.renttrack.app.viewmodel
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.util.Base64
 import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialException
@@ -51,15 +52,91 @@ class AuthViewModel(private val prefs: SharedPreferences) : ViewModel() {
 
     init { checkSession() }
 
-    // ── Controlla se c'è già una sessione salvata ─────────────────────────────
+    // ── Controlla sessione: verifica JWT expiry + refresh automatico ─────────
     fun checkSession() {
-        val token = prefs.getString("auth_token", null)
-        val email = prefs.getString("auth_email", null)
-        if (token != null && email != null) {
-            _authState.value = AuthState.LoggedIn(email)
-        } else {
+        viewModelScope.launch {
+            _authState.value = AuthState.Loading
+            val token = prefs.getString("auth_token", null)
+            val email = prefs.getString("auth_email", null)
+
+            if (token == null || email == null) {
+                _authState.value = AuthState.LoggedOut
+                return@launch
+            }
+
+            // Token presente ma non scaduto → sessione valida
+            if (!isTokenExpired(token)) {
+                _authState.value = AuthState.LoggedIn(email)
+                return@launch
+            }
+
+            // Token scaduto → prova refresh
+            val refreshToken = prefs.getString("refresh_token", null)
+            if (refreshToken != null) {
+                val refreshed = tryRefreshToken(refreshToken)
+                if (refreshed) {
+                    val updatedEmail = prefs.getString("auth_email", email) ?: email
+                    _authState.value = AuthState.LoggedIn(updatedEmail)
+                    return@launch
+                }
+            }
+
+            // Nessun refresh possibile → forza logout
+            clearSession()
             _authState.value = AuthState.LoggedOut
         }
+    }
+
+    /** Restituisce true se il JWT è scaduto (o non decodificabile). */
+    private fun isTokenExpired(token: String): Boolean {
+        return try {
+            val parts = token.split(".")
+            if (parts.size < 2) return true
+            val padded = parts[1].let { it.padEnd((it.length + 3) / 4 * 4, '=') }
+            val payload = String(Base64.decode(padded, Base64.URL_SAFE))
+            val exp = JSONObject(payload).optLong("exp", 0L)
+            val nowSeconds = System.currentTimeMillis() / 1000
+            exp == 0L || nowSeconds >= (exp - 60) // 60s di margine
+        } catch (e: Exception) { true }
+    }
+
+    /** Chiama /auth/v1/token?grant_type=refresh_token e aggiorna le prefs. */
+    private suspend fun tryRefreshToken(refreshToken: String): Boolean =
+        withContext(Dispatchers.IO) {
+            try {
+                val body = """{"refresh_token":"$refreshToken"}"""
+                val conn = URL("$supabaseUrl/auth/v1/token?grant_type=refresh_token")
+                    .openConnection() as HttpURLConnection
+                conn.requestMethod = "POST"
+                conn.setRequestProperty("Content-Type", "application/json")
+                conn.setRequestProperty("apikey", anonKey)
+                conn.doOutput = true
+                OutputStreamWriter(conn.outputStream).use { it.write(body) }
+                val code = conn.responseCode
+                if (code in 200..299) {
+                    val json = JSONObject(conn.inputStream.bufferedReader().readText())
+                    conn.disconnect()
+                    val newAccess  = json.optString("access_token")
+                    val newRefresh = json.optString("refresh_token")
+                    if (newAccess.isNotBlank()) {
+                        prefs.edit()
+                            .putString("auth_token", newAccess)
+                            .apply { if (newRefresh.isNotBlank()) putString("refresh_token", newRefresh) }
+                            .apply()
+                        true
+                    } else false
+                } else { conn.disconnect(); false }
+            } catch (e: Exception) { false }
+        }
+
+    /** Rimuove tutti i dati di sessione da SharedPreferences. */
+    private fun clearSession() {
+        prefs.edit()
+            .remove("auth_token")
+            .remove("refresh_token")
+            .remove("auth_email")
+            .remove("auth_user_id")
+            .apply()
     }
 
     // ── Login con email + password ────────────────────────────────────────────
@@ -78,10 +155,12 @@ class AuthViewModel(private val prefs: SharedPreferences) : ViewModel() {
                     val userObj   = result.optJSONObject("user")
                     val userEmail = userObj?.optString("email") ?: email
                     val userId    = userObj?.optString("id") ?: ""
+                    val refreshToken = result.optString("refresh_token")
                     prefs.edit()
                         .putString("auth_token", token)
                         .putString("auth_email", userEmail)
                         .putString("auth_user_id", userId)
+                        .apply { if (refreshToken.isNotBlank()) putString("refresh_token", refreshToken) }
                         .apply()
                     _authState.value = AuthState.LoggedIn(userEmail)
                 } else {
@@ -120,10 +199,12 @@ class AuthViewModel(private val prefs: SharedPreferences) : ViewModel() {
                         val userObj   = result.optJSONObject("user")
                         val userEmail = userObj?.optString("email") ?: email
                         val userId    = userObj?.optString("id") ?: ""
+                        val refreshToken = result.optString("refresh_token")
                         prefs.edit()
                             .putString("auth_token", token)
                             .putString("auth_email", userEmail)
                             .putString("auth_user_id", userId)
+                            .apply { if (refreshToken.isNotBlank()) putString("refresh_token", refreshToken) }
                             .apply()
                         _authState.value = AuthState.LoggedIn(userEmail)
                     }
@@ -182,10 +263,12 @@ class AuthViewModel(private val prefs: SharedPreferences) : ViewModel() {
                     val userObj   = supabaseResult.optJSONObject("user")
                     val userEmail = userObj?.optString("email") ?: "utente Google"
                     val userId    = userObj?.optString("id") ?: ""
+                    val refreshToken = supabaseResult.optString("refresh_token")
                     prefs.edit()
                         .putString("auth_token", token)
                         .putString("auth_email", userEmail)
                         .putString("auth_user_id", userId)
+                        .apply { if (refreshToken.isNotBlank()) putString("refresh_token", refreshToken) }
                         .apply()
                     _authState.value = AuthState.LoggedIn(userEmail)
                 } else {
@@ -201,13 +284,9 @@ class AuthViewModel(private val prefs: SharedPreferences) : ViewModel() {
         }
     }
 
-    // ── Logout ────────────────────────────────────────────────────────────────
+    // ── Logout: cancella tutta la sessione e blocca nuove richieste dati ──────
     fun signOut() {
-        prefs.edit()
-            .remove("auth_token")
-            .remove("auth_email")
-            .remove("auth_user_id")
-            .apply()
+        clearSession()
         _authState.value = AuthState.LoggedOut
     }
 

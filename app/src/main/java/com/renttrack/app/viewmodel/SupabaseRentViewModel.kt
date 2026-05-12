@@ -34,7 +34,7 @@ class SupabaseRentViewModel(application: Application) : AndroidViewModel(applica
     val repo = SupabaseRentRepository(prefs)
 
     // ── Loading ──────────────────────────────────────────────────────
-    private val _isLoading = MutableStateFlow(true)
+    private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
 
     private val _error = MutableStateFlow<String?>(null)
@@ -308,10 +308,9 @@ class SupabaseRentViewModel(application: Application) : AndroidViewModel(applica
         _collapsedScales.update { if (scala in it) it - scala else it + scala }
     }
 
-    // ── Init & Refresh ────────────────────────────────────────────────
-    init {
-        refresh()
-    }
+    // ── Init & Refresh ────────────────────────────────────────────
+    // refresh() NON viene chiamato automaticamente qui:
+    // viene triggerato da MainActivity solo dopo AuthState.LoggedIn.
 
     fun refresh() {
         viewModelScope.launch {

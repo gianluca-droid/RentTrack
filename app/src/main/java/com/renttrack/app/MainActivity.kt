@@ -80,6 +80,22 @@ fun MainApp(viewModel: SupabaseRentViewModel = viewModel()) {
     val navController       = rememberNavController()
     val navBackStackEntry  by navController.currentBackStackEntryAsState()
     val currentRoute        = navBackStackEntry?.destination?.route
+
+    // ── AuthViewModel viene creato PRIMA di tutto ──────────────────────────
+    // (non dopo il guard isLoading come prima, che causava race condition)
+    val authViewModel: AuthViewModel = viewModel(factory = AuthViewModelFactory(context))
+    val listingsViewModel: ListingsViewModel = viewModel(factory = ListingsViewModelFactory(context))
+    val authState by authViewModel.authState.collectAsState()
+    val isLoggedIn = authState is AuthState.LoggedIn
+
+    // ── Trigger refresh SOLO dopo autenticazione confermata ─────────────────
+    // Elimina la race condition: init{refresh()} partiva con token potenzialmente vuoto.
+    LaunchedEffect(authState) {
+        if (authState is AuthState.LoggedIn) {
+            viewModel.refresh()
+        }
+    }
+
     val isLoading          by viewModel.isLoading.collectAsState()
     val activeCondominioId by viewModel.activeCondominioId.collectAsState()
     val activeCondominio   by viewModel.activeCondominio.collectAsState()
@@ -94,8 +110,8 @@ fun MainApp(viewModel: SupabaseRentViewModel = viewModel()) {
             .getBoolean("onboarding_shown", false)
     }
 
-    // ── Loading ──────────────────────────────────────────────────────────
-    if (isLoading) {
+    // ── Spinner: copre sia la risoluzione auth che il caricamento dati ────────
+    if (authState is AuthState.Loading || isLoading) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 CircularProgressIndicator(color = Cyan400)
@@ -105,11 +121,6 @@ fun MainApp(viewModel: SupabaseRentViewModel = viewModel()) {
         }
         return
     }
-
-    val authViewModel: AuthViewModel = viewModel(factory = AuthViewModelFactory(context))
-    val listingsViewModel: ListingsViewModel = viewModel(factory = ListingsViewModelFactory(context))
-    val authState by authViewModel.authState.collectAsState()
-    val isLoggedIn = authState is AuthState.LoggedIn
 
     val startDestination = when {
         !onboardingShown                         -> Screen.Onboarding.route

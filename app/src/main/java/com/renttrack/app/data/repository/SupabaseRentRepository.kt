@@ -31,24 +31,73 @@ class SupabaseRentRepository(private val prefs: SharedPreferences) {
         } catch (e: Exception) { "" }
     }
 
+    // ── Auth guard ────────────────────────────────────────────────────────────
+
+    /** Restituisce il token corrente o lancia eccezione — impedisce Bearer vuoto. */
+    private fun requireToken(): String {
+        val t = token
+        if (t.isBlank()) throw Exception("Not authenticated — accedi di nuovo")
+        return t
+    }
+
+    /** Prova a rinnovare l'access_token usando il refresh_token salvato.
+     *  Aggiorna SharedPreferences e restituisce true in caso di successo. */
+    private fun tryRefreshToken(): Boolean {
+        val refreshToken = prefs.getString("refresh_token", null) ?: return false
+        return try {
+            val body = """{"refresh_token":"$refreshToken"}"""
+            val conn = URL("https://zjqrtuposdrimzjoydgh.supabase.co/auth/v1/token?grant_type=refresh_token")
+                .openConnection() as HttpURLConnection
+            conn.requestMethod = "POST"
+            conn.setRequestProperty("Content-Type", "application/json")
+            conn.setRequestProperty("apikey", anonKey)
+            conn.doOutput = true
+            OutputStreamWriter(conn.outputStream).use { it.write(body) }
+            val code = conn.responseCode
+            if (code in 200..299) {
+                val json = JSONObject(conn.inputStream.bufferedReader().readText())
+                conn.disconnect()
+                val newAccess  = json.optString("access_token")
+                val newRefresh = json.optString("refresh_token")
+                if (newAccess.isNotBlank()) {
+                    prefs.edit()
+                        .putString("auth_token", newAccess)
+                        .apply { if (newRefresh.isNotBlank()) putString("refresh_token", newRefresh) }
+                        .apply()
+                    true
+                } else false
+            } else { conn.disconnect(); false }
+        } catch (e: Exception) { false }
+    }
+
     // ── HTTP Helpers ──────────────────────────────────────────────────────────
 
-    private fun get(path: String): String {
+    private fun get(path: String): String = getInternal(path, requireToken(), retried = false)
+
+    private fun getInternal(path: String, tok: String, retried: Boolean): String {
         val conn = URL("$baseUrl$path").openConnection() as HttpURLConnection
         conn.setRequestProperty("apikey", anonKey)
-        conn.setRequestProperty("Authorization", "Bearer $token")
+        conn.setRequestProperty("Authorization", "Bearer $tok")
         conn.connectTimeout = 10_000; conn.readTimeout = 10_000
         return try {
-            if (conn.responseCode in 200..299) conn.inputStream.bufferedReader().readText()
-            else throw Exception("HTTP ${conn.responseCode}: ${conn.errorStream?.bufferedReader()?.readText()}")
+            val code = conn.responseCode
+            when {
+                code in 200..299 -> conn.inputStream.bufferedReader().readText()
+                code == 401 && !retried && tryRefreshToken() ->
+                    getInternal(path, requireToken(), retried = true)
+                else -> throw Exception("HTTP $code: ${conn.errorStream?.bufferedReader()?.readText()}")
+            }
         } finally { conn.disconnect() }
     }
 
-    private fun post(path: String, body: String, method: String = "POST", prefer: String = "return=representation"): String {
+    private fun post(path: String, body: String, method: String = "POST", prefer: String = "return=representation"): String =
+        postInternal(path, body, method, prefer, requireToken(), retried = false)
+
+    private fun postInternal(path: String, body: String, method: String, prefer: String, tok: String, retried: Boolean): String {
         val conn = URL("$baseUrl$path").openConnection() as HttpURLConnection
         conn.requestMethod = method
         conn.setRequestProperty("apikey", anonKey)
-        conn.setRequestProperty("Authorization", "Bearer $token")
+        conn.setRequestProperty("Authorization", "Bearer $tok")
         conn.setRequestProperty("Content-Type", "application/json")
         conn.setRequestProperty("Prefer", prefer)
         conn.connectTimeout = 10_000; conn.readTimeout = 15_000
@@ -57,8 +106,13 @@ class SupabaseRentRepository(private val prefs: SharedPreferences) {
             OutputStreamWriter(conn.outputStream).use { it.write(body) }
         }
         return try {
-            if (conn.responseCode in 200..299) conn.inputStream?.bufferedReader()?.readText() ?: ""
-            else throw Exception("HTTP ${conn.responseCode}: ${conn.errorStream?.bufferedReader()?.readText()}")
+            val code = conn.responseCode
+            when {
+                code in 200..299 -> conn.inputStream?.bufferedReader()?.readText() ?: ""
+                code == 401 && !retried && tryRefreshToken() ->
+                    postInternal(path, body, method, prefer, requireToken(), retried = true)
+                else -> throw Exception("HTTP $code: ${conn.errorStream?.bufferedReader()?.readText()}")
+            }
         } finally { conn.disconnect() }
     }
 
