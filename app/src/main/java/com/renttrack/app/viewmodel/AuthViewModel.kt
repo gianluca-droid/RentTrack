@@ -32,7 +32,10 @@ sealed class AuthState {
 }
 
 // ─── ViewModel ────────────────────────────────────────────────────────────────
-class AuthViewModel(private val prefs: SharedPreferences) : ViewModel() {
+class AuthViewModel(
+    private val prefs: SharedPreferences,
+    private val appContext: android.content.Context
+) : ViewModel() {
 
     // Web Client ID Google — da impostare dopo la configurazione in Google Cloud Console
     // Formato: "XXXXXXXXXX-xxxxxxxxxxxx.apps.googleusercontent.com"
@@ -129,14 +132,19 @@ class AuthViewModel(private val prefs: SharedPreferences) : ViewModel() {
             } catch (e: Exception) { false }
         }
 
-    /** Rimuove tutti i dati di sessione da SharedPreferences. */
+    /** Rimuove tutti i dati di sessione da SharedPreferences.
+     *  Pulisce anche "condogest_prefs" (PropertyManager) per evitare che
+     *  l'activeCondominioId di un utente precedente venga caricato da un nuovo login. */
     private fun clearSession() {
+        // Credenziali auth
         prefs.edit()
             .remove("auth_token")
             .remove("refresh_token")
             .remove("auth_email")
             .remove("auth_user_id")
             .apply()
+        // Proprietà attiva: usa PropertyManager per coerenza con il resto dell'app
+        com.renttrack.app.PropertyManager.clearActiveCondominio(appContext)
     }
 
     // ── Login con email + password ────────────────────────────────────────────
@@ -329,6 +337,6 @@ class AuthViewModelFactory(private val context: Context) :
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         val prefs = context.getSharedPreferences("renttrack_prefs", Context.MODE_PRIVATE)
         @Suppress("UNCHECKED_CAST")
-        return AuthViewModel(prefs) as T
+        return AuthViewModel(prefs, context.applicationContext) as T
     }
 }
