@@ -172,7 +172,10 @@ class SupabaseRentRepository(private val prefs: SharedPreferences) {
     suspend fun insertUnit(u: SCondoUnit): String = withContext(Dispatchers.IO) {
         val body = JSONObject().apply {
             put("owner_id", userId); put("condominio_id", u.condominioId)
-            put("number", u.number); put("owner_name", u.ownerName)
+            put("number", u.number); put("floor", u.floor)
+            put("type", u.type.ifBlank { "Appartamento" })
+            put("area_mq", u.areaMq); put("scala", u.scala)
+            put("owner_name", u.ownerName)
             put("owner_email", u.ownerEmail); put("owner_phone", u.ownerPhone)
             put("millesimi", u.millesimi)
             u.leaseStartDate?.let { put("lease_start_date", it) }
@@ -186,7 +189,10 @@ class SupabaseRentRepository(private val prefs: SharedPreferences) {
 
     suspend fun updateUnit(u: SCondoUnit) = withContext(Dispatchers.IO) {
         val body = JSONObject().apply {
-            put("number", u.number); put("owner_name", u.ownerName)
+            put("number", u.number); put("floor", u.floor)
+            put("type", u.type.ifBlank { "Appartamento" })
+            put("area_mq", u.areaMq); put("scala", u.scala)
+            put("owner_name", u.ownerName)
             put("owner_email", u.ownerEmail); put("owner_phone", u.ownerPhone)
             put("millesimi", u.millesimi)
             if (u.leaseStartDate != null) put("lease_start_date", u.leaseStartDate) else put("lease_start_date", JSONObject.NULL)

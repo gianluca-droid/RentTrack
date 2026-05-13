@@ -150,6 +150,18 @@ fun MainApp(
     var showSwitchPropertyDialog by remember { mutableStateOf(false) }
     var showOverflowMenu by remember { mutableStateOf(false) }
     var showLogoutDialog  by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // ── Mostra errori ViewModel via Snackbar ──────────────────────
+    val vmError by viewModel.error.collectAsState()
+    LaunchedEffect(vmError) {
+        val msg = vmError ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(
+            message = "❌ $msg",
+            duration = SnackbarDuration.Long
+        )
+        viewModel.clearError()
+    }
 
     // ── Onboarding check ─────────────────────────────────────────────────
     val onboardingShown = remember {
@@ -356,6 +368,16 @@ fun MainApp(
                         )
                     }
                 }
+            }
+        }
+        snackbarHost = {
+            SnackbarHost(snackbarHostState) { data ->
+                Snackbar(
+                    snackbarData = data,
+                    containerColor = androidx.compose.ui.graphics.Color(0xFF2D1B1B),
+                    contentColor = androidx.compose.ui.graphics.Color(0xFFFF8A80),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+                )
             }
         }
     ) { paddingValues ->

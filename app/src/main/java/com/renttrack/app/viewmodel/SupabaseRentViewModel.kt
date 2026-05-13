@@ -44,6 +44,7 @@ class SupabaseRentViewModel(application: Application) : AndroidViewModel(applica
 
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
+    fun clearError() { _error.value = null }
 
     // ── Active condominio ─────────────────────────────────────────────
     private val _activeCondominioId = MutableStateFlow(
