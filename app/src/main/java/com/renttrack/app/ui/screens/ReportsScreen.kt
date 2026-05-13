@@ -49,60 +49,11 @@ private val MONTHS = listOf("Gen","Feb","Mar","Apr","Mag","Giu","Lug","Ago","Set
 fun ReportsScreen(viewModel: SupabaseRentViewModel) {
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("Panoramica", "Mensile", "Archivio")
-    val allCondomini    by viewModel.allCondomini.collectAsState()
-    val reportScope     by viewModel.reportScope.collectAsState()
-    val reportIds       by viewModel.reportSelectedIds.collectAsState()
-    val reportIsLoading by viewModel.reportIsLoading.collectAsState()
-    var showCustomPicker by remember { mutableStateOf(false) }
 
     // Inizializza report dati al primo lancio
     LaunchedEffect(Unit) { viewModel.setReportScope(SupabaseRentViewModel.ReportScope.ACTIVE) }
 
     Column(modifier = Modifier.fillMaxSize().background(DarkBg)) {
-        // ── Scope selector ───────────────────────────────────────────────
-        Row(
-            modifier = Modifier.fillMaxWidth().background(DarkSurface)
-                .padding(horizontal = 12.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("📊", style = MaterialTheme.typography.labelSmall)
-            FilterChip(
-                selected = reportScope == SupabaseRentViewModel.ReportScope.ACTIVE,
-                onClick = { viewModel.setReportScope(SupabaseRentViewModel.ReportScope.ACTIVE) },
-                label = { Text("Solo questa", style = MaterialTheme.typography.labelSmall) },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = Cyan400.copy(alpha = 0.2f),
-                    selectedLabelColor = Cyan400
-                )
-            )
-            FilterChip(
-                selected = reportScope == SupabaseRentViewModel.ReportScope.ALL,
-                onClick = { viewModel.setReportScope(SupabaseRentViewModel.ReportScope.ALL) },
-                label = { Text("Tutte (${allCondomini.size})", style = MaterialTheme.typography.labelSmall) },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = Cyan400.copy(alpha = 0.2f),
-                    selectedLabelColor = Cyan400
-                )
-            )
-            FilterChip(
-                selected = reportScope == SupabaseRentViewModel.ReportScope.CUSTOM,
-                onClick = { showCustomPicker = true },
-                label = { Text(
-                    if (reportScope == SupabaseRentViewModel.ReportScope.CUSTOM) "${reportIds.size} scelte"
-                    else "Seleziona",
-                    style = MaterialTheme.typography.labelSmall
-                ) },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = Cyan400.copy(alpha = 0.2f),
-                    selectedLabelColor = Cyan400
-                )
-            )
-            if (reportIsLoading) {
-                CircularProgressIndicator(modifier = Modifier.size(14.dp), color = Cyan400, strokeWidth = 2.dp)
-            }
-        }
-
         // ── Tab Row ──────────────────────────────────────────────────
         TabRow(
             selectedTabIndex = selectedTab,
@@ -142,53 +93,12 @@ fun ReportsScreen(viewModel: SupabaseRentViewModel) {
             }
         }
     }
-
-    // ── Custom picker dialog ────────────────────────────────────────
-    if (showCustomPicker) {
-        var picked by remember { mutableStateOf(reportIds.toMutableSet()) }
-        AlertDialog(
-            onDismissRequest = { showCustomPicker = false },
-            containerColor = DarkSurface,
-            title = { Text("Seleziona proprieta", color = TextPrimary, fontWeight = FontWeight.Bold) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    allCondomini.forEach { condo ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Checkbox(
-                                checked = condo.id in picked,
-                                onCheckedChange = { checked ->
-                                    picked = picked.toMutableSet().also {
-                                        if (checked) it.add(condo.id) else it.remove(condo.id)
-                                    }
-                                },
-                                colors = CheckboxDefaults.colors(checkedColor = Cyan400)
-                            )
-                            Column {
-                                Text(condo.nome, color = TextPrimary, style = MaterialTheme.typography.bodySmall)
-                                if (condo.indirizzo.isNotBlank())
-                                    Text(condo.indirizzo, color = TextMuted, style = MaterialTheme.typography.labelSmall)
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    viewModel.setReportScope(SupabaseRentViewModel.ReportScope.CUSTOM, picked)
-                    showCustomPicker = false
-                }) { Text("Applica", color = Cyan400, fontWeight = FontWeight.Bold) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showCustomPicker = false }) { Text("Annulla", color = TextMuted) }
-            }
-        )
-    }
 }
 
+
+
 // ─── TAB 1: Panoramica ───────────────────────────────────────────────
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PanoramicaTab(viewModel: SupabaseRentViewModel) {
     val totalExpenses   by viewModel.reportTotalExpenses.collectAsState()
@@ -201,6 +111,10 @@ private fun PanoramicaTab(viewModel: SupabaseRentViewModel) {
     val monthlyPay      by viewModel.reportMonthlyPayments.collectAsState()
     val availableYears  by viewModel.reportAvailableYears.collectAsState()
     val selectedYear    by viewModel.selectedYear.collectAsState()
+    val allCondomini    by viewModel.allCondomini.collectAsState()
+    val reportScope     by viewModel.reportScope.collectAsState()
+    val reportIsLoading by viewModel.reportIsLoading.collectAsState()
+    var showCustomPicker by remember { mutableStateOf(false) }
 
     val saldo = totalPayments - totalExpenses
     val saldoPositive = saldo >= 0
@@ -209,6 +123,53 @@ private fun PanoramicaTab(viewModel: SupabaseRentViewModel) {
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        // ── Toggle scope (visibile solo se >1 proprietà) ─────────────
+        if (allCondomini.size > 1) {
+            item {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = DarkSurface,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            "Dati:",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = TextMuted
+                        )
+                        FilterChip(
+                            selected = reportScope == SupabaseRentViewModel.ReportScope.ACTIVE,
+                            onClick = { viewModel.setReportScope(SupabaseRentViewModel.ReportScope.ACTIVE) },
+                            label = { Text("Questa proprietà", style = MaterialTheme.typography.labelSmall) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = Cyan400.copy(alpha = 0.2f),
+                                selectedLabelColor = Cyan400
+                            )
+                        )
+                        FilterChip(
+                            selected = reportScope == SupabaseRentViewModel.ReportScope.ALL,
+                            onClick = { viewModel.setReportScope(SupabaseRentViewModel.ReportScope.ALL) },
+                            label = { Text("Tutte (${allCondomini.size})", style = MaterialTheme.typography.labelSmall) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = Cyan400.copy(alpha = 0.2f),
+                                selectedLabelColor = Cyan400
+                            )
+                        )
+                        if (reportIsLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(14.dp),
+                                color = Cyan400,
+                                strokeWidth = 2.dp
+                            )
+                        }
+                    }
+                }
+            }
+        }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 SummaryCard(
