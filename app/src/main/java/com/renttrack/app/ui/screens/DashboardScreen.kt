@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.renttrack.app.data.model.SCedolinoWithItems
@@ -43,6 +44,16 @@ fun DashboardScreen(
     val morositaByUnit by viewModel.morositaByUnit.collectAsState()
     val mesiArretratiByUnit by viewModel.mesiArretratiByUnit.collectAsState()
     val balance = totalPayments - totalExpenses
+
+    // Pull-to-refresh
+    val isLoading by viewModel.isLoading.collectAsState()
+    val pullRefreshState = rememberPullToRefreshState()
+    LaunchedEffect(pullRefreshState.isRefreshing) {
+        if (pullRefreshState.isRefreshing) viewModel.refresh()
+    }
+    LaunchedEffect(isLoading) {
+        if (!isLoading) pullRefreshState.endRefresh()
+    }
 
     // Cedolini aperti (non pagati)
     val openCedolini = remember(cedoliniWithItems) {
@@ -84,9 +95,13 @@ fun DashboardScreen(
     var showOpenCedoliniSheet by remember { mutableStateOf(false) }
 
     // Carica i listing del proprietario appena si apre il Dashboard
-    // così il banner "Pubblica in vetrina" appare solo se non ci sono davvero annunci
     LaunchedEffect(Unit) { listingsViewModel.loadMyListings() }
 
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .nestedScroll(pullRefreshState.nestedScrollConnection)
+    ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
@@ -390,9 +405,8 @@ fun DashboardScreen(
         }
 
         // ─── Spese per Categoria ────────────────────────────────
-        item { SectionHeader("Spese per categoria immobile") }
-
         if (expensesByCategory.isNotEmpty()) {
+            item { SectionHeader("Spese per categoria immobile") }
             item {
                 Card(
                     shape = RoundedCornerShape(16.dp),
@@ -415,7 +429,7 @@ fun DashboardScreen(
                                     color = TextPrimary
                                 )
                                 Text(
-                                    "  ${String.format("%.0f", pct)}%",
+                                    "  ${String.format(java.util.Locale.ITALIAN, "%.0f", pct)}%",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = TextMuted
                                 )
@@ -434,52 +448,62 @@ fun DashboardScreen(
         }
 
         // ─── Ultime Spese ───────────────────────────────────────
-        item { SectionHeader("Ultime spese di manutenzione") }
-
         val recentExpenses = expenses.sortedByDescending { it.date }.take(5)
-        items(recentExpenses) { expense ->
-            val icon = ExpenseCategories.getIcon(expense.category)
-            ItemCard {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    CategoryChip(expense.category, icon)
-                    Spacer(Modifier.weight(1f))
-                    Text(Formatters.date(expense.date), style = MaterialTheme.typography.bodySmall, color = TextMuted)
+        if (recentExpenses.isNotEmpty()) {
+            item { SectionHeader("Ultime spese di manutenzione") }
+            items(recentExpenses) { expense ->
+                val icon = ExpenseCategories.getIcon(expense.category)
+                ItemCard {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CategoryChip(expense.category, icon)
+                        Spacer(Modifier.weight(1f))
+                        Text(Formatters.date(expense.date), style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Text(expense.description, style = MaterialTheme.typography.bodyMedium, color = TextPrimary)
+                    Text(
+                        Formatters.currency(expense.amount),
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = Red400
+                    )
                 }
-                Spacer(Modifier.height(8.dp))
-                Text(expense.description, style = MaterialTheme.typography.bodyMedium, color = TextPrimary)
-                Text(
-                    Formatters.currency(expense.amount),
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = Red400
-                )
             }
         }
 
         // ─── Ultimi Pagamenti ───────────────────────────────────
-        item { SectionHeader("Ultimi affitti incassati") }
-
         val recentPayments = payments.sortedByDescending { it.date }.take(5)
-        items(recentPayments) { payment ->
-            ItemCard {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(viewModel.getUnitName(payment.unitId), style = MaterialTheme.typography.bodyMedium, color = TextPrimary, modifier = Modifier.weight(1f))
-                    StatusBadge(payment.method)
-                }
-                Spacer(Modifier.height(6.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        Formatters.currency(payment.amount),
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                        color = Green400
-                    )
-                    Spacer(Modifier.weight(1f))
-                    Text(Formatters.date(payment.date), style = MaterialTheme.typography.bodySmall, color = TextMuted)
+        if (recentPayments.isNotEmpty()) {
+            item { SectionHeader("Ultimi affitti incassati") }
+            items(recentPayments) { payment ->
+                ItemCard {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(viewModel.getUnitName(payment.unitId), style = MaterialTheme.typography.bodyMedium, color = TextPrimary, modifier = Modifier.weight(1f))
+                        StatusBadge(payment.method)
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            Formatters.currency(payment.amount),
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = Green400
+                        )
+                        Spacer(Modifier.weight(1f))
+                        Text(Formatters.date(payment.date), style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                    }
                 }
             }
         }
 
         item { Spacer(Modifier.height(80.dp)) }
-    }
+    } // fine LazyColumn
+
+    PullToRefreshContainer(
+        state = pullRefreshState,
+        modifier = Modifier.align(Alignment.TopCenter),
+        containerColor = DarkSurface,
+        contentColor = Cyan400
+    )
+    } // fine Box
 
     // ── Bottom Sheet: Riepilogo cedolini aperti ──────────────────
     if (showOpenCedoliniSheet) {

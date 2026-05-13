@@ -432,7 +432,6 @@ fun RentNoticesScreen(viewModel: SupabaseRentViewModel) {
                 }
 
                 item { Spacer(Modifier.height(100.dp)) }
-                item { Spacer(Modifier.height(100.dp)) }
             }
         }
 
