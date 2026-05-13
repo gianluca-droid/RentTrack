@@ -13,7 +13,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.renttrack.app.data.model.SCedolinoWithItems
@@ -45,15 +44,6 @@ fun DashboardScreen(
     val mesiArretratiByUnit by viewModel.mesiArretratiByUnit.collectAsState()
     val balance = totalPayments - totalExpenses
 
-    // Pull-to-refresh
-    val isLoading by viewModel.isLoading.collectAsState()
-    val pullRefreshState = rememberPullToRefreshState()
-    LaunchedEffect(pullRefreshState.isRefreshing) {
-        if (pullRefreshState.isRefreshing) viewModel.refresh()
-    }
-    LaunchedEffect(isLoading) {
-        if (!isLoading) pullRefreshState.endRefresh()
-    }
 
     // Cedolini aperti (non pagati)
     val openCedolini = remember(cedoliniWithItems) {
@@ -97,11 +87,6 @@ fun DashboardScreen(
     // Carica i listing del proprietario appena si apre il Dashboard
     LaunchedEffect(Unit) { listingsViewModel.loadMyListings() }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .nestedScroll(pullRefreshState.nestedScrollConnection)
-    ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
@@ -495,15 +480,7 @@ fun DashboardScreen(
         }
 
         item { Spacer(Modifier.height(80.dp)) }
-    } // fine LazyColumn
-
-    PullToRefreshContainer(
-        state = pullRefreshState,
-        modifier = Modifier.align(Alignment.TopCenter),
-        containerColor = DarkSurface,
-        contentColor = Cyan400
-    )
-    } // fine Box
+    }
 
     // ── Bottom Sheet: Riepilogo cedolini aperti ──────────────────
     if (showOpenCedoliniSheet) {
