@@ -757,7 +757,7 @@ private fun SingleCedolinoDialog(
                 onClick = {
                     val cedolino = SCedolino(
                         unitId = selectedUnit.id,
-                        condominioId = "", // will be set by ViewModel
+                        condominioId = selectedUnit.condominioId,
                         period = period,
                         issueDate = System.currentTimeMillis(),
                         dueDate = dueDate,

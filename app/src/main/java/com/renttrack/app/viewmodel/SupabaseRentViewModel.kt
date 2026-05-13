@@ -581,7 +581,13 @@ class SupabaseRentViewModel(application: Application) : AndroidViewModel(applica
 
     // ── Cedolino CRUD ─────────────────────────────────────────────────
     fun addCedolinoWithItems(c: SCedolino, items: List<SCedolinoItem>) = viewModelScope.launch {
-        try { repo.insertCedolinoWithItems(c, items); refresh() } catch (e: Exception) { _error.value = e.message }
+        try {
+            // Safety: se il caller non ha passato condominioId usa l'active
+            val condId = c.condominioId.ifBlank { _activeCondominioId.value }
+            if (condId.isBlank()) { _error.value = "Nessuna proprietà selezionata"; return@launch }
+            repo.insertCedolinoWithItems(c.copy(condominioId = condId), items)
+            refresh()
+        } catch (e: Exception) { _error.value = e.message }
     }
 
     fun updateCedolino(c: SCedolino) = viewModelScope.launch {
