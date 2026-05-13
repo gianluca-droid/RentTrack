@@ -11,8 +11,9 @@ import com.renttrack.app.R
 
 object NotificationHelper {
 
-    const val CHANNEL_SCADENZE   = "renttrack_scadenze"
-    const val CHANNEL_MOROSITA   = "renttrack_morosita"
+    const val CHANNEL_SCADENZE  = "renttrack_scadenze"
+    const val CHANNEL_MOROSITA  = "renttrack_morosita"
+    const val CHANNEL_REMINDER  = "renttrack_reminder"   // reminder pre-scadenza affitto
 
     /** Crea i canali notifiche (chiamare all'avvio dell'app) */
     fun createChannels(context: Context) {
@@ -32,6 +33,14 @@ object NotificationHelper {
                 "Cedolini e morosità",
                 NotificationManager.IMPORTANCE_HIGH
             ).apply { description = "Avvisi per cedolini scaduti non pagati" }
+        )
+
+        nm.createNotificationChannel(
+            NotificationChannel(
+                CHANNEL_REMINDER,
+                "Promemoria affitti",
+                NotificationManager.IMPORTANCE_DEFAULT
+            ).apply { description = "Promemoria pre-scadenza cedolini da incassare" }
         )
     }
 
@@ -94,5 +103,42 @@ object NotificationHelper {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .build()
         nm.notify(1003, notif)
+    }
+
+    /**
+     * Notifica: reminder pre-scadenza cedolino.
+     * Inviata N giorni prima della scadenza (o lo stesso giorno).
+     * @param giorniRimasti 0 = oggi, N = tra N giorni
+     */
+    fun notifyReminderScadenza(
+        context: Context,
+        count: Int,
+        totale: Double,
+        nomi: List<String>,
+        giorniRimasti: Int
+    ) {
+        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val totaleStr = String.format("%.2f €", totale)
+        val titolo = when {
+            giorniRimasti == 0 -> "📬 Oggi scadono $count affitt${if (count == 1) "o" else "i"}"
+            giorniRimasti == 1 -> "📬 Domani scade 1 affitto"
+            else               -> "📬 $count affitt${if (count == 1) "o" else "i"} in scadenza tra $giorniRimasti giorni"
+        }
+        val nomiStr = if (nomi.size <= 3) nomi.joinToString(", ")
+                      else "${nomi.take(3).joinToString(", ")} e altri ${nomi.size - 3}"
+        val notif = NotificationCompat.Builder(context, CHANNEL_REMINDER)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle(titolo)
+            .setContentText("$nomiStr — Totale: $totaleStr")
+            .setStyle(
+                NotificationCompat.BigTextStyle()
+                    .bigText("Inquilini: $nomiStr\nTotale atteso: $totaleStr\nApri RentTrack per i dettagli.")
+            )
+            .setContentIntent(launchIntent(context))
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .build()
+        // ID univoco per giorno: 2000 = oggi, 2001 = 1gg prima, ecc.
+        nm.notify(2000 + giorniRimasti, notif)
     }
 }

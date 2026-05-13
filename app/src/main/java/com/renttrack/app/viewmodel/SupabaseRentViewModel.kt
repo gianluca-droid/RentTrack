@@ -37,6 +37,11 @@ class SupabaseRentViewModel(application: Application) : AndroidViewModel(applica
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
 
+    // Diventa true dopo il PRIMO refresh() completato — usato da MainActivity
+    // per evitare il flash di CondominioSelector durante il login
+    private val _initialLoadDone = MutableStateFlow(false)
+    val initialLoadDone: StateFlow<Boolean> = _initialLoadDone
+
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
 
@@ -283,7 +288,83 @@ class SupabaseRentViewModel(application: Application) : AndroidViewModel(applica
         }
     }
 
-    // ── Documenti ─────────────────────────────────────────────────────────
+    // ── Export CSV diretto con selezione immobile (usato dal dialog) ──────
+    // Carica prima i dati per gli immobili selezionati, poi esporta immediatamente
+    fun exportCSVAfterScope(
+        context: Context,
+        mode: Int,              // 0=attiva, 1=tutte, 2=custom
+        customIds: Set<String>,
+        activeCondoId: String,
+        filterYear: Int? = null // null = tutti gli anni
+    ) = viewModelScope.launch {
+        try {
+            val dateFmt = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.ITALIAN)
+            // Determina gli ID da includere
+            val condIds = when (mode) {
+                0 -> listOf(activeCondoId).filter { it.isNotBlank() }
+                1 -> _allCondomini.value.map { it.id }
+                2 -> customIds.toList()
+                else -> listOf(activeCondoId)
+            }
+            val scopeLabel = when (mode) {
+                0 -> _allCondomini.value.find { it.id == activeCondoId }
+                    ?.let { "${it.nome}${if (it.indirizzo.isNotBlank()) " - ${it.indirizzo}" else ""}" }
+                    ?: "Proprietà attiva"
+                1 -> "Tutte le proprietà (${_allCondomini.value.size})"
+                2 -> "${customIds.size} proprietà selezionate"
+                else -> "Proprietà attiva"
+            }
+            // Carica i dati filtrati
+            val allExp = mutableListOf<SExpense>()
+            val allPay = mutableListOf<SPayment>()
+            withContext(Dispatchers.IO) {
+                condIds.forEach { id ->
+                    allExp += repo.getExpensesByCondominio(id)
+                    allPay += repo.getPaymentsByCondominio(id)
+                }
+            }
+            // Applica filtro anno se specificato
+            val cal = java.util.Calendar.getInstance()
+            val filteredPay = if (filterYear != null)
+                allPay.filter { cal.apply { timeInMillis = it.date }.get(java.util.Calendar.YEAR) == filterYear }
+            else allPay
+            val filteredExp = if (filterYear != null)
+                allExp.filter { cal.apply { timeInMillis = it.date }.get(java.util.Calendar.YEAR) == filterYear }
+            else allExp
+            val yearLabel   = filterYear?.toString() ?: "tutti gli anni"
+            val fileName    = if (filterYear != null) "export_renttrack_$filterYear.csv" else "export_renttrack.csv"
+            // Genera CSV
+            val sb = StringBuilder()
+            sb.appendLine("# RentTrack Export - $scopeLabel — $yearLabel")
+            sb.appendLine("Tipo,Data,Importo,Descrizione,Stato,Proprietà")
+            filteredPay.forEach { p ->
+                val condo = _allCondomini.value.find { it.id == p.condominioId }
+                val label = condo?.let { "${it.nome}${if (it.indirizzo.isNotBlank()) " - ${it.indirizzo}" else ""}" } ?: ""
+                sb.appendLine("Affitto,${dateFmt.format(java.util.Date(p.date))},${p.amount},\"${p.reference}\",Pagato,\"$label\"")
+            }
+            filteredExp.forEach { e ->
+                val condo = _allCondomini.value.find { it.id == e.condominioId }
+                val label = condo?.let { "${it.nome}${if (it.indirizzo.isNotBlank()) " - ${it.indirizzo}" else ""}" } ?: ""
+                sb.appendLine("Spesa,${dateFmt.format(java.util.Date(e.date))},${e.amount},\"${e.category} - ${e.description}\",-,\"$label\"")
+            }
+            val file = withContext(Dispatchers.IO) {
+                java.io.File(context.cacheDir, fileName).also { it.writeText(sb.toString()) }
+            }
+            val uri = androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
+            val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                type = "text/csv"
+                putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            context.startActivity(android.content.Intent.createChooser(intent, "Esporta CSV").addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+            _backupStatus.value = "✅ CSV: ${filteredPay.size + filteredExp.size} righe — $scopeLabel — $yearLabel"
+
+        } catch (e: Exception) {
+            _backupStatus.value = "❌ Errore esportazione: ${e.message}"
+        }
+    }
+
+
     fun exportCSV(context: Context) = viewModelScope.launch {
         try {
             val dateFmt = SimpleDateFormat("dd/MM/yyyy", Locale.ITALIAN)
@@ -433,6 +514,7 @@ class SupabaseRentViewModel(application: Application) : AndroidViewModel(applica
                 _error.value = e.message
             } finally {
                 _isLoading.value = false
+                _initialLoadDone.value = true   // sblocca il NavHost
             }
         }
     }

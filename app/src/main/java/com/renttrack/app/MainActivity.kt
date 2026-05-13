@@ -29,9 +29,19 @@ import com.renttrack.app.viewmodel.ListingsViewModelFactory
 import com.renttrack.app.viewmodel.SupabaseRentViewModel
 
 class MainActivity : ComponentActivity() {
+
+    // URI del deep link: aggiornato sia da onCreate (app fredda) che da onNewIntent (app calda)
+    private val _deepLinkUri = kotlinx.coroutines.flow.MutableStateFlow<android.net.Uri?>(null)
+    val deepLinkUri: kotlinx.coroutines.flow.StateFlow<android.net.Uri?> = _deepLinkUri
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Deep link ricevuto a freddo (app era chiusa)
+        intent?.data?.let { uri ->
+            if (uri.scheme == "renttrack") _deepLinkUri.value = uri
+        }
 
         val crashPrefs = getSharedPreferences("crash_prefs", android.content.Context.MODE_PRIVATE)
         val lastCrash = crashPrefs.getString("last_crash", null)
@@ -40,8 +50,17 @@ class MainActivity : ComponentActivity() {
         setContent {
             RentTrackTheme {
                 if (lastCrash != null) CrashDialog(crashMessage = lastCrash)
-                MainApp()
+                MainApp(activity = this)
             }
+        }
+    }
+
+    // Deep link ricevuto a caldo (app era già in foreground/background)
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        intent.data?.let { uri ->
+            if (uri.scheme == "renttrack") _deepLinkUri.value = uri
         }
     }
 }
@@ -75,28 +94,56 @@ fun CrashDialog(crashMessage: String) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainApp(viewModel: SupabaseRentViewModel = viewModel()) {
+fun MainApp(
+    viewModel: SupabaseRentViewModel = viewModel(),
+    activity: MainActivity? = null
+) {
     val context             = androidx.compose.ui.platform.LocalContext.current
     val navController       = rememberNavController()
     val navBackStackEntry  by navController.currentBackStackEntryAsState()
     val currentRoute        = navBackStackEntry?.destination?.route
 
-    // ── AuthViewModel viene creato PRIMA di tutto ──────────────────────────
+    // ── AuthViewModel viene creato PRIMA di tutto ─────────────────────────────
     // (non dopo il guard isLoading come prima, che causava race condition)
     val authViewModel: AuthViewModel = viewModel(factory = AuthViewModelFactory(context))
     val listingsViewModel: ListingsViewModel = viewModel(factory = ListingsViewModelFactory(context))
     val authState by authViewModel.authState.collectAsState()
     val isLoggedIn = authState is AuthState.LoggedIn
 
-    // ── Trigger refresh SOLO dopo autenticazione confermata ─────────────────
-    // Elimina la race condition: init{refresh()} partiva con token potenzialmente vuoto.
+    // ── Osserva deep link URI dall'Activity ─────────────────────────────────
+    val deepLinkUri by (activity?.deepLinkUri ?: kotlinx.coroutines.flow.MutableStateFlow(null))
+        .collectAsState()
+
+    LaunchedEffect(deepLinkUri) {
+        val uri = deepLinkUri ?: return@LaunchedEffect
+        authViewModel.handleDeepLink(uri)
+    }
+
+    // Naviga in base allo stato auth dopo deep link + trigger refresh dati
     LaunchedEffect(authState) {
-        if (authState is AuthState.LoggedIn) {
-            viewModel.refresh()
+        when (authState) {
+            is AuthState.RecoveryReady -> {
+                navController.navigate(Screen.ResetPassword.route) {
+                    popUpTo(Screen.Login.route) { inclusive = false }
+                    launchSingleTop = true
+                }
+            }
+            is AuthState.LoggedIn -> {
+                // Trigger refresh dati (ex race condition fix)
+                viewModel.refresh()
+                // Se siamo su ResetPassword, naviga alla home
+                if (currentRoute == Screen.ResetPassword.route) {
+                    val dest = if (viewModel.activeCondominioId.value.isNotBlank())
+                        Screen.Dashboard.route else Screen.CondominioSelector.route
+                    navController.navigate(dest) { popUpTo(0) { inclusive = true } }
+                }
+            }
+            else -> Unit
         }
     }
 
     val isLoading          by viewModel.isLoading.collectAsState()
+    val initialLoadDone    by viewModel.initialLoadDone.collectAsState()
     val activeCondominioId by viewModel.activeCondominioId.collectAsState()
     val activeCondominio   by viewModel.activeCondominio.collectAsState()
     val pendingCedolini    by viewModel.pendingCedolini.collectAsState()
@@ -110,8 +157,9 @@ fun MainApp(viewModel: SupabaseRentViewModel = viewModel()) {
             .getBoolean("onboarding_shown", false)
     }
 
-    // ── Spinner: copre sia la risoluzione auth che il caricamento dati ────────
-    if (authState is AuthState.Loading || isLoading) {
+    // Spinner: copre auth, caricamento dati E il gap tra LoggedIn e primo refresh()
+    // isLoggedIn && !initialLoadDone evita il flash di CondominioSelector
+    if (authState is AuthState.Loading || isLoading || (isLoggedIn && !initialLoadDone)) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 CircularProgressIndicator(color = Cyan400)
@@ -136,8 +184,9 @@ fun MainApp(viewModel: SupabaseRentViewModel = viewModel()) {
     val isInDettaglio  = currentRoute == Screen.DettaglioAnnuncio.route
     val isInCrea       = currentRoute == Screen.CreaAnnuncio.route
     val isInMiei       = currentRoute == Screen.MieiAnnunci.route
+    val isInReset      = currentRoute == Screen.ResetPassword.route
     val hideChrome     = isInSelector || isInOnboarding || isInLogin ||
-                         isInAnnunci || isInDettaglio || isInCrea || isInMiei
+                         isInAnnunci || isInDettaglio || isInCrea || isInMiei || isInReset
 
     Scaffold(
         containerColor = DarkBg,
@@ -181,6 +230,15 @@ fun MainApp(viewModel: SupabaseRentViewModel = viewModel()) {
                         containerColor = DarkBg, titleContentColor = TextPrimary
                     ),
                     actions = {
+                        // Cerca — icona ricerca globale
+                        if (currentRoute != Screen.Search.route) {
+                            IconButton(onClick = {
+                                navController.navigate(Screen.Search.route) { launchSingleTop = true }
+                            }) {
+                                Icon(Icons.Filled.Search, "Cerca", tint = TextMuted)
+                            }
+                        }
+
                         // Report — icona compatta, visibile solo quando NON si è già su Report
                         if (currentRoute != Screen.Reports.route) {
                             IconButton(onClick = {
@@ -218,6 +276,15 @@ fun MainApp(viewModel: SupabaseRentViewModel = viewModel()) {
                                     onClick = {
                                         showOverflowMenu = false
                                         showSwitchPropertyDialog = true
+                                    }
+                                )
+                                // Impostazioni
+                                DropdownMenuItem(
+                                    text = { Text("Impostazioni", color = TextPrimary) },
+                                    leadingIcon = { Icon(Icons.Filled.Settings, null, tint = TextSecondary) },
+                                    onClick = {
+                                        showOverflowMenu = false
+                                        navController.navigate(Screen.Settings.route) { launchSingleTop = true }
                                     }
                                 )
                                 // Guida
@@ -491,6 +558,27 @@ fun MainApp(viewModel: SupabaseRentViewModel = viewModel()) {
             composable(Screen.Expenses.route)   { ExpensesScreen(viewModel) }
             composable(Screen.Documenti.route)  { DocumentiScreen(viewModel) }
             composable(Screen.Reports.route)    { ReportsScreen(viewModel) }
+            composable(Screen.ResetPassword.route) {
+                ResetPasswordScreen(
+                    viewModel = authViewModel,
+                    onSuccess = {
+                        val dest = if (viewModel.activeCondominioId.value.isNotBlank())
+                            Screen.Dashboard.route else Screen.CondominioSelector.route
+                        navController.navigate(dest) { popUpTo(0) { inclusive = true } }
+                    }
+                )
+            }
+            composable(Screen.Search.route) {
+                SearchScreen(
+                    viewModel = viewModel,
+                    onBack    = { navController.popBackStack() }
+                )
+            }
+            composable(Screen.Settings.route) {
+                SettingsScreen(
+                    onBack = { navController.popBackStack() }
+                )
+            }
         }
     }
 }

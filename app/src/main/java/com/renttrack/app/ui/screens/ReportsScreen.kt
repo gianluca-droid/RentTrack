@@ -3,10 +3,15 @@ package com.renttrack.app.ui.screens
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -16,9 +21,16 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -185,6 +197,10 @@ private fun PanoramicaTab(viewModel: SupabaseRentViewModel) {
     val units           by viewModel.units.collectAsState()
     val expenses        by viewModel.expenses.collectAsState()
     val payments        by viewModel.payments.collectAsState()
+    val monthlyExp      by viewModel.reportMonthlyExpenses.collectAsState()
+    val monthlyPay      by viewModel.reportMonthlyPayments.collectAsState()
+    val availableYears  by viewModel.reportAvailableYears.collectAsState()
+    val selectedYear    by viewModel.selectedYear.collectAsState()
 
     val saldo = totalPayments - totalExpenses
     val saldoPositive = saldo >= 0
@@ -236,6 +252,57 @@ private fun PanoramicaTab(viewModel: SupabaseRentViewModel) {
                 }
             }
         }
+
+        // ── Grafico Incassi vs Spese mensile ─────────────────────────
+        if (monthlyExp.isNotEmpty() || monthlyPay.isNotEmpty()) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = DarkCard),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        // Header con selezione anno
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                "Incassi vs Spese",
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                color = TextPrimary, modifier = Modifier.weight(1f)
+                            )
+                            // Chip anni
+                            Row(
+                                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                availableYears.forEach { year ->
+                                    FilterChip(
+                                        selected = selectedYear == year,
+                                        onClick  = { viewModel.setSelectedYear(year) },
+                                        label    = { Text("$year", style = MaterialTheme.typography.labelSmall) },
+                                        colors   = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = Cyan400.copy(alpha = 0.2f),
+                                            selectedLabelColor = Cyan400
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                        // Legenda
+                        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                            LegendDot(Green400, "Incassi")
+                            LegendDot(Color(0xFFFF6B6B), "Spese")
+                        }
+                        // Grafico
+                        MonthlyBarChart(
+                            monthlyPayments = monthlyPay,
+                            monthlyExpenses = monthlyExp,
+                            modifier = Modifier.fillMaxWidth().height(180.dp)
+                        )
+                    }
+                }
+            }
+        }
+
         // Spese per categoria
         if (expByCategory.isNotEmpty()) {
             item { Text("Spese per categoria", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = TextPrimary) }
@@ -256,11 +323,15 @@ private fun PanoramicaTab(viewModel: SupabaseRentViewModel) {
                 )
             )
         }
-        // ── Bottone Export CSV ──────────────────────────────────
+        // ── Bottone Export CSV con dialog selezione immobile ────
         item {
             val ctx = LocalContext.current
+            val allCondomini    by viewModel.allCondomini.collectAsState()
+            val activeCondoId   by viewModel.activeCondominioId.collectAsState()
+            var showExportDialog by remember { mutableStateOf(false) }
+
             OutlinedButton(
-                onClick = { viewModel.exportCSV(ctx) },
+                onClick = { showExportDialog = true },
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = Cyan400),
                 border = androidx.compose.foundation.BorderStroke(1.dp, Cyan400.copy(alpha = 0.5f)),
@@ -270,16 +341,193 @@ private fun PanoramicaTab(viewModel: SupabaseRentViewModel) {
                 Spacer(Modifier.width(8.dp))
                 Column {
                     Text(
-                    "Esporta CSV",
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold)
+                        "Esporta CSV",
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold)
+                    )
+                    Text(
+                        "Scegli quale immobile esportare",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = TextMuted
+                    )
+                }
+            }
+
+            // ── Dialog selezione immobile per export ───────────────
+            if (showExportDialog) {
+                // 0 = solo attiva, 1 = tutte, 2 = custom
+                var mode by remember { mutableIntStateOf(0) }
+                var customPicked by remember {
+                    mutableStateOf(setOf(activeCondoId).filter { it.isNotBlank() }.toSet())
+                }
+                val availableYears by viewModel.reportAvailableYears.collectAsState()
+                var selectedExportYear by remember { mutableStateOf<Int?>(null) } // null = tutti gli anni
+
+                AlertDialog(
+                    onDismissRequest = { showExportDialog = false },
+                    containerColor = DarkSurface,
+                    shape = RoundedCornerShape(20.dp),
+                    icon = {
+                        Icon(Icons.Filled.Download, null, tint = Cyan400, modifier = Modifier.size(28.dp))
+                    },
+                    title = {
+                        Text(
+                            "Esporta CSV",
+                            color = TextPrimary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    text = {
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(
+                                "Seleziona quale immobile includere nell'export:",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextMuted
+                            )
+                            Spacer(Modifier.height(4.dp))
+
+                            // ── Opzione: Solo attiva
+                            val activeCondo = allCondomini.find { it.id == activeCondoId }
+                            ExportOptionRow(
+                                selected = mode == 0,
+                                onClick = { mode = 0 },
+                                label = activeCondo?.let {
+                                    if (it.indirizzo.isNotBlank()) "${it.nome} — ${it.indirizzo}"
+                                    else it.nome
+                                } ?: "Proprietà attiva",
+                                sublabel = "Solo questa proprietà"
+                            )
+
+                            // ── Opzione: Tutte
+                            ExportOptionRow(
+                                selected = mode == 1,
+                                onClick = { mode = 1 },
+                                label = "Tutte le proprietà",
+                                sublabel = "${allCondomini.size} immobili"
+                            )
+
+                            // ── Opzione: Selezione custom (visibile solo se >1 immobile)
+                            if (allCondomini.size > 1) {
+                                ExportOptionRow(
+                                    selected = mode == 2,
+                                    onClick = { mode = 2 },
+                                    label = "Selezione personalizzata",
+                                    sublabel = if (mode == 2) "${customPicked.size} selezionati" else "Scegli quali includere"
+                                )
+
+                                // Checkbox lista immobili (visibile solo in modalità custom)
+                                androidx.compose.animation.AnimatedVisibility(visible = mode == 2) {
+                                    Column(
+                                        modifier = androidx.compose.ui.Modifier
+                                            .fillMaxWidth()
+                                            .padding(start = 16.dp, top = 4.dp),
+                                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                                    ) {
+                                        allCondomini.forEach { condo ->
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                Checkbox(
+                                                    checked = condo.id in customPicked,
+                                                    onCheckedChange = { checked ->
+                                                        customPicked = customPicked.toMutableSet().also {
+                                                            if (checked) it.add(condo.id)
+                                                            else it.remove(condo.id)
+                                                        }
+                                                    },
+                                                    colors = CheckboxDefaults.colors(checkedColor = Cyan400)
+                                                )
+                                                Column {
+                                                    Text(
+                                                        condo.nome,
+                                                        color = TextPrimary,
+                                                        style = MaterialTheme.typography.bodySmall
+                                                    )
+                                                    if (condo.indirizzo.isNotBlank()) {
+                                                        Text(
+                                                            condo.indirizzo,
+                                                            color = TextMuted,
+                                                            style = MaterialTheme.typography.labelSmall
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // ── Sezione filtro anno ────────────────────────────────
+                            if (availableYears.isNotEmpty()) {
+                                Spacer(Modifier.height(4.dp))
+                                HorizontalDivider(color = androidx.compose.ui.graphics.Color(0xFF2D3748))
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    "Periodo:",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = TextMuted
+                                )
+                                androidx.compose.foundation.lazy.LazyRow(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    // Chip "Tutti"
+                                    item {
+                                        FilterChip(
+                                            selected = selectedExportYear == null,
+                                            onClick  = { selectedExportYear = null },
+                                            label    = { Text("Tutti", style = MaterialTheme.typography.labelSmall) },
+                                            colors   = FilterChipDefaults.filterChipColors(
+                                                selectedContainerColor = Cyan400.copy(alpha = 0.2f),
+                                                selectedLabelColor     = Cyan400
+                                            )
+                                        )
+                                    }
+                                    items(availableYears.size) { i ->
+                                        val y = availableYears[i]
+                                        FilterChip(
+                                            selected = selectedExportYear == y,
+                                            onClick  = { selectedExportYear = y },
+                                            label    = { Text("$y", style = MaterialTheme.typography.labelSmall) },
+                                            colors   = FilterChipDefaults.filterChipColors(
+                                                selectedContainerColor = Cyan400.copy(alpha = 0.2f),
+                                                selectedLabelColor     = Cyan400
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    confirmButton = {
+                        val canConfirm = mode != 2 || customPicked.isNotEmpty()
+                        Button(
+                            onClick = {
+                                showExportDialog = false
+                                when (mode) {
+                                    0 -> viewModel.setReportScope(SupabaseRentViewModel.ReportScope.ACTIVE)
+                                    1 -> viewModel.setReportScope(SupabaseRentViewModel.ReportScope.ALL)
+                                    2 -> viewModel.setReportScope(SupabaseRentViewModel.ReportScope.CUSTOM, customPicked)
+                                }
+                                viewModel.exportCSVAfterScope(ctx, mode, customPicked, activeCondoId, selectedExportYear)
+                            },
+                            enabled = canConfirm,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Cyan400,
+                                contentColor = androidx.compose.ui.graphics.Color.Black
+                            ),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Icon(Icons.Filled.Download, null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Esporta", fontWeight = FontWeight.Bold)
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showExportDialog = false }) {
+                            Text("Annulla", color = TextMuted)
+                        }
+                    }
                 )
-                val scopeLabel = when (viewModel.reportScope.value) {
-                    SupabaseRentViewModel.ReportScope.ACTIVE -> "Proprieta attiva"
-                    SupabaseRentViewModel.ReportScope.ALL    -> "Tutte le proprieta"
-                    SupabaseRentViewModel.ReportScope.CUSTOM -> "${viewModel.reportSelectedIds.value.size} proprieta"
-                }
-                Text(scopeLabel, style = MaterialTheme.typography.labelSmall, color = TextMuted)
-                }
             }
         }
         // ── Sezione Backup & Ripristino ─────────────────────────
@@ -679,5 +927,145 @@ private fun LabeledAmount(label: String, amount: Double, color: Color) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(label, style = MaterialTheme.typography.labelSmall, color = TextMuted)
         Text(Formatters.currency(amount), style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = color)
+    }
+}
+
+@Composable
+private fun ExportOptionRow(
+    selected: Boolean,
+    onClick: () -> Unit,
+    label: String,
+    sublabel: String
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(12.dp),
+        color = if (selected) Cyan400.copy(alpha = 0.10f) else DarkCard,
+        border = if (selected)
+            androidx.compose.foundation.BorderStroke(1.5.dp, Cyan400.copy(alpha = 0.6f))
+        else
+            androidx.compose.foundation.BorderStroke(1.dp, androidx.compose.ui.graphics.Color(0xFF2D3748)),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            RadioButton(
+                selected = selected,
+                onClick = onClick,
+                colors = RadioButtonDefaults.colors(selectedColor = Cyan400, unselectedColor = TextMuted),
+                modifier = Modifier.size(20.dp)
+            )
+            Column {
+                Text(
+                    label,
+                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                    color = if (selected) Cyan400 else TextPrimary
+                )
+                Text(
+                    sublabel,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = TextMuted
+                )
+            }
+        }
+    }
+}
+
+// ─── Grafico a barre mensile (Canvas puro) ────────────────────────────────────
+@Composable
+private fun MonthlyBarChart(
+    monthlyPayments: List<MonthlyTotal>,
+    monthlyExpenses: List<MonthlyTotal>,
+    modifier: Modifier = Modifier
+) {
+    val allMonths = (1..12).toList()
+    val payMap = monthlyPayments.associateBy { it.month }
+    val expMap = monthlyExpenses.associateBy { it.month }
+    val maxVal = (monthlyPayments + monthlyExpenses).maxOfOrNull { it.total } ?: 1.0
+
+    // Animazione barre all'ingresso
+    var animated by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { animated = true }
+    val animProgress by animateFloatAsState(
+        targetValue = if (animated) 1f else 0f,
+        animationSpec = tween(durationMillis = 700),
+        label = "barAnim"
+    )
+
+    val payColor = android.graphics.Color.parseColor("#00C896")  // Green400
+    val expColor = android.graphics.Color.parseColor("#FF6B6B")  // Red
+    val textColor = android.graphics.Color.parseColor("#8899AA") // TextMuted
+    val density = LocalDensity.current
+
+    Canvas(modifier = modifier) {
+        val barGroupW = size.width / 12f
+        val barW      = barGroupW * 0.34f
+        val maxH      = size.height - 28.dp.toPx()
+        val bottomY   = size.height - 20.dp.toPx()
+
+        // Linea asse X
+        drawLine(
+            color = Color(0xFF2D3748),
+            start = Offset(0f, bottomY),
+            end   = Offset(size.width, bottomY),
+            strokeWidth = 1.dp.toPx()
+        )
+
+        allMonths.forEach { month ->
+            val cx = (month - 1) * barGroupW + barGroupW / 2f
+
+            val payH = ((payMap[month]?.total ?: 0.0) / maxVal * maxH * animProgress).toFloat()
+            val expH = ((expMap[month]?.total ?: 0.0) / maxVal * maxH * animProgress).toFloat()
+
+            // Barra Incassi (sinistra)
+            if (payH > 0) {
+                drawRoundRect(
+                    color       = Color(0xFF00C896),
+                    topLeft     = Offset(cx - barW - 1.dp.toPx(), bottomY - payH),
+                    size        = Size(barW, payH),
+                    cornerRadius = CornerRadius(3.dp.toPx())
+                )
+            }
+
+            // Barra Spese (destra)
+            if (expH > 0) {
+                drawRoundRect(
+                    color       = Color(0xFFFF6B6B),
+                    topLeft     = Offset(cx + 1.dp.toPx(), bottomY - expH),
+                    size        = Size(barW, expH),
+                    cornerRadius = CornerRadius(3.dp.toPx())
+                )
+            }
+
+            // Etichetta mese
+            drawContext.canvas.nativeCanvas.drawText(
+                MONTHS[month - 1],
+                cx,
+                size.height,
+                android.graphics.Paint().apply {
+                    color     = textColor
+                    textSize  = with(density) { 9.sp.toPx() }
+                    textAlign = android.graphics.Paint.Align.CENTER
+                    isAntiAlias = true
+                }
+            )
+        }
+    }
+}
+
+// ─── Pallino legenda ──────────────────────────────────────────────────────────
+@Composable
+private fun LegendDot(color: Color, label: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        Box(
+            modifier = Modifier
+                .size(10.dp)
+                .clip(RoundedCornerShape(50))
+                .background(color)
+        )
+        Text(label, style = MaterialTheme.typography.labelSmall, color = TextMuted)
     }
 }

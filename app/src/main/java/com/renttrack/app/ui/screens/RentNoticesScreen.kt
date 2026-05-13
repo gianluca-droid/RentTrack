@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import com.renttrack.app.data.model.*
 import com.renttrack.app.ui.components.*
 import com.renttrack.app.ui.theme.*
+import com.renttrack.app.util.CedolinoPdfGenerator
 import com.renttrack.app.viewmodel.SupabaseRentViewModel
 import java.util.*
 
@@ -159,6 +160,46 @@ fun RentNoticesScreen(viewModel: SupabaseRentViewModel) {
                                             leadingIcon = { Icon(Icons.Filled.ContentCopy, null, tint = Amber400, modifier = Modifier.size(18.dp)) },
                                             onClick = { viewModel.duplicateCedolino(cwi); showMenu = false }
                                         )
+                                        // ── Genera PDF ──────────────────────────────────
+                                        val tenantUnitPdf = units.find { it.id == cedolino.unitId }
+                                        DropdownMenuItem(
+                                            text = { Text("Genera PDF", color = TextPrimary) },
+                                            leadingIcon = { Icon(Icons.Filled.PictureAsPdf, null, tint = Color(0xFFFF6B6B), modifier = Modifier.size(18.dp)) },
+                                            onClick = {
+                                                try {
+                                                    val uri = CedolinoPdfGenerator.generateAndShare(
+                                                        context       = context,
+                                                        cedolino      = cedolino,
+                                                        items         = cwi.items,
+                                                        tenantName    = tenantUnitPdf?.ownerName ?: viewModel.getUnitName(cedolino.unitId),
+                                                        propertyName  = tenantUnitPdf?.number ?: ""
+                                                    )
+                                                    val pdfIntent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+                                                        setDataAndType(uri, "application/pdf")
+                                                        flags = android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                                                                android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+                                                    }
+                                                    try {
+                                                        context.startActivity(pdfIntent)
+                                                    } catch (e: Exception) {
+                                                        // Nessun visualizzatore PDF: offri condivisione
+                                                        context.startActivity(
+                                                            android.content.Intent.createChooser(
+                                                                android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                                                    type = "application/pdf"
+                                                                    putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                                                                    flags = android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+                                                                },
+                                                                "Condividi PDF"
+                                                            )
+                                                        )
+                                                    }
+                                                } catch (e: Exception) {
+                                                    android.util.Log.e("PDF", "Errore generazione PDF: ${e.message}")
+                                                }
+                                                showMenu = false
+                                            }
+                                        )
                                     }
                                     val shareText = buildString {
                                         appendLine("📋 Avviso Affitto")
@@ -182,6 +223,112 @@ fun RentNoticesScreen(viewModel: SupabaseRentViewModel) {
                                             showMenu = false
                                         }
                                     )
+                                    // ── Invia via Email ──────────────────────────────
+                                    val tenantUnit = units.find { it.id == cedolino.unitId }
+                                    val tenantEmail = tenantUnit?.ownerEmail ?: ""
+                                    DropdownMenuItem(
+                                        text = { Text("Invia Email", color = TextPrimary) },
+                                        leadingIcon = { Icon(Icons.Filled.Email, null, tint = Cyan400, modifier = Modifier.size(18.dp)) },
+                                        onClick = {
+                                            val subject = "Avviso affitto ${cedolino.period}"
+                                            val body = buildString {
+                                                appendLine("Gentile ${tenantUnit?.ownerName ?: "Inquilino"},")
+                                                appendLine()
+                                                appendLine("Le inviamo l'avviso di pagamento per il periodo: ${cedolino.period}")
+                                                appendLine()
+                                                cwi?.items?.forEach { appendLine("• ${it.description}: ${Formatters.currency(it.amount)}") }
+                                                appendLine("─────────────────────")
+                                                appendLine("TOTALE DA VERSARE: ${Formatters.currency(cedolino.total)}")
+                                                appendLine("Scadenza: ${Formatters.date(cedolino.dueDate)}")
+                                                appendLine()
+                                                appendLine("Cordiali saluti")
+                                            }
+                                            val emailIntent = if (tenantEmail.isNotBlank()) {
+                                                android.content.Intent(android.content.Intent.ACTION_SENDTO).apply {
+                                                    data = android.net.Uri.parse("mailto:")
+                                                    putExtra(android.content.Intent.EXTRA_EMAIL, arrayOf(tenantEmail))
+                                                    putExtra(android.content.Intent.EXTRA_SUBJECT, subject)
+                                                    putExtra(android.content.Intent.EXTRA_TEXT, body)
+                                                }
+                                            } else {
+                                                // Fallback: condivisione generica se email non impostata
+                                                android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                                    type = "text/plain"
+                                                    putExtra(android.content.Intent.EXTRA_SUBJECT, subject)
+                                                    putExtra(android.content.Intent.EXTRA_TEXT, body)
+                                                }
+                                            }
+                                            try {
+                                                context.startActivity(emailIntent)
+                                            } catch (e: Exception) {
+                                                context.startActivity(
+                                                    android.content.Intent.createChooser(
+                                                        android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                                            type = "text/plain"
+                                                            putExtra(android.content.Intent.EXTRA_TEXT, body)
+                                                        },
+                                                        "Invia avviso"
+                                                    )
+                                                )
+                                            }
+                                            showMenu = false
+                                        }
+                                    )
+                                    // ── Invia via WhatsApp ────────────────────────────
+                                    val tenantPhone = tenantUnit?.ownerPhone ?: ""
+                                    DropdownMenuItem(
+                                        text = { Text("WhatsApp", color = TextPrimary) },
+                                        leadingIcon = {
+                                            Icon(
+                                                Icons.Filled.Chat, null,
+                                                tint = androidx.compose.ui.graphics.Color(0xFF25D366),
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        },
+                                        onClick = {
+                                            val waBody = buildString {
+                                                appendLine("Ciao ${tenantUnit?.ownerName?.split(" ")?.firstOrNull() ?: ""},")
+                                                appendLine()
+                                                appendLine("ecco l'avviso per *${cedolino.period}*:")
+                                                appendLine()
+                                                cwi?.items?.forEach { appendLine("• ${it.description}: ${Formatters.currency(it.amount)}") }
+                                                appendLine("────────────────")
+                                                appendLine("*TOTALE: ${Formatters.currency(cedolino.total)}*")
+                                                appendLine("Scadenza: ${Formatters.date(cedolino.dueDate)}")
+                                            }
+                                            try {
+                                                if (tenantPhone.isNotBlank()) {
+                                                    val cleanPhone = tenantPhone
+                                                        .replace(Regex("[\\s\\-().+]"), "")
+                                                        .let { if (it.startsWith("0")) "39$it" else it }
+                                                    val encoded = java.net.URLEncoder.encode(waBody, "UTF-8")
+                                                    val waIntent = android.content.Intent(
+                                                        android.content.Intent.ACTION_VIEW,
+                                                        android.net.Uri.parse("https://wa.me/$cleanPhone?text=$encoded")
+                                                    )
+                                                    context.startActivity(waIntent)
+                                                } else {
+                                                    context.startActivity(
+                                                        android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                                            type = "text/plain"
+                                                            setPackage("com.whatsapp")
+                                                            putExtra(android.content.Intent.EXTRA_TEXT, waBody)
+                                                        }
+                                                    )
+                                                }
+                                            } catch (e: Exception) {
+                                                context.startActivity(
+                                                    android.content.Intent.createChooser(
+                                                        android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                                            type = "text/plain"
+                                                            putExtra(android.content.Intent.EXTRA_TEXT, waBody)
+                                                        }, "Invia avviso"
+                                                    )
+                                                )
+                                            }
+                                            showMenu = false
+                                        }
+                                    )
                                     if (!cedolino.sentToResident) {
                                         DropdownMenuItem(
                                             text = { Text("Segna come inviato", color = TextPrimary) },
@@ -189,6 +336,7 @@ fun RentNoticesScreen(viewModel: SupabaseRentViewModel) {
                                             onClick = { showConfirmSendDialog = cedolino; showMenu = false }
                                         )
                                     }
+
                                 }
                             }
                         }

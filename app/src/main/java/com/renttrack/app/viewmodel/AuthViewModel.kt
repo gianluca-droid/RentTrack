@@ -23,9 +23,12 @@ import java.net.URL
 
 // ─── Auth state ───────────────────────────────────────────────────────────────
 sealed class AuthState {
-    data object Loading        : AuthState()
-    data object LoggedOut      : AuthState()
-    data object GoogleLoading  : AuthState()  // attesa Google Sign-In
+    data object Loading           : AuthState()
+    data object LoggedOut         : AuthState()
+    data object GoogleLoading     : AuthState()  // attesa Google Sign-In
+    data object PasswordResetDone : AuthState()  // reset completato con successo
+    data object RecoveryReady     : AuthState()  // deep link recovery ricevuto, in attesa nuova password
+    data object RecoverySent      : AuthState()  // email recovery inviata
     data class  LoggedIn(val email: String)  : AuthState()
     data class  Error(val message: String)   : AuthState()
     data class  EmailSent(val email: String) : AuthState()  // dopo registrazione
@@ -45,6 +48,10 @@ class AuthViewModel(
 
     private val _authState = MutableStateFlow<AuthState>(AuthState.Loading)
     val authState: StateFlow<AuthState> = _authState.asStateFlow()
+
+    // Token di recovery estratti dal deep link (usati per il PUT /user)
+    private var recoveryAccessToken: String? = null
+    private var recoveryRefreshToken: String? = null
 
     private val supabaseUrl = "https://zjqrtuposdrimzjoydgh.supabase.co"
     private val anonKey     =
@@ -313,8 +320,127 @@ class AuthViewModel(
 
     // ── Reset errore (es. quando si passa da login a registrazione) ───────────
     fun resetError() {
-        if (_authState.value is AuthState.Error || _authState.value is AuthState.EmailSent) {
+        if (_authState.value is AuthState.Error ||
+            _authState.value is AuthState.EmailSent ||
+            _authState.value is AuthState.RecoverySent) {
             _authState.value = AuthState.LoggedOut
+        }
+    }
+
+    // ── Invia email di recupero password ────────────────────────────────
+    // Chiama POST /auth/v1/recover. Supabase invia l'email con renttrack://auth/callback#type=recovery
+    fun sendPasswordReset(email: String) {
+        viewModelScope.launch {
+            _authState.value = AuthState.Loading
+            try {
+                withContext(Dispatchers.IO) {
+                    callSupabaseAuth(
+                        endpoint = "$supabaseUrl/auth/v1/recover",
+                        body = """{"email":"${email.trim()}"}"""
+                    )
+                }
+                // Supabase risponde sempre 200 (non rivela se l'email esiste o no)
+                _authState.value = AuthState.RecoverySent
+            } catch (e: Exception) {
+                _authState.value = AuthState.Error("Errore di rete: ${e.message}")
+            }
+        }
+    }
+
+    // ── Deep link handler: chiamato da MainActivity.onNewIntent ──────────────
+    // URL atteso: renttrack://auth/callback#access_token=...&refresh_token=...&type=recovery|signup
+    fun handleDeepLink(uri: android.net.Uri) {
+        // Supabase mette i parametri nel fragment (#) non nella query (?)
+        val fragment = uri.fragment ?: uri.query ?: return
+        val params = fragment.split("&").associate {
+            val kv = it.split("=", limit = 2)
+            (kv.getOrNull(0) ?: "") to (kv.getOrNull(1) ?: "")
+        }
+        val type         = params["type"]          ?: ""
+        val accessToken  = params["access_token"]  ?: ""
+        val refreshToken = params["refresh_token"] ?: ""
+        val email        = params["email"]         ?: ""
+
+        when (type) {
+            // ── Password recovery → salva token recovery, mostra schermata nuova password
+            "recovery" -> {
+                recoveryAccessToken  = accessToken
+                recoveryRefreshToken = refreshToken
+                _authState.value = AuthState.RecoveryReady
+            }
+            // ── Email confirmation → salva sessione, login diretto
+            "signup", "email_change" -> {
+                if (accessToken.isNotBlank()) {
+                    prefs.edit()
+                        .putString("auth_token", accessToken)
+                        .putString("auth_email", email)
+                        .apply { if (refreshToken.isNotBlank()) putString("refresh_token", refreshToken) }
+                        .apply()
+                    val savedEmail = prefs.getString("auth_email", email) ?: email
+                    _authState.value = AuthState.LoggedIn(savedEmail)
+                }
+            }
+            // ── OAuth callback (Google web flow) → salva sessione
+            "" -> {
+                if (accessToken.isNotBlank()) {
+                    prefs.edit()
+                        .putString("auth_token", accessToken)
+                        .putString("auth_email", email)
+                        .apply { if (refreshToken.isNotBlank()) putString("refresh_token", refreshToken) }
+                        .apply()
+                    val savedEmail = prefs.getString("auth_email", email) ?: email
+                    _authState.value = AuthState.LoggedIn(savedEmail)
+                }
+            }
+        }
+    }
+
+    // ── Reset password: chiama PUT /auth/v1/user con il token di recovery ─────
+    fun resetPassword(newPassword: String) {
+        val token = recoveryAccessToken
+        if (token.isNullOrBlank()) {
+            _authState.value = AuthState.Error("Token di recupero mancante. Richiedi un nuovo link.")
+            return
+        }
+        viewModelScope.launch {
+            _authState.value = AuthState.Loading
+            try {
+                val result = withContext(Dispatchers.IO) {
+                    val body = """{"password":"$newPassword"}"""
+                    val url  = URL("$supabaseUrl/auth/v1/user")
+                    val conn = url.openConnection() as java.net.HttpURLConnection
+                    try {
+                        conn.requestMethod = "PUT"
+                        conn.setRequestProperty("Content-Type", "application/json")
+                        conn.setRequestProperty("apikey", anonKey)
+                        conn.setRequestProperty("Authorization", "Bearer $token")
+                        conn.doOutput = true
+                        java.io.OutputStreamWriter(conn.outputStream).use { it.write(body) }
+                        val code = conn.responseCode
+                        if (code in 200..299) {
+                            val resp = conn.inputStream.bufferedReader().readText()
+                            conn.disconnect()
+                            org.json.JSONObject(resp)
+                        } else {
+                            val err = conn.errorStream?.bufferedReader()?.readText() ?: "{}"
+                            conn.disconnect()
+                            org.json.JSONObject(err)
+                        }
+                    } finally { conn.disconnect() }
+                }
+                if (result.has("id") || result.has("email")) {
+                    // Pulizia token di recovery
+                    recoveryAccessToken  = null
+                    recoveryRefreshToken = null
+                    _authState.value = AuthState.PasswordResetDone
+                } else {
+                    val msg = result.optString("message",
+                        result.optString("error_description", "Aggiornamento password non riuscito"))
+                    _authState.value = AuthState.Error(msg)
+                }
+            } catch (e: Exception) {
+                _authState.value = AuthState.Error("Errore di rete: ${e.message}")
+            }
         }
     }
 

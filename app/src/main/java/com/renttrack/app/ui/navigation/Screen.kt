@@ -26,6 +26,9 @@ sealed class Screen(
     data object Expenses            : Screen("expenses",            "Spese",            "Spese immobile",        Icons.Filled.Receipt,      Icons.Outlined.Receipt)
     data object Documenti           : Screen("documenti",           "Archivio",         "Documenti e contratti", Icons.Filled.Folder,       Icons.Outlined.FolderOpen)
     data object Reports             : Screen("reports",             "Report",           "Statistiche e report",  Icons.Filled.BarChart,     Icons.Outlined.BarChart)
+    data object ResetPassword       : Screen("reset_password",      "Nuova Password",   "",                      Icons.Filled.Lock,         Icons.Filled.Lock)
+    data object Search              : Screen("search",              "Cerca",            "Ricerca globale",        Icons.Filled.Search,       Icons.Filled.Search)
+    data object Settings            : Screen("settings",            "Impostazioni",     "",                       Icons.Filled.Settings,     Icons.Filled.Settings)
 
     companion object {
         /** 5 tab nella bottom bar — Pagamenti rimosso, Affitti al suo posto */

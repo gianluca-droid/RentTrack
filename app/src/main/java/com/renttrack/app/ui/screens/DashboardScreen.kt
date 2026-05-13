@@ -41,6 +41,7 @@ fun DashboardScreen(
     val expensesByCategory by viewModel.expensesByCategory.collectAsState()
     val lastCedolinoByUnit by viewModel.lastCedolinoByUnit.collectAsState()
     val morositaByUnit by viewModel.morositaByUnit.collectAsState()
+    val mesiArretratiByUnit by viewModel.mesiArretratiByUnit.collectAsState()
     val balance = totalPayments - totalExpenses
 
     // Cedolini aperti (non pagati)
@@ -49,8 +50,25 @@ fun DashboardScreen(
     }
     val totalOpen = remember(openCedolini) { openCedolini.sumOf { it.cedolino.total } }
 
-    // Scadenze contratti
+    // Inquilini con morosità cronica: ≥2 mesi arretrati o cedolino scaduto da >30gg
     val now = System.currentTimeMillis()
+    val thirtyDaysMs = 30L * 24 * 60 * 60 * 1000
+    val morositaCronicaUnits = remember(units, cedoliniWithItems, morositaByUnit) {
+        units.filter { unit ->
+            val mesiArr = mesiArretratiByUnit[unit.id] ?: 0
+            val hasScaduto = cedoliniWithItems.any { cwi ->
+                cwi.cedolino.unitId == unit.id &&
+                cwi.cedolino.status == "Scaduto" &&
+                (now - cwi.cedolino.dueDate) > thirtyDaysMs
+            }
+            mesiArr >= 2 || hasScaduto
+        }
+    }
+    val totalMorositaCronica = remember(morositaCronicaUnits, morositaByUnit) {
+        morositaCronicaUnits.sumOf { morositaByUnit[it.id] ?: 0.0 }
+    }
+
+    // Scadenze contratti
     val expiredUnits = remember(units) {
         units.filter { it.leaseEndDate != null && it.leaseEndDate < now }
     }
@@ -262,6 +280,55 @@ fun DashboardScreen(
                                 color = Amber400,
                                 names = soonUnits.map { it.ownerName }
                             )
+                        }
+                    }
+                }
+            }
+        }
+
+        // ─── Banner Morosità Cronica ──────────────────────────────
+        if (morositaCronicaUnits.isNotEmpty()) {
+            item {
+                Surface(
+                    onClick = { showOpenCedoliniSheet = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    color = Color(0xFFFF6B6B).copy(alpha = 0.10f),
+                    border = BorderStroke(1.5.dp, Color(0xFFFF6B6B).copy(alpha = 0.5f))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = Color(0xFFFF6B6B).copy(alpha = 0.18f),
+                            modifier = Modifier.size(44.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                Icon(Icons.Filled.Warning, null, tint = Color(0xFFFF6B6B), modifier = Modifier.size(22.dp))
+                            }
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "⚠️ Morosità critica — ${morositaCronicaUnits.size} inquilin${if (morositaCronicaUnits.size == 1) "o" else "i"}",
+                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                                color = Color(0xFFFF6B6B)
+                            )
+                            Text(
+                                morositaCronicaUnits.joinToString(", ") { it.ownerName },
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color(0xFFFF6B6B).copy(alpha = 0.75f)
+                            )
+                        }
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text(
+                                Formatters.currency(totalMorositaCronica),
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.ExtraBold),
+                                color = Color(0xFFFF6B6B)
+                            )
+                            Text("Tocca per dettagli", style = MaterialTheme.typography.labelSmall, color = TextMuted)
                         }
                     }
                 }

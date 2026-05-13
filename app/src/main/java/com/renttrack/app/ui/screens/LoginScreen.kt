@@ -49,15 +49,91 @@ fun LoginScreen(
     val focusManager      = LocalFocusManager.current
     val passwordFocusReq  = remember { FocusRequester() }
 
-    val isLoading       = authState is AuthState.Loading
-    val isGoogleLoading = authState is AuthState.GoogleLoading
-    val isEmailSent     = authState is AuthState.EmailSent
-    val emailSentTo     = (authState as? AuthState.EmailSent)?.email
-    val errorMsg        = (authState as? AuthState.Error)?.message
+    val isLoading          = authState is AuthState.Loading
+    val isGoogleLoading    = authState is AuthState.GoogleLoading
+    val isEmailSent        = authState is AuthState.EmailSent
+    val isRecoverySent     = authState is AuthState.RecoverySent
+    val emailSentTo        = (authState as? AuthState.EmailSent)?.email
+    val errorMsg           = (authState as? AuthState.Error)?.message
+
+    var showRecoveryDialog by remember { mutableStateOf(false) }
+    var recoveryEmail      by remember { mutableStateOf("") }
 
     // Naviga all'app quando il login va a buon fine
     LaunchedEffect(authState) {
         if (authState is AuthState.LoggedIn) onLoginSuccess()
+    }
+
+    // ── Schermata "Email recovery inviata" ────────────────────────────────────
+    if (isRecoverySent) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Brush.verticalGradient(
+                    colors = listOf(Color(0xFF050810), DarkBg, Color(0xFF0D1B2A))
+                )),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(20.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(88.dp)
+                        .clip(RoundedCornerShape(28.dp))
+                        .background(Brush.linearGradient(listOf(Color(0xFFFF9800), Amber400))),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Filled.LockReset, null, tint = Color.Black, modifier = Modifier.size(48.dp))
+                }
+                Text(
+                    "Controlla la tua email!",
+                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                    color = TextPrimary,
+                    textAlign = TextAlign.Center
+                )
+                Surface(color = DarkSurface, shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text(
+                            "Abbiamo inviato un link per reimpostare la password a:",
+                            style = MaterialTheme.typography.bodyMedium, color = TextMuted,
+                            textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()
+                        )
+                        Text(
+                            recoveryEmail.ifBlank { email },
+                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                            color = Amber400, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()
+                        )
+                        HorizontalDivider(color = Color(0xFF2D3748))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {
+                            Text("1️⃣", style = MaterialTheme.typography.bodyMedium)
+                            Text("Apri la tua casella email", style = MaterialTheme.typography.bodyMedium, color = TextPrimary)
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {
+                            Text("2️⃣", style = MaterialTheme.typography.bodyMedium)
+                            Text("Clicca il link \"Reset Password\"", style = MaterialTheme.typography.bodyMedium, color = TextPrimary)
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {
+                            Text("3️⃣", style = MaterialTheme.typography.bodyMedium)
+                            Text("L'app si aprirà automaticamente con la schermata di reset", style = MaterialTheme.typography.bodyMedium, color = TextPrimary)
+                        }
+                    }
+                }
+                Button(
+                    onClick = { viewModel.resetError() },
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Amber400, contentColor = Color.Black)
+                ) {
+                    Icon(Icons.Filled.Login, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Torna al login", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                }
+            }
+        }
+        return
     }
 
     // ── Schermata "Email di conferma inviata" ─────────────────────────────
@@ -393,6 +469,88 @@ fun LoginScreen(
                         shape    = RoundedCornerShape(14.dp),
                         colors   = loginFieldColors()
                     )
+
+                    // ── Link "Password dimenticata?" ─────────────────────────
+                    AnimatedVisibility(
+                        visible = !isRegister,
+                        enter   = fadeIn() + expandVertically(),
+                        exit    = fadeOut() + shrinkVertically()
+                    ) {
+                        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
+                            TextButton(
+                                onClick = {
+                                    recoveryEmail = email.trim()
+                                    showRecoveryDialog = true
+                                },
+                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    "Password dimenticata?",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = Cyan400.copy(alpha = 0.85f)
+                                )
+                            }
+                        }
+                    }
+
+                    // ── Dialog: inserisci email per recovery ─────────────────
+                    if (showRecoveryDialog) {
+                        AlertDialog(
+                            onDismissRequest = { showRecoveryDialog = false },
+                            containerColor = DarkSurface,
+                            shape = RoundedCornerShape(20.dp),
+                            icon = {
+                                Icon(Icons.Filled.LockReset, null, tint = Amber400, modifier = Modifier.size(28.dp))
+                            },
+                            title = {
+                                Text("Recupera password", color = TextPrimary, fontWeight = FontWeight.Bold)
+                            },
+                            text = {
+                                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    Text(
+                                        "Inserisci la tua email. Ti manderemo un link per reimpostare la password.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = TextMuted
+                                    )
+                                    OutlinedTextField(
+                                        value = recoveryEmail,
+                                        onValueChange = { recoveryEmail = it },
+                                        label = { Text("Email") },
+                                        leadingIcon = { Icon(Icons.Filled.Email, null, tint = TextMuted) },
+                                        singleLine = true,
+                                        keyboardOptions = KeyboardOptions(
+                                            keyboardType = KeyboardType.Email,
+                                            imeAction = ImeAction.Done
+                                        ),
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(14.dp),
+                                        colors = loginFieldColors()
+                                    )
+                                }
+                            },
+                            confirmButton = {
+                                Button(
+                                    onClick = {
+                                        showRecoveryDialog = false
+                                        viewModel.sendPasswordReset(recoveryEmail)
+                                    },
+                                    enabled = recoveryEmail.contains("@") && recoveryEmail.length > 4,
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Amber400,
+                                        contentColor = Color.Black
+                                    ),
+                                    shape = RoundedCornerShape(10.dp)
+                                ) {
+                                    Text("Invia link", fontWeight = FontWeight.Bold)
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { showRecoveryDialog = false }) {
+                                    Text("Annulla", color = TextMuted)
+                                }
+                            }
+                        )
+                    }
 
                     // Messaggio errore
                     AnimatedVisibility(

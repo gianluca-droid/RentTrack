@@ -2,9 +2,11 @@ package com.renttrack.app.ui.screens
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -46,16 +48,30 @@ fun TenantsScreen(
     var deleteTarget by remember { mutableStateOf<SCondoUnit?>(null) }
     var changeTenantUnit by remember { mutableStateOf<SCondoUnit?>(null) }
     var searchQuery by rememberSaveable { mutableStateOf("") }
+    var filterStatus by rememberSaveable { mutableStateOf<String?>(null) } // null=tutti, "attivo", "in_scadenza", "scaduto"
     val tenantHistory by viewModel.tenantHistory.collectAsState()
+    val now = System.currentTimeMillis()
+    val day60 = 60L * 24 * 60 * 60 * 1000
 
-    val filteredUnits = remember(units, searchQuery) {
-        if (searchQuery.isBlank()) units
-        else units.filter { u ->
-            u.ownerName.contains(searchQuery, ignoreCase = true) ||
-            u.number.contains(searchQuery, ignoreCase = true) ||
-            u.ownerEmail.contains(searchQuery, ignoreCase = true) ||
-            u.ownerPhone.contains(searchQuery, ignoreCase = true)
-        }
+    val filteredUnits = remember(units, searchQuery, filterStatus) {
+        units
+            .let { list ->
+                if (searchQuery.isBlank()) list
+                else list.filter { u ->
+                    u.ownerName.contains(searchQuery, ignoreCase = true) ||
+                    u.number.contains(searchQuery, ignoreCase = true) ||
+                    u.ownerEmail.contains(searchQuery, ignoreCase = true) ||
+                    u.ownerPhone.contains(searchQuery, ignoreCase = true)
+                }
+            }
+            .let { list ->
+                when (filterStatus) {
+                    "attivo"      -> list.filter { u -> u.leaseEndDate != null && u.leaseEndDate >= now + day60 }
+                    "in_scadenza" -> list.filter { u -> u.leaseEndDate != null && u.leaseEndDate in now..(now + day60) }
+                    "scaduto"     -> list.filter { u -> u.leaseEndDate != null && u.leaseEndDate < now }
+                    else          -> list
+                }
+            }
     }
 
     val totalMonthlyRent = units.sumOf { it.millesimi }
@@ -119,7 +135,68 @@ fun TenantsScreen(
                     )
                 }
 
-                if (filteredUnits.isEmpty() && searchQuery.isNotBlank()) {
+                // Filtri stato contratto
+                item {
+                    Row(
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        data class StatusChip(val id: String?, val label: String, val color: Color)
+                        listOf(
+                            StatusChip(null,          "Tutti (${units.size})",                                 TextMuted),
+                            StatusChip("attivo",      "✅ Attivo",                                            Green400),
+                            StatusChip("in_scadenza", "⚠️ In scadenza (<60gg)",                              Amber400),
+                            StatusChip("scaduto",     "🔴 Scaduto",                                           Color(0xFFFF6B6B))
+                        ).forEach { chip ->
+                            FilterChip(
+                                selected = filterStatus == chip.id,
+                                onClick  = { filterStatus = if (filterStatus == chip.id && chip.id != null) null else chip.id },
+                                label    = { Text(chip.label, style = MaterialTheme.typography.labelSmall) },
+                                colors   = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = chip.color.copy(alpha = 0.15f),
+                                    selectedLabelColor     = chip.color,
+                                    labelColor             = TextMuted
+                                )
+                            )
+                        }
+                    }
+                }
+
+                // Banner risultati filtrati
+                if (filterStatus != null || searchQuery.isNotBlank()) {
+                    item {
+                        val hasFilters = filterStatus != null || searchQuery.isNotBlank()
+                        if (hasFilters) {
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = Cyan400.copy(alpha = 0.08f),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(Icons.Filled.FilterList, null, tint = Cyan400, modifier = Modifier.size(14.dp))
+                                    Spacer(Modifier.width(6.dp))
+                                    Text(
+                                        "${filteredUnits.size} inquilin${if (filteredUnits.size == 1) "o" else "i"} trovati",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = Cyan400,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    TextButton(
+                                        onClick = { filterStatus = null; },
+                                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)
+                                    ) {
+                                        Text("Rimuovi filtri", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (filteredUnits.isEmpty() && (searchQuery.isNotBlank() || filterStatus != null)) {
                     item {
                         Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {

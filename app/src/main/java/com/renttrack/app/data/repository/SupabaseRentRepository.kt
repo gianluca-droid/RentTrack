@@ -259,15 +259,17 @@ class SupabaseRentRepository(private val prefs: SharedPreferences) {
         }.toString()
         val res = JSONArray(post("/cedolini", body))
         val cedId = res.getJSONObject(0).getString("id")
-        // Inserisce gli item
+        // Inserisce gli item — owner_id è obbligatorio (NOT NULL, nessun DEFAULT DB)
         items.forEach { item ->
             val itemBody = JSONObject().apply {
                 put("cedolino_id", cedId)
+                put("owner_id", userId)       // ← fix: richiesto da RLS + vincolo NOT NULL
                 put("description", item.description)
                 put("amount", item.amount)
             }.toString()
             post("/cedolino_items", itemBody, prefer = "return=minimal")
         }
+
         cedId
     }
 
