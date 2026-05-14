@@ -309,7 +309,8 @@ class SupabaseRentRepository(private val prefs: SharedPreferences) {
 
     suspend fun insertPayment(p: SPayment): String = withContext(Dispatchers.IO) {
         val body = JSONObject().apply {
-            put("owner_id", userId); put("unit_id", p.unitId); put("condominio_id", p.condominioId)
+            put("owner_id", userId); put("unit_id", p.unitId)
+            // condominio_id non esiste nella tabella payments del DB
             put("amount", p.amount); put("date", p.date); put("method", p.method)
             put("reference", p.reference); put("notes", p.notes)
             p.cedolinoId?.let { put("cedolino_id", it) }
