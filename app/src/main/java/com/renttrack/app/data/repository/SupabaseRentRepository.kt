@@ -138,17 +138,19 @@ class SupabaseRentRepository(private val prefs: SharedPreferences) {
     }
 
     suspend fun updateCondominio(c: SCondominio) = withContext(Dispatchers.IO) {
+        val uid = userId
         val body = JSONObject().apply {
             put("nome", c.nome)
             put("indirizzo", c.indirizzo)
             put("citta", c.citta)
             put("note", c.note)
         }.toString()
-        post("/condomini?id=eq.${c.id}", body, "PATCH", "return=minimal")
+        post("/condomini?id=eq.${c.id}&owner_id=eq.$uid", body, "PATCH", "return=minimal")
     }
 
     suspend fun deleteCondominio(id: String) = withContext(Dispatchers.IO) {
-        post("/condomini?id=eq.$id", "", "DELETE", "return=minimal")
+        val uid = userId
+        post("/condomini?id=eq.$id&owner_id=eq.$uid", "", "DELETE", "return=minimal")
     }
 
     suspend fun getCondominioById(id: String): SCondominio? = withContext(Dispatchers.IO) {
@@ -187,6 +189,7 @@ class SupabaseRentRepository(private val prefs: SharedPreferences) {
     }
 
     suspend fun updateUnit(u: SCondoUnit) = withContext(Dispatchers.IO) {
+        val uid = userId
         val body = JSONObject().apply {
             put("number", u.number); put("floor", u.floor)
             put("type", u.type.ifBlank { "Appartamento" })
@@ -198,11 +201,12 @@ class SupabaseRentRepository(private val prefs: SharedPreferences) {
             if (u.leaseEndDate != null) put("lease_end_date", u.leaseEndDate) else put("lease_end_date", JSONObject.NULL)
             put("payment_day_of_month", u.paymentDayOfMonth)
         }.toString()
-        post("/units?id=eq.${u.id}", body, "PATCH", "return=minimal")
+        post("/units?id=eq.${u.id}&owner_id=eq.$uid", body, "PATCH", "return=minimal")
     }
 
     suspend fun deleteUnit(id: String) = withContext(Dispatchers.IO) {
-        post("/units?id=eq.$id", "", "DELETE", "return=minimal")
+        val uid = userId
+        post("/units?id=eq.$id&owner_id=eq.$uid", "", "DELETE", "return=minimal")
     }
 
     // ── Expenses ──────────────────────────────────────────────────────────────
@@ -223,15 +227,17 @@ class SupabaseRentRepository(private val prefs: SharedPreferences) {
     }
 
     suspend fun updateExpense(e: SExpense) = withContext(Dispatchers.IO) {
+        val uid = userId
         val body = JSONObject().apply {
             put("category", e.category); put("description", e.description)
             put("amount", e.amount); put("date", e.date); put("notes", e.notes)
         }.toString()
-        post("/expenses?id=eq.${e.id}", body, "PATCH", "return=minimal")
+        post("/expenses?id=eq.${e.id}&owner_id=eq.$uid", body, "PATCH", "return=minimal")
     }
 
     suspend fun deleteExpense(id: String) = withContext(Dispatchers.IO) {
-        post("/expenses?id=eq.$id", "", "DELETE", "return=minimal")
+        val uid = userId
+        post("/expenses?id=eq.$id&owner_id=eq.$uid", "", "DELETE", "return=minimal")
     }
 
     // ── Cedolini ──────────────────────────────────────────────────────────────
@@ -278,18 +284,20 @@ class SupabaseRentRepository(private val prefs: SharedPreferences) {
     }
 
     suspend fun updateCedolino(c: SCedolino) = withContext(Dispatchers.IO) {
+        val uid = userId
         val body = JSONObject().apply {
             put("status", c.status); put("paid_amount", c.paidAmount)
             put("sent_to_resident", c.sentToResident)
             if (c.sentAt != null) put("sent_at", c.sentAt) else put("sent_at", JSONObject.NULL)
             if (c.paidDate != null) put("paid_date", c.paidDate) else put("paid_date", JSONObject.NULL)
         }.toString()
-        post("/cedolini?id=eq.${c.id}", body, "PATCH", "return=minimal")
+        post("/cedolini?id=eq.${c.id}&owner_id=eq.$uid", body, "PATCH", "return=minimal")
     }
 
     suspend fun deleteCedolino(id: String) = withContext(Dispatchers.IO) {
-        post("/cedolino_items?cedolino_id=eq.$id", "", "DELETE", "return=minimal")
-        post("/cedolini?id=eq.$id", "", "DELETE", "return=minimal")
+        val uid = userId
+        post("/cedolino_items?cedolino_id=eq.$id&owner_id=eq.$uid", "", "DELETE", "return=minimal")
+        post("/cedolini?id=eq.$id&owner_id=eq.$uid", "", "DELETE", "return=minimal")
     }
 
     // ── Payments ──────────────────────────────────────────────────────────────
@@ -311,7 +319,8 @@ class SupabaseRentRepository(private val prefs: SharedPreferences) {
     }
 
     suspend fun deletePayment(id: String) = withContext(Dispatchers.IO) {
-        post("/payments?id=eq.$id", "", "DELETE", "return=minimal")
+        val uid = userId
+        post("/payments?id=eq.$id&owner_id=eq.$uid", "", "DELETE", "return=minimal")
     }
 
     // ── TenantHistory ─────────────────────────────────────────────────────────
@@ -340,7 +349,8 @@ class SupabaseRentRepository(private val prefs: SharedPreferences) {
     }
 
     suspend fun deleteTenantHistory(id: String) = withContext(Dispatchers.IO) {
-        post("/tenant_history?id=eq.$id", "", "DELETE", "return=minimal")
+        val uid = userId
+        post("/tenant_history?id=eq.$id&owner_id=eq.$uid", "", "DELETE", "return=minimal")
     }
 
     // ── JSON Parsers ──────────────────────────────────────────────────────────
@@ -434,6 +444,7 @@ class SupabaseRentRepository(private val prefs: SharedPreferences) {
     }
 
     suspend fun updateDocumento(doc: SDocumento) = withContext(Dispatchers.IO) {
+        val uid = userId
         val body = JSONObject().apply {
             put("titolo", doc.titolo)
             put("categoria", doc.categoria)
@@ -442,11 +453,12 @@ class SupabaseRentRepository(private val prefs: SharedPreferences) {
             put("visibilita", doc.visibilita)
             put("destinatari_unit_ids", doc.destinatariUnitIds)
         }.toString()
-        post("/documenti?id=eq.${doc.id}", body, "PATCH", "return=minimal")
+        post("/documenti?id=eq.${doc.id}&owner_id=eq.$uid", body, "PATCH", "return=minimal")
     }
 
     suspend fun deleteDocumento(id: String) = withContext(Dispatchers.IO) {
-        post("/documenti?id=eq.$id", "", "DELETE", "return=minimal")
+        val uid = userId
+        post("/documenti?id=eq.$id&owner_id=eq.$uid", "", "DELETE", "return=minimal")
     }
 
     /**

@@ -264,8 +264,9 @@ class ListingsViewModel(
         viewModelScope.launch {
             try {
                 val token = authToken ?: return@launch
+                val userId = getUserIdFromToken(token) ?: return@launch
                 withContext(Dispatchers.IO) {
-                    httpPost("$baseUrl/rest/v1/listings?id=eq.$listingId", token, "", method = "DELETE")
+                    httpPost("$baseUrl/rest/v1/listings?id=eq.$listingId&landlord_id=eq.$userId", token, "", method = "DELETE")
                 }
                 loadMyListings(); loadPublicListings()
                 _toast.value = "Annuncio eliminato"
@@ -284,6 +285,7 @@ class ListingsViewModel(
             _isSubmitting.value = true
             try {
                 val token = authToken ?: throw Exception("Non autenticato")
+                val userId = getUserIdFromToken(token) ?: throw Exception("Errore lettura utente")
                 withContext(Dispatchers.IO) {
                     val body = JSONObject().apply {
                         put("title", title.trim())
@@ -295,7 +297,7 @@ class ListingsViewModel(
                         put("available_from", availableFrom.trim())
                     }.toString()
                     httpPost(
-                        "$baseUrl/rest/v1/listings?id=eq.$listingId", token, body,
+                        "$baseUrl/rest/v1/listings?id=eq.$listingId&landlord_id=eq.$userId", token, body,
                         method = "PATCH",
                         extraHeaders = mapOf("Prefer" to "return=minimal")
                     )
@@ -321,9 +323,10 @@ class ListingsViewModel(
         viewModelScope.launch {
             try {
                 val token = authToken ?: return@launch
+                val userId = getUserIdFromToken(token) ?: return@launch
                 withContext(Dispatchers.IO) {
                     httpPost(
-                        "$baseUrl/rest/v1/listings?id=eq.$listingId", token,
+                        "$baseUrl/rest/v1/listings?id=eq.$listingId&landlord_id=eq.$userId", token,
                         """{"is_featured":${!current}}""", method = "PATCH"
                     )
                 }
@@ -337,9 +340,10 @@ class ListingsViewModel(
         viewModelScope.launch {
             try {
                 val token = authToken ?: return@launch
+                val userId = getUserIdFromToken(token) ?: return@launch
                 withContext(Dispatchers.IO) {
                     httpPost(
-                        "$baseUrl/rest/v1/listings?id=eq.$listingId", token,
+                        "$baseUrl/rest/v1/listings?id=eq.$listingId&landlord_id=eq.$userId", token,
                         """{"is_active":${!current}}""", method = "PATCH"
                     )
                 }
@@ -355,9 +359,10 @@ class ListingsViewModel(
         viewModelScope.launch {
             try {
                 val token = authToken ?: return@launch
+                val userId = getUserIdFromToken(token) ?: return@launch
                 withContext(Dispatchers.IO) {
                     httpPost(
-                        "$baseUrl/rest/v1/listings?id=eq.$listingId", token,
+                        "$baseUrl/rest/v1/listings?id=eq.$listingId&landlord_id=eq.$userId", token,
                         """{"is_available":${!current}}""", method = "PATCH"
                     )
                 }
