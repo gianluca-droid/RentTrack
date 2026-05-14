@@ -662,15 +662,17 @@ private fun EditListingSheet(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = city, onValueChange = { city = it },
-                    label = { Text("Città") },
+                    label = { Text("Città *") },
                     modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp),
-                    colors = fieldColors, singleLine = true
+                    colors = fieldColors, singleLine = true,
+                    placeholder = { androidx.compose.material3.Text("es. Roma", color = TextMuted) }
                 )
                 OutlinedTextField(
                     value = zone, onValueChange = { zone = it },
-                    label = { Text("Zona") },
+                    label = { Text("Zona / Quartiere") },
                     modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp),
-                    colors = fieldColors, singleLine = true
+                    colors = fieldColors, singleLine = true,
+                    placeholder = { androidx.compose.material3.Text("es. Prati", color = TextMuted) }
                 )
             }
             OutlinedTextField(

@@ -138,17 +138,41 @@ fun CreaAnnuncioScreen(
                 modifier = Modifier.fillMaxWidth(), singleLine = true,
                 shape = RoundedCornerShape(12.dp), colors = fieldColors,
                 placeholder = { Text("es. Bilocale luminoso in centro", color = TextMuted) })
+            // ── Posizione ─────────────────────────────────────────────────
+            SectionTitle("📍 Posizione")
+            // Banner info: questi campi alimentano la ricerca
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = Cyan400.copy(alpha = 0.07f),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Filled.Info, null, tint = Cyan400, modifier = Modifier.size(14.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        "Città e zona vengono usate dalla ricerca e dai filtri. Compilale per rendere l’annuncio trovabile.",
+                        style = MaterialTheme.typography.labelSmall, color = TextSecondary
+                    )
+                }
+            }
             OutlinedTextField(address, { address = it }, label = { Text("Via / Indirizzo") },
                 modifier = Modifier.fillMaxWidth(), singleLine = true,
                 shape = RoundedCornerShape(12.dp), colors = fieldColors,
-                placeholder = { Text("es. Via Roma 12", color = TextMuted) })
+                placeholder = { Text("es. Via Garibaldi 12", color = TextMuted) },
+                leadingIcon = { Icon(Icons.Filled.Home, null, tint = TextMuted, modifier = Modifier.size(18.dp)) })
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(city, { city = it }, label = { Text("Città *") },
+                OutlinedTextField(city, { city = it },
+                    label = { Text("Città *") },
                     modifier = Modifier.weight(1f), singleLine = true,
-                    shape = RoundedCornerShape(12.dp), colors = fieldColors)
-                OutlinedTextField(zone, { zone = it }, label = { Text("Zona / Quartiere") },
+                    shape = RoundedCornerShape(12.dp), colors = fieldColors,
+                    placeholder = { Text("es. Roma", color = TextMuted) },
+                    leadingIcon = { Icon(Icons.Filled.LocationCity, null, tint = if (city.isBlank()) Red400.copy(alpha = 0.6f) else Cyan400, modifier = Modifier.size(18.dp)) })
+                OutlinedTextField(zone, { zone = it },
+                    label = { Text("Zona / Quartiere") },
                     modifier = Modifier.weight(1f), singleLine = true,
-                    shape = RoundedCornerShape(12.dp), colors = fieldColors)
+                    shape = RoundedCornerShape(12.dp), colors = fieldColors,
+                    placeholder = { Text("es. Prati", color = TextMuted) },
+                    leadingIcon = { Icon(Icons.Filled.Map, null, tint = TextMuted, modifier = Modifier.size(18.dp)) })
             }
             OutlinedTextField(price, { price = it.filter { c -> c.isDigit() || c == '.' } },
                 label = { Text("Canone mensile (€) *") },
