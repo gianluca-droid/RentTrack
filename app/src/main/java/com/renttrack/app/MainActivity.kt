@@ -555,10 +555,7 @@ fun MainApp(
                 )
             }
             composable(Screen.Tenants.route)    {
-                TenantsScreen(
-                    viewModel = viewModel,
-                    onCreaAnnuncio = { navController.navigate(Screen.CreaAnnuncio.route) { launchSingleTop = true } }
-                )
+                TenantsScreen(viewModel = viewModel)
             }
             composable(Screen.Affitti.route)    { RentNoticesScreen(viewModel) }
             composable(Screen.Expenses.route)   { ExpensesScreen(viewModel) }

@@ -35,8 +35,7 @@ private val dateFmt = SimpleDateFormat("dd/MM/yyyy", Locale.ITALIAN)
 
 @Composable
 fun TenantsScreen(
-    viewModel: SupabaseRentViewModel,
-    onCreaAnnuncio: (() -> Unit)? = null
+    viewModel: SupabaseRentViewModel
 ) {
     val units by viewModel.units.collectAsState()
     val activeCondominioId by viewModel.activeCondominioId.collectAsState()
@@ -218,8 +217,7 @@ fun TenantsScreen(
                         onDelete = { deleteTarget = unit },
                         onChangeTenant = { changeTenantUnit = unit },
                         onGeneratePlan = { viewModel.generateMonthlyPaymentPlan(unit) },
-                        onDeleteHistory = { viewModel.deleteTenantHistory(it) },
-                        onCreaAnnuncio = onCreaAnnuncio
+                        onDeleteHistory = { viewModel.deleteTenantHistory(it) }
                     )
                 }
             }
@@ -286,8 +284,7 @@ private fun TenantCard(
     onDelete: () -> Unit,
     onChangeTenant: () -> Unit,
     onGeneratePlan: () -> Unit,
-    onDeleteHistory: (STenantHistory) -> Unit,
-    onCreaAnnuncio: (() -> Unit)? = null
+    onDeleteHistory: (STenantHistory) -> Unit
 ) {
     val canone = unit.millesimi
     val now = System.currentTimeMillis()
@@ -431,28 +428,6 @@ private fun TenantCard(
             )
         }
 
-        // ── Pubblica in vetrina ──────────────────────────────────
-        if (onCreaAnnuncio != null) {
-            Spacer(Modifier.height(6.dp))
-            HorizontalDivider(color = Cyan400.copy(alpha = 0.1f))
-            Spacer(Modifier.height(6.dp))
-            Button(
-                onClick = onCreaAnnuncio,
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Cyan400.copy(alpha = 0.12f),
-                    contentColor = Cyan400
-                ),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Icon(Icons.Filled.Campaign, null, modifier = Modifier.size(14.dp))
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    "Pubblica in vetrina",
-                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold)
-                )
-            }
-        }
 
         // Sezione storico inquilini collassabile
         if (tenantHistory.isNotEmpty()) {
