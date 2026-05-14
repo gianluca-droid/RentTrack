@@ -310,7 +310,7 @@ class SupabaseRentRepository(private val prefs: SharedPreferences) {
     suspend fun insertPayment(p: SPayment): String = withContext(Dispatchers.IO) {
         val body = JSONObject().apply {
             put("owner_id", userId); put("unit_id", p.unitId)
-            // condominio_id non esiste nella tabella payments del DB
+            put("condominio_id", p.condominioId)  // nullable in DB, ma necessario per i filtri di lettura
             put("amount", p.amount); put("date", p.date); put("method", p.method)
             put("reference", p.reference); put("notes", p.notes)
             p.cedolinoId?.let { put("cedolino_id", it) }
@@ -339,12 +339,16 @@ class SupabaseRentRepository(private val prefs: SharedPreferences) {
     suspend fun insertTenantHistory(h: STenantHistory) = withContext(Dispatchers.IO) {
         val body = JSONObject().apply {
             put("owner_id", userId); put("unit_id", h.unitId); put("condominio_id", h.condominioId)
-            put("tenant_name", h.tenantName); put("tenant_email", h.tenantEmail)
-            put("tenant_phone", h.tenantPhone)
+            // DB usa owner_name/owner_email/owner_phone (non tenant_name etc.)
+            put("owner_name", h.tenantName)
+            put("owner_email", h.tenantEmail)
+            put("owner_phone", h.tenantPhone)
             h.leaseStart?.let { put("lease_start", it) }
             h.leaseEnd?.let { put("lease_end", it) }
-            put("monthly_rent", h.monthlyRent); put("exit_notes", h.exitNotes)
-            put("exit_date", h.exitDate)
+            put("monthly_rent", h.monthlyRent)
+            put("exit_notes", h.exitNotes)
+            // exit_date è nullable nel DB, inviamo solo se non zero
+            if (h.exitDate > 0) put("exit_date", h.exitDate)
         }.toString()
         post("/tenant_history", body, prefer = "return=minimal")
     }
@@ -411,8 +415,10 @@ class SupabaseRentRepository(private val prefs: SharedPreferences) {
     private fun parseTenantHistory(o: JSONObject) = STenantHistory(
         id = o.optString("id"), unitId = o.optString("unit_id"),
         condominioId = o.optString("condominio_id"), ownerId = o.optString("owner_id"),
-        tenantName = o.optString("tenant_name"), tenantEmail = o.optString("tenant_email"),
-        tenantPhone = o.optString("tenant_phone"),
+        // DB usa owner_name/owner_email/owner_phone per i dati del tenant
+        tenantName = o.optString("owner_name"),
+        tenantEmail = o.optString("owner_email"),
+        tenantPhone = o.optString("owner_phone"),
         leaseStart = o.optLong("lease_start").takeIf { it > 0 },
         leaseEnd = o.optLong("lease_end").takeIf { it > 0 },
         monthlyRent = o.optDouble("monthly_rent"), exitNotes = o.optString("exit_notes"),
