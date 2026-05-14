@@ -8,6 +8,8 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.renttrack.app.PropertyManager
+import com.renttrack.app.data.export.CsvExporter
+import com.renttrack.app.data.export.ExportService
 import com.renttrack.app.data.model.*
 import com.renttrack.app.data.repository.SupabaseRentRepository
 import kotlinx.coroutines.Dispatchers
@@ -289,33 +291,42 @@ class SupabaseRentViewModel(application: Application) : AndroidViewModel(applica
         }
     }
 
-    // ── Export CSV diretto con selezione immobile (usato dal dialog) ──────
-    // Carica prima i dati per gli immobili selezionati, poi esporta immediatamente
+    // ── Export CSV — delega a CsvExporter + ExportService ───────────────
+
+    /**
+     * Export diretto con selezione immobile.
+     * Carica i dati da Supabase, applica filtri, genera e condivide il CSV.
+     *
+     * @param mode       0=proprietà attiva, 1=tutte, 2=selezione personalizzata
+     * @param customIds  IDs usati quando mode=2
+     * @param filterYear Anno di filtro (null = tutti)
+     */
     fun exportCSVAfterScope(
         context: Context,
-        mode: Int,              // 0=attiva, 1=tutte, 2=custom
+        mode: Int,
         customIds: Set<String>,
         activeCondoId: String,
-        filterYear: Int? = null // null = tutti gli anni
+        filterYear: Int? = null
     ) = viewModelScope.launch {
         try {
-            val dateFmt = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.ITALIAN)
-            // Determina gli ID da includere
+            // Determina gli ID condominio da includere
             val condIds = when (mode) {
-                0 -> listOf(activeCondoId).filter { it.isNotBlank() }
-                1 -> _allCondomini.value.map { it.id }
-                2 -> customIds.toList()
+                0    -> listOf(activeCondoId).filter { it.isNotBlank() }
+                1    -> _allCondomini.value.map { it.id }
+                2    -> customIds.toList()
                 else -> listOf(activeCondoId)
             }
+
+            // Etichetta leggibile per l'intestazione del CSV
+            val activeCondo = _allCondomini.value.find { it.id == activeCondoId }
             val scopeLabel = when (mode) {
-                0 -> _allCondomini.value.find { it.id == activeCondoId }
-                    ?.let { "${it.nome}${if (it.indirizzo.isNotBlank()) " - ${it.indirizzo}" else ""}" }
-                    ?: "Proprietà attiva"
-                1 -> "Tutte le proprietà (${_allCondomini.value.size})"
-                2 -> "${customIds.size} proprietà selezionate"
+                0    -> activeCondo?.run { "$nome${if (indirizzo.isNotBlank()) " — $indirizzo" else ""}" } ?: "Proprietà attiva"
+                1    -> "Tutte le proprietà (${_allCondomini.value.size})"
+                2    -> "${customIds.size} proprietà selezionate"
                 else -> "Proprietà attiva"
             }
-            // Carica i dati filtrati
+
+            // Recupera dati da Supabase (IO thread)
             val allExp = mutableListOf<SExpense>()
             val allPay = mutableListOf<SPayment>()
             withContext(Dispatchers.IO) {
@@ -324,84 +335,99 @@ class SupabaseRentViewModel(application: Application) : AndroidViewModel(applica
                     allPay += repo.getPaymentsByCondominio(id)
                 }
             }
-            // Applica filtro anno se specificato
-            val cal = java.util.Calendar.getInstance()
+
+            // Filtro per anno
+            val cal = Calendar.getInstance()
             val filteredPay = if (filterYear != null)
-                allPay.filter { cal.apply { timeInMillis = it.date }.get(java.util.Calendar.YEAR) == filterYear }
+                allPay.filter { cal.apply { timeInMillis = it.date }.get(Calendar.YEAR) == filterYear }
             else allPay
             val filteredExp = if (filterYear != null)
-                allExp.filter { cal.apply { timeInMillis = it.date }.get(java.util.Calendar.YEAR) == filterYear }
+                allExp.filter { cal.apply { timeInMillis = it.date }.get(Calendar.YEAR) == filterYear }
             else allExp
-            val yearLabel   = filterYear?.toString() ?: "tutti gli anni"
-            val fileName    = if (filterYear != null) "export_renttrack_$filterYear.csv" else "export_renttrack.csv"
-            // Genera CSV
-            val sb = StringBuilder()
-            sb.appendLine("# RentTrack Export - $scopeLabel — $yearLabel")
-            sb.appendLine("Tipo,Data,Importo,Descrizione,Stato,Proprietà")
-            filteredPay.forEach { p ->
-                val condo = _allCondomini.value.find { it.id == p.condominioId }
-                val label = condo?.let { "${it.nome}${if (it.indirizzo.isNotBlank()) " - ${it.indirizzo}" else ""}" } ?: ""
-                sb.appendLine("Affitto,${dateFmt.format(java.util.Date(p.date))},${p.amount},\"${p.reference}\",Pagato,\"$label\"")
+
+            // Mappa id → condominio per la risoluzione delle etichette
+            val condoMap = _allCondomini.value.associateBy { it.id }
+
+            // Genera contenuto CSV professionale
+            val csvContent = CsvExporter.buildCsvContent(
+                payments   = filteredPay,
+                expenses   = filteredExp,
+                condoMap   = condoMap,
+                scopeLabel = scopeLabel,
+                filterYear = filterYear
+            )
+
+            // Nome file leggibile
+            val fileName = when (mode) {
+                0    -> ExportService.buildFileName(
+                            condoName    = activeCondo?.nome ?: "",
+                            condoAddress = activeCondo?.indirizzo ?: "",
+                            condoCitta   = activeCondo?.citta ?: "",
+                            filterYear   = filterYear
+                        )
+                1    -> ExportService.buildFileName("tutte_le_proprieta", "", "", filterYear)
+                2    -> ExportService.buildFileName("selezione_${customIds.size}_proprieta", "", "", filterYear)
+                else -> ExportService.buildFileName("renttrack", "", "", filterYear)
             }
-            filteredExp.forEach { e ->
-                val condo = _allCondomini.value.find { it.id == e.condominioId }
-                val label = condo?.let { "${it.nome}${if (it.indirizzo.isNotBlank()) " - ${it.indirizzo}" else ""}" } ?: ""
-                sb.appendLine("Spesa,${dateFmt.format(java.util.Date(e.date))},${e.amount},\"${e.category} - ${e.description}\",-,\"$label\"")
-            }
+
+            // Scrivi in cache (IO) e apri share sheet (main)
             val file = withContext(Dispatchers.IO) {
-                java.io.File(context.cacheDir, fileName).also { it.writeText(sb.toString()) }
+                ExportService.writeToCache(context, csvContent, fileName)
             }
-            val uri = androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
-            val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                type = "text/csv"
-                putExtra(android.content.Intent.EXTRA_STREAM, uri)
-                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
-            context.startActivity(android.content.Intent.createChooser(intent, "Esporta CSV").addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
-            _backupStatus.value = "✅ CSV: ${filteredPay.size + filteredExp.size} righe — $scopeLabel — $yearLabel"
+            ExportService.shareFile(context, file)
+
+            val rowCount = filteredPay.size + filteredExp.size
+            _backupStatus.value = "✅ CSV esportato: $rowCount righe — $fileName"
 
         } catch (e: Exception) {
             _backupStatus.value = "❌ Errore esportazione: ${e.message}"
         }
     }
 
-
+    /**
+     * Export veloce basato sullo scope corrente del report
+     * (usato dal pulsante diretto in ReportsScreen).
+     */
     fun exportCSV(context: Context) = viewModelScope.launch {
         try {
-            val dateFmt = SimpleDateFormat("dd/MM/yyyy", Locale.ITALIAN)
+            val condoMap   = _allCondomini.value.associateBy { it.id }
+            val activeCondo = _allCondomini.value.find { it.id == _activeCondominioId.value }
+
             val scopeLabel = when (_reportScope.value) {
-                ReportScope.ACTIVE -> _allCondomini.value.find { it.id == _activeCondominioId.value }
-                    ?.let { "${it.nome}${if (it.indirizzo.isNotBlank()) " - ${it.indirizzo}" else ""}" }
-                    ?: "Proprieta attiva"
-                ReportScope.ALL    -> "Tutte le proprieta (${_allCondomini.value.size})"
-                ReportScope.CUSTOM -> "${_reportSelectedIds.value.size} proprieta selezionate"
+                ReportScope.ACTIVE -> activeCondo?.run { "$nome${if (indirizzo.isNotBlank()) " — $indirizzo" else ""}" } ?: "Proprietà attiva"
+                ReportScope.ALL    -> "Tutte le proprietà (${_allCondomini.value.size})"
+                ReportScope.CUSTOM -> "${_reportSelectedIds.value.size} proprietà selezionate"
             }
-            val sb = StringBuilder()
-            sb.appendLine("# RentTrack Export - $scopeLabel")
-            sb.appendLine("Tipo,Data,Importo,Descrizione,Stato,Proprieta")
-            _reportPayments.value.forEach { p ->
-                val condo = _allCondomini.value.find { it.id == p.condominioId }
-                val label = condo?.let { "${it.nome}${if (it.indirizzo.isNotBlank()) " - ${it.indirizzo}" else ""}" } ?: ""
-                sb.appendLine("Affitto,${dateFmt.format(Date(p.date))},${p.amount},\"${p.reference}\",Pagato,\"$label\"")
+
+            val csvContent = CsvExporter.buildCsvContent(
+                payments   = _reportPayments.value,
+                expenses   = _reportExpenses.value,
+                condoMap   = condoMap,
+                scopeLabel = scopeLabel,
+                filterYear = null
+            )
+
+            val fileName = when (_reportScope.value) {
+                ReportScope.ACTIVE -> ExportService.buildFileName(
+                    condoName    = activeCondo?.nome ?: "",
+                    condoAddress = activeCondo?.indirizzo ?: "",
+                    condoCitta   = activeCondo?.citta ?: "",
+                    filterYear   = null
+                )
+                ReportScope.ALL    -> ExportService.buildFileName("tutte_le_proprieta", "", "", null)
+                ReportScope.CUSTOM -> ExportService.buildFileName("selezione", "", "", null)
             }
-            _reportExpenses.value.forEach { e ->
-                val condo = _allCondomini.value.find { it.id == e.condominioId }
-                val label = condo?.let { "${it.nome}${if (it.indirizzo.isNotBlank()) " - ${it.indirizzo}" else ""}" } ?: ""
-                sb.appendLine("Spesa,${dateFmt.format(Date(e.date))},${e.amount},\"${e.category} - ${e.description}\",-,\"$label\"")
-            }
+
             val file = withContext(Dispatchers.IO) {
-                File(context.cacheDir, "export_renttrack.csv").also { it.writeText(sb.toString()) }
+                ExportService.writeToCache(context, csvContent, fileName)
             }
-            val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
-            val intent = Intent(Intent.ACTION_SEND).apply {
-                type = "text/csv"
-                putExtra(Intent.EXTRA_STREAM, uri)
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
-            context.startActivity(Intent.createChooser(intent, "Esporta CSV").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-            _backupStatus.value = "CSV: ${_reportPayments.value.size + _reportExpenses.value.size} righe - $scopeLabel"
+            ExportService.shareFile(context, file)
+
+            val rowCount = _reportPayments.value.size + _reportExpenses.value.size
+            _backupStatus.value = "✅ CSV esportato: $rowCount righe — $fileName"
+
         } catch (e: Exception) {
-            _backupStatus.value = "Errore esportazione: ${e.message}"
+            _backupStatus.value = "❌ Errore esportazione: ${e.message}"
         }
     }
 
