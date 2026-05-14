@@ -369,16 +369,9 @@ fun MainApp(
                     }
                 }
             }
-        }
+        },
         snackbarHost = {
-            SnackbarHost(snackbarHostState) { data ->
-                Snackbar(
-                    snackbarData = data,
-                    containerColor = androidx.compose.ui.graphics.Color(0xFF2D1B1B),
-                    contentColor = androidx.compose.ui.graphics.Color(0xFFFF8A80),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
-                )
-            }
+            SnackbarHost(hostState = snackbarHostState)
         }
     ) { paddingValues ->
     // ── Dialog conferma cambio proprietà ────────────────────────────────────
