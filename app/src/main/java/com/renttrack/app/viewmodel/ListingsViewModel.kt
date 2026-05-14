@@ -214,7 +214,7 @@ class ListingsViewModel(
                 val results = withContext(Dispatchers.IO) {
                     val json = httpGet(
                         "$baseUrl/rest/v1/listings" +
-                        "?or=(city.ilike.*${encoded}*,zone.ilike.*${encoded}*,title.ilike.*${encoded}*)" +
+                        "?or=(city.ilike.*${encoded}*,zone.ilike.*${encoded}*,title.ilike.*${encoded}*,address.ilike.*${encoded}*)" +
                         "&is_active=eq.true&order=is_featured.desc,created_at.desc",
                         anonKey
                     )
