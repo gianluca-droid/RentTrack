@@ -142,6 +142,13 @@ class ListingsViewModel(
     private val _hasMore = MutableStateFlow(true)
     val hasMore: StateFlow<Boolean> = _hasMore.asStateFlow()
 
+    // Risultati ricerca server-side (null = nessuna ricerca attiva, usa feed paginato)
+    private val _searchResults = MutableStateFlow<List<com.renttrack.app.data.model.Listing>?>(null)
+    val searchResults: StateFlow<List<com.renttrack.app.data.model.Listing>?> = _searchResults.asStateFlow()
+
+    private val _isSearching = MutableStateFlow(false)
+    val isSearching: StateFlow<Boolean> = _isSearching.asStateFlow()
+
     // loadPublicListings() viene chiamato da AnnunciScreen via LaunchedEffect
     // NON in init{} per evitare NPE durante l'inizializzazione del ViewModel
 
@@ -195,6 +202,36 @@ class ListingsViewModel(
             val photos = parsePhotos(JSONArray(photosJson), l.id)
             l.copy(photos = photos)
         }
+    }
+
+    /** Ricerca server-side: interroga Supabase su tutti gli annunci, non solo quelli paginati. */
+    fun searchListings(query: String) {
+        if (query.isBlank()) { clearSearch(); return }
+        viewModelScope.launch {
+            _isSearching.value = true
+            try {
+                val encoded = java.net.URLEncoder.encode(query, "UTF-8")
+                val results = withContext(Dispatchers.IO) {
+                    val json = httpGet(
+                        "$baseUrl/rest/v1/listings" +
+                        "?or=(city.ilike.*${encoded}*,zone.ilike.*${encoded}*,title.ilike.*${encoded}*)" +
+                        "&is_active=eq.true&order=is_featured.desc,created_at.desc",
+                        anonKey
+                    )
+                    parseListings(JSONArray(json))
+                }
+                _searchResults.value = results
+            } catch (e: Exception) {
+                _toast.value = "Ricerca fallita: ${e.message}"
+            } finally {
+                _isSearching.value = false
+            }
+        }
+    }
+
+    /** Cancella la ricerca e ripristina il feed paginato. */
+    fun clearSearch() {
+        _searchResults.value = null
     }
 
     // ── Annunci del proprietario ──────────────────────────────────────────────

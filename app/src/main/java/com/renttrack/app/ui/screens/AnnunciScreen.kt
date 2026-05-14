@@ -41,6 +41,8 @@ fun AnnunciScreen(
     val state        by viewModel.publicState.collectAsState()
     val isLoadingMore by viewModel.isLoadingMore.collectAsState()
     val hasMore      by viewModel.hasMore.collectAsState()
+    val searchResults by viewModel.searchResults.collectAsState()
+    val isSearching  by viewModel.isSearching.collectAsState()
     val listState    = rememberLazyListState()
     val focusManager = LocalFocusManager.current
 
@@ -53,11 +55,9 @@ fun AnnunciScreen(
     var showFilters   by remember { mutableStateOf(false) }
 
     val allListings = (state as? ListingsUiState.Success)?.listings ?: emptyList()
-    val filteredListings = allListings.filter { l ->
-        (query.isBlank() ||
-            l.city.contains(query, ignoreCase = true) ||
-            l.zone.contains(query, ignoreCase = true) ||
-            l.title.contains(query, ignoreCase = true)) &&
+    // Se c'è una ricerca attiva usa i risultati server-side, altrimenti il feed paginato
+    val baseListings = searchResults ?: allListings
+    val filteredListings = baseListings.filter { l ->
         (maxPrice.isBlank() || l.priceMonthly <= (maxPrice.toDoubleOrNull() ?: Double.MAX_VALUE)) &&
         (minPrice.isBlank() || l.priceMonthly >= (minPrice.toDoubleOrNull() ?: 0.0)) &&
         (!onlyFurnished || l.furnished) &&
@@ -73,11 +73,20 @@ fun AnnunciScreen(
         sortOrder != "default"
     ).count { it }
 
+    // Ricerca server-side con debounce 350ms
+    LaunchedEffect(query) {
+        if (query.isBlank()) {
+            viewModel.clearSearch()
+        } else {
+            kotlinx.coroutines.delay(350)
+            viewModel.searchListings(query)
+        }
+    }
+
     // Carica annunci al primo avvio della schermata
     LaunchedEffect(Unit) { viewModel.loadPublicListings() }
 
-    // Infinite scroll: carica più annunci quando mancano 3 item alla fine
-    // (solo quando non ci sono filtri attivi — i filtri lavorano sui dati già caricati)
+    // Infinite scroll: solo quando non c'è ricerca attiva
     val shouldLoadMore = remember {
         derivedStateOf {
             val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
@@ -165,8 +174,13 @@ fun AnnunciScreen(
                             leadingIcon = { Icon(Icons.Filled.Search, null, tint = Cyan400) },
                             trailingIcon = {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    if (query.isNotBlank()) {
-                                        IconButton(onClick = { query = "" }) {
+                                    if (isSearching) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(16.dp).padding(end = 4.dp),
+                                            color = Cyan400, strokeWidth = 2.dp
+                                        )
+                                    } else if (query.isNotBlank()) {
+                                        IconButton(onClick = { query = ""; viewModel.clearSearch() }) {
                                             Icon(Icons.Filled.Close, null, tint = TextMuted, modifier = Modifier.size(16.dp))
                                         }
                                     }
@@ -310,9 +324,13 @@ fun AnnunciScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            if (listings.isEmpty()) "Nessun annuncio trovato"
-                            else if (query.isBlank() && activeFilters == 0) "${allListings.size} annunci trovati"
-                            else "${listings.size} risultati",
+                            when {
+                                isSearching -> "Ricerca in corso…"
+                                listings.isEmpty() -> "Nessun annuncio trovato"
+                                query.isNotBlank() -> "${listings.size} risultati per \"$query\""
+                                query.isBlank() && activeFilters == 0 -> "${allListings.size} annunci trovati"
+                                else -> "${listings.size} risultati"
+                            },
                             color = TextMuted, style = MaterialTheme.typography.bodySmall
                         )
                         if (query.isNotBlank() || activeFilters > 0) {
