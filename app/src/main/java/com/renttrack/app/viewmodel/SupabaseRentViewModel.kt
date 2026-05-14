@@ -635,11 +635,20 @@ class SupabaseRentViewModel(application: Application) : AndroidViewModel(applica
             val currentUnits = _units.value.filter { it.millesimi > 0 }
             val existingPeriods = _cedolini.value.groupBy { it.unitId }
                 .mapValues { (_, ceds) -> ceds.map { it.period }.toSet() }
+            // Mese/anno di riferimento dalla dueDate (per posizionare la scadenza nel mese giusto)
+            val refCal = Calendar.getInstance().apply { timeInMillis = dueDate }
             for (unit in currentUnits) {
                 if (existingPeriods[unit.id]?.contains(period) == true) continue
+                // Scadenza personalizzata per unità: giorno dall'anagrafica, mese/anno dal riferimento
+                val unitDueCal = Calendar.getInstance().apply {
+                    set(Calendar.YEAR,         refCal.get(Calendar.YEAR))
+                    set(Calendar.MONTH,        refCal.get(Calendar.MONTH))
+                    set(Calendar.DAY_OF_MONTH, unit.paymentDayOfMonth.coerceIn(1, 28))
+                    set(Calendar.HOUR_OF_DAY, 23); set(Calendar.MINUTE, 59); set(Calendar.SECOND, 59)
+                }
                 repo.insertCedolinoWithItems(
                     SCedolino(unitId = unit.id, condominioId = condId, period = period,
-                        issueDate = System.currentTimeMillis(), dueDate = dueDate,
+                        issueDate = System.currentTimeMillis(), dueDate = unitDueCal.timeInMillis,
                         total = unit.millesimi, status = "Emesso"),
                     listOf(SCedolinoItem(description = "Canone affitto $period", amount = unit.millesimi))
                 )

@@ -640,10 +640,17 @@ private fun SingleCedolinoDialog(
     var selectedUnit by remember { mutableStateOf(units.first()) }
     var unitExpanded by remember { mutableStateOf(false) }
     var period by remember { mutableStateOf("") }
-    // Voci di spesa
-    var items by remember { mutableStateOf(listOf(Pair("", ""))) }  // description to amount
-    val cal = Calendar.getInstance().apply { add(Calendar.MONTH, 1) }
-    val dueDate = cal.timeInMillis
+    var items by remember { mutableStateOf(listOf(Pair("", ""))) }
+    // dueDate reattivo all'unità selezionata: giorno configurato nell'anagrafica, mese successivo
+    val dueDate by remember(selectedUnit) {
+        derivedStateOf {
+            Calendar.getInstance().apply {
+                add(Calendar.MONTH, 1)
+                set(Calendar.DAY_OF_MONTH, selectedUnit.paymentDayOfMonth.coerceIn(1, 28))
+                set(Calendar.HOUR_OF_DAY, 23); set(Calendar.MINUTE, 59); set(Calendar.SECOND, 59)
+            }.timeInMillis
+        }
+    }
 
     AlertDialog(
         onDismissRequest = { /* blocca chiusura accidentale — usare Annulla */ },
@@ -681,11 +688,11 @@ private fun SingleCedolinoDialog(
                         modifier = Modifier.fillMaxWidth(), singleLine = true
                     )
                 }
-                // Scadenza (fissa a +1 mese, mostrata)
+                // Scadenza — calcolata dal giorno configurato nell'anagrafica inquilino
                 item {
                     Text(
-                        "Scadenza: ${Formatters.date(dueDate)}",
-                        style = MaterialTheme.typography.bodySmall, color = TextMuted
+                        "Scadenza: ${Formatters.date(dueDate)}  (giorno ${selectedUnit.paymentDayOfMonth} da anagrafica)",
+                        style = MaterialTheme.typography.bodySmall, color = Cyan400
                     )
                 }
                 // Voci di spesa
@@ -953,17 +960,23 @@ private fun GenerateCedoliniDialog(
                 }
 
                 // ── Giorno scadenza ─────────────────────────────────
-                OutlinedTextField(
-                    value = dueDay,
-                    onValueChange = { if (it.length <= 2 && (it.toIntOrNull() ?: 0) <= 28) dueDay = it },
-                    label = { Text("Giorno scadenza (1–28)") },
-                    placeholder = { Text("5") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    colors = condoTextFieldColors(),
-                    supportingText = { Text("Es. 5 → ogni avviso scade il 5 del mese successivo", color = TextMuted) }
-                )
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = Cyan400.copy(alpha = 0.08f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Filled.Info, null, tint = Cyan400, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "La data di scadenza viene letta automaticamente dal giorno configurato nell'anagrafica di ogni inquilino.",
+                            style = MaterialTheme.typography.bodySmall, color = TextSecondary
+                        )
+                    }
+                }
 
                 // ── Riepilogo ───────────────────────────────────────
                 if (isRangeValid && periodsInRange.isNotEmpty()) {
