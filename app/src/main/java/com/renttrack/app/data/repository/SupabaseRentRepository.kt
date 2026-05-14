@@ -296,7 +296,11 @@ class SupabaseRentRepository(private val prefs: SharedPreferences) {
 
     suspend fun deleteCedolino(id: String) = withContext(Dispatchers.IO) {
         val uid = userId
+        // 1. Elimina prima i pagamenti associati (cedolino_id = id)
+        post("/payments?cedolino_id=eq.$id&owner_id=eq.$uid", "", "DELETE", "return=minimal")
+        // 2. Elimina le voci del cedolino
         post("/cedolino_items?cedolino_id=eq.$id&owner_id=eq.$uid", "", "DELETE", "return=minimal")
+        // 3. Elimina il cedolino
         post("/cedolini?id=eq.$id&owner_id=eq.$uid", "", "DELETE", "return=minimal")
     }
 
