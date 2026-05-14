@@ -47,6 +47,8 @@ fun AnnunciScreen(
     val focusManager = LocalFocusManager.current
 
     var query         by remember { mutableStateOf("") }
+    var cityFilter    by remember { mutableStateOf("") }
+    var zoneFilter    by remember { mutableStateOf("") }
     var maxPrice      by remember { mutableStateOf("") }
     var minPrice      by remember { mutableStateOf("") }
     var onlyFurnished by remember { mutableStateOf(false) }
@@ -70,16 +72,16 @@ fun AnnunciScreen(
     }
     val activeFilters = listOf(
         maxPrice.isNotBlank(), minPrice.isNotBlank(), onlyFurnished, onlyAvailable,
-        sortOrder != "default"
+        sortOrder != "default", cityFilter.isNotBlank(), zoneFilter.isNotBlank()
     ).count { it }
 
-    // Ricerca server-side con debounce 350ms
-    LaunchedEffect(query) {
-        if (query.isBlank()) {
+    // Ricerca server-side con debounce 350ms (query libera + filtri strutturati)
+    LaunchedEffect(query, cityFilter, zoneFilter) {
+        if (query.isBlank() && cityFilter.isBlank() && zoneFilter.isBlank()) {
             viewModel.clearSearch()
         } else {
             kotlinx.coroutines.delay(350)
-            viewModel.searchListings(query)
+            viewModel.searchListings(query, cityFilter, zoneFilter)
         }
     }
 
@@ -95,7 +97,7 @@ fun AnnunciScreen(
         }
     }
     LaunchedEffect(shouldLoadMore.value) {
-        if (shouldLoadMore.value && query.isBlank() && activeFilters == 0) {
+        if (shouldLoadMore.value && query.isBlank() && cityFilter.isBlank() && zoneFilter.isBlank() && activeFilters == 0) {
             viewModel.loadMorePublicListings()
         }
     }
@@ -217,43 +219,69 @@ fun AnnunciScreen(
 
                         // Filtri espandibili
                         AnimatedVisibility(visible = showFilters) {
+                            val fColors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Cyan400, unfocusedBorderColor = Color(0xFF1E3A5F),
+                                cursorColor = Cyan400, focusedTextColor = TextPrimary,
+                                unfocusedTextColor = TextPrimary,
+                                focusedContainerColor = Color(0xFF0D1F38),
+                                unfocusedContainerColor = Color(0xFF0D1F38),
+                                focusedLabelColor = Cyan400
+                            )
                             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                // Riga prezzo min-max
+                                // ─ Posizione ───────────────────────────────
+                                Text("📍 Posizione", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    OutlinedTextField(
+                                        value = cityFilter,
+                                        onValueChange = { cityFilter = it },
+                                        label = { Text("Città", color = TextMuted) },
+                                        singleLine = true, modifier = Modifier.weight(1f),
+                                        shape = RoundedCornerShape(12.dp), colors = fColors,
+                                        placeholder = { Text("es. Roma", color = TextMuted) },
+                                        trailingIcon = if (cityFilter.isNotBlank()) {{
+                                            IconButton(onClick = { cityFilter = "" }, modifier = Modifier.size(18.dp)) {
+                                                Icon(Icons.Filled.Close, null, tint = TextMuted, modifier = Modifier.size(14.dp))
+                                            }
+                                        }} else null
+                                    )
+                                    OutlinedTextField(
+                                        value = zoneFilter,
+                                        onValueChange = { zoneFilter = it },
+                                        label = { Text("Zona", color = TextMuted) },
+                                        singleLine = true, modifier = Modifier.weight(1f),
+                                        shape = RoundedCornerShape(12.dp), colors = fColors,
+                                        placeholder = { Text("es. Prati", color = TextMuted) },
+                                        trailingIcon = if (zoneFilter.isNotBlank()) {{
+                                            IconButton(onClick = { zoneFilter = "" }, modifier = Modifier.size(18.dp)) {
+                                                Icon(Icons.Filled.Close, null, tint = TextMuted, modifier = Modifier.size(14.dp))
+                                            }
+                                        }} else null
+                                    )
+                                }
+                                // ─ Fascia prezzo ──────────────────────────
+                                Text("💶 Fascia prezzo (€/mese)", style = MaterialTheme.typography.labelSmall, color = TextMuted)
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     OutlinedTextField(
                                         value = minPrice,
                                         onValueChange = { minPrice = it.filter { c -> c.isDigit() } },
-                                        label = { Text("Min €/mese", color = TextMuted) },
+                                        label = { Text("Da", color = TextMuted) },
                                         singleLine = true, modifier = Modifier.weight(1f),
-                                        shape = RoundedCornerShape(12.dp),
+                                        shape = RoundedCornerShape(12.dp), colors = fColors,
                                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                                        colors = OutlinedTextFieldDefaults.colors(
-                                            focusedBorderColor = Cyan400, unfocusedBorderColor = Color(0xFF1E3A5F),
-                                            cursorColor = Cyan400, focusedTextColor = TextPrimary,
-                                            unfocusedTextColor = TextPrimary,
-                                            focusedContainerColor = Color(0xFF0D1F38),
-                                            unfocusedContainerColor = Color(0xFF0D1F38),
-                                            focusedLabelColor = Cyan400
-                                        )
+                                        placeholder = { Text("0", color = TextMuted) }
                                     )
                                     OutlinedTextField(
                                         value = maxPrice,
                                         onValueChange = { maxPrice = it.filter { c -> c.isDigit() } },
-                                        label = { Text("Max €/mese", color = TextMuted) },
+                                        label = { Text("A", color = TextMuted) },
                                         singleLine = true, modifier = Modifier.weight(1f),
-                                        shape = RoundedCornerShape(12.dp),
+                                        shape = RoundedCornerShape(12.dp), colors = fColors,
                                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                                        colors = OutlinedTextFieldDefaults.colors(
-                                            focusedBorderColor = Cyan400, unfocusedBorderColor = Color(0xFF1E3A5F),
-                                            cursorColor = Cyan400, focusedTextColor = TextPrimary,
-                                            unfocusedTextColor = TextPrimary,
-                                            focusedContainerColor = Color(0xFF0D1F38),
-                                            unfocusedContainerColor = Color(0xFF0D1F38),
-                                            focusedLabelColor = Cyan400
-                                        )
+                                        placeholder = { Text("qualsiasi", color = TextMuted) }
                                     )
                                 }
-                                // Chip: solo arredati + solo disponibili
+                                // ─ Caratteristiche ───────────────────────
+                                Text("🏠 Caratteristiche", style = MaterialTheme.typography.labelSmall, color = TextMuted)
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -278,13 +306,13 @@ fun AnnunciScreen(
                                         )
                                     )
                                 }
-                                // Chip ordinamento
-                                Text("Ordina per:", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                                // ─ Ordinamento ────────────────────────────
+                                Text("📊 Ordina per prezzo", style = MaterialTheme.typography.labelSmall, color = TextMuted)
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     FilterChip(
                                         selected = sortOrder == "priceAsc",
                                         onClick = { sortOrder = if (sortOrder == "priceAsc") "default" else "priceAsc" },
-                                        label = { Text("€ Crescente") },
+                                        label = { Text("↑ Crescente") },
                                         colors = FilterChipDefaults.filterChipColors(
                                             selectedContainerColor = Amber400.copy(alpha = 0.2f),
                                             selectedLabelColor = Amber400
@@ -293,20 +321,28 @@ fun AnnunciScreen(
                                     FilterChip(
                                         selected = sortOrder == "priceDesc",
                                         onClick = { sortOrder = if (sortOrder == "priceDesc") "default" else "priceDesc" },
-                                        label = { Text("€ Decrescente") },
+                                        label = { Text("↓ Decrescente") },
                                         colors = FilterChipDefaults.filterChipColors(
                                             selectedContainerColor = Amber400.copy(alpha = 0.2f),
                                             selectedLabelColor = Amber400
                                         )
                                     )
-                                    if (activeFilters > 0) {
-                                        TextButton(onClick = {
+                                }
+                                // Azzera tutti
+                                if (activeFilters > 0) {
+                                    TextButton(
+                                        onClick = {
+                                            cityFilter = ""; zoneFilter = ""
                                             maxPrice = ""; minPrice = ""
                                             onlyFurnished = false; onlyAvailable = false
                                             sortOrder = "default"
-                                        }) {
-                                            Text("Azzera", color = TextMuted, style = MaterialTheme.typography.labelSmall)
-                                        }
+                                        },
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Icon(Icons.Filled.FilterListOff, null, tint = TextMuted, modifier = Modifier.size(14.dp))
+                                        Spacer(Modifier.width(6.dp))
+                                        Text("Azzera tutti i filtri ($activeFilters attivi)",
+                                            color = TextMuted, style = MaterialTheme.typography.labelSmall)
                                     }
                                 }
                             }
@@ -335,7 +371,7 @@ fun AnnunciScreen(
                         )
                         if (query.isNotBlank() || activeFilters > 0) {
                             TextButton(
-                                onClick = { query = ""; maxPrice = ""; minPrice = ""; onlyFurnished = false; onlyAvailable = false; sortOrder = "default" },
+                                onClick = { query = ""; cityFilter = ""; zoneFilter = ""; maxPrice = ""; minPrice = ""; onlyFurnished = false; onlyAvailable = false; sortOrder = "default" },
                                 contentPadding = PaddingValues(0.dp)
                             ) {
                                 Text("Rimuovi filtri", color = Cyan400, style = MaterialTheme.typography.labelSmall)

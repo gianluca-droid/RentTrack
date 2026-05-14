@@ -204,21 +204,35 @@ class ListingsViewModel(
         }
     }
 
-    /** Ricerca server-side: interroga Supabase su tutti gli annunci, non solo quelli paginati. */
-    fun searchListings(query: String) {
-        if (query.isBlank()) { clearSearch(); return }
+    /** Ricerca server-side: combina query libera (OR) con filtri strutturati city/zone (AND). */
+    fun searchListings(query: String = "", cityFilter: String = "", zoneFilter: String = "") {
+        if (query.isBlank() && cityFilter.isBlank() && zoneFilter.isBlank()) {
+            clearSearch(); return
+        }
         viewModelScope.launch {
             _isSearching.value = true
             try {
-                val encoded = java.net.URLEncoder.encode(query, "UTF-8")
+                val parts = mutableListOf<String>()
+                // Query libera → OR su tutti i campi testuali
+                if (query.isNotBlank()) {
+                    val q = java.net.URLEncoder.encode(query.trim(), "UTF-8")
+                    parts.add("or=(city.ilike.*${q}*,zone.ilike.*${q}*,title.ilike.*${q}*,address.ilike.*${q}*)")
+                }
+                // Filtri strutturati → AND tra loro
+                if (cityFilter.isNotBlank()) {
+                    val c = java.net.URLEncoder.encode(cityFilter.trim(), "UTF-8")
+                    parts.add("city=ilike.*${c}*")
+                }
+                if (zoneFilter.isNotBlank()) {
+                    val z = java.net.URLEncoder.encode(zoneFilter.trim(), "UTF-8")
+                    parts.add("zone=ilike.*${z}*")
+                }
+                parts.add("is_active=eq.true")
+                parts.add("order=is_featured.desc,created_at.desc")
+
+                val url = "$baseUrl/rest/v1/listings?${parts.joinToString("&")}"
                 val results = withContext(Dispatchers.IO) {
-                    val json = httpGet(
-                        "$baseUrl/rest/v1/listings" +
-                        "?or=(city.ilike.*${encoded}*,zone.ilike.*${encoded}*,title.ilike.*${encoded}*,address.ilike.*${encoded}*)" +
-                        "&is_active=eq.true&order=is_featured.desc,created_at.desc",
-                        anonKey
-                    )
-                    parseListings(JSONArray(json))
+                    parseListings(JSONArray(httpGet(url, anonKey)))
                 }
                 _searchResults.value = results
             } catch (e: Exception) {
