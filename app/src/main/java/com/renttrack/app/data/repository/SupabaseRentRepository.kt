@@ -181,7 +181,6 @@ class SupabaseRentRepository(private val prefs: SharedPreferences) {
             u.leaseStartDate?.let { put("lease_start_date", it) }
             u.leaseEndDate?.let { put("lease_end_date", it) }
             put("payment_day_of_month", u.paymentDayOfMonth)
-            put("note", u.note)
         }.toString()
         val res = JSONArray(post("/units", body))
         res.getJSONObject(0).getString("id")
@@ -198,7 +197,6 @@ class SupabaseRentRepository(private val prefs: SharedPreferences) {
             if (u.leaseStartDate != null) put("lease_start_date", u.leaseStartDate) else put("lease_start_date", JSONObject.NULL)
             if (u.leaseEndDate != null) put("lease_end_date", u.leaseEndDate) else put("lease_end_date", JSONObject.NULL)
             put("payment_day_of_month", u.paymentDayOfMonth)
-            put("note", u.note)
         }.toString()
         post("/units?id=eq.${u.id}", body, "PATCH", "return=minimal")
     }
