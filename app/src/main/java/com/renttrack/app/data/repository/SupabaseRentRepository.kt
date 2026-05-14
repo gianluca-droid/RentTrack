@@ -179,7 +179,8 @@ class SupabaseRentRepository(private val prefs: SharedPreferences) {
             put("area_mq", u.areaMq); put("scala", u.scala)
             put("owner_name", u.ownerName)
             put("owner_email", u.ownerEmail); put("owner_phone", u.ownerPhone)
-            put("millesimi", u.millesimi)
+            put("canone_mensile", u.millesimi)   // DB: canone_mensile (NOT NULL)
+            put("payment_day", u.paymentDayOfMonth)  // DB: payment_day (NOT NULL)
             u.leaseStartDate?.let { put("lease_start_date", it) }
             u.leaseEndDate?.let { put("lease_end_date", it) }
         }.toString()
@@ -195,7 +196,8 @@ class SupabaseRentRepository(private val prefs: SharedPreferences) {
             put("area_mq", u.areaMq); put("scala", u.scala)
             put("owner_name", u.ownerName)
             put("owner_email", u.ownerEmail); put("owner_phone", u.ownerPhone)
-            put("millesimi", u.millesimi)
+            put("canone_mensile", u.millesimi)   // DB: canone_mensile (NOT NULL)
+            put("payment_day", u.paymentDayOfMonth)  // DB: payment_day (NOT NULL)
             if (u.leaseStartDate != null) put("lease_start_date", u.leaseStartDate) else put("lease_start_date", JSONObject.NULL)
             if (u.leaseEndDate != null) put("lease_end_date", u.leaseEndDate) else put("lease_end_date", JSONObject.NULL)
         }.toString()
@@ -367,10 +369,11 @@ class SupabaseRentRepository(private val prefs: SharedPreferences) {
         floor = o.optInt("floor", 0), type = o.optString("type").ifBlank { "Appartamento" },
         areaMq = o.optDouble("area_mq", 0.0), scala = o.optString("scala"),
         ownerName = o.optString("owner_name"), ownerEmail = o.optString("owner_email"),
-        ownerPhone = o.optString("owner_phone"), millesimi = o.optDouble("millesimi", 0.0),
+        ownerPhone = o.optString("owner_phone"),
+        millesimi = o.optDouble("canone_mensile", 0.0),  // DB: canone_mensile
         leaseStartDate = o.optLong("lease_start_date").takeIf { it > 0 },
         leaseEndDate = o.optLong("lease_end_date").takeIf { it > 0 },
-        paymentDayOfMonth = o.optInt("payment_day_of_month", 5),
+        paymentDayOfMonth = o.optInt("payment_day", 5),  // DB: payment_day
         note = o.optString("note"), createdAt = o.optString("created_at")
     )
 
