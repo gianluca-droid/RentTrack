@@ -113,3 +113,36 @@ CREATE POLICY "owner_all_nuova_tabella" ON public.nuova_tabella
 - [ ] Storage documenti → Signed URLs (privacy)
 - [ ] Test end-to-end con dominio definitivo (`renttrack.it`)
 - [ ] Google Play Store — Free + Pro €6,99/mese
+
+---
+
+## 🚀 Post-Produzione — Da fare prima del go-live
+
+### 🔴 Sicurezza — Priorità alta
+
+| # | Task | Dettaglio | Dove |
+|---|---|---|---|
+| 1 | **Storage documenti → Signed URLs** | Il bucket `documenti` è pubblico: chiunque con il link può scaricare contratti e ricevute. Passare a URL firmati con scadenza (es. 1h) tramite `supabase.storage.from("documenti").createSignedUrl(path, 3600)` | Supabase Storage + `SupabaseRentRepository.kt` |
+| 2 | **EncryptedSharedPreferences per JWT** | I token auth sono salvati in SharedPreferences plain. Su device rooted sono leggibili. Migrare a `EncryptedSharedPreferences` (Jetpack Security) | `AuthViewModel.kt`, `ListingsViewModel.kt` |
+| 3 | **Centralizzare `anonKey`** | La chiave Supabase è duplicata in 4 file (`SupabaseClient.kt`, `SupabaseRentRepository.kt`, `AuthViewModel.kt`, `ListingsViewModel.kt`). Spostarla in `BuildConfig` o `AppSupabase` unico punto | Refactoring cross-file |
+
+### 🟡 Qualità — Priorità media
+
+| # | Task | Dettaglio |
+|---|---|---|
+| 4 | **Ownership filter su PATCH/DELETE** | Le query UPDATE/DELETE non aggiungono `&owner_id=eq.$uid` (defense-in-depth). La RLS protegge lato DB, ma il filtro client è best practice | `SupabaseRentRepository.kt` |
+| 5 | **SMTP reale notifiche email** | Attualmente le email transazionali usano il servizio demo Supabase (limite 3/ora). Configurare provider SMTP reale (SendGrid / Resend) | Supabase Dashboard → Auth → SMTP |
+| 6 | **Aggiornare annunci con city/zona vuota** | Gli annunci creati prima dell'aggiunta del campo città obbligatorio potrebbero avere `city = NULL`. Aggiornare manualmente da Supabase Dashboard o aggiungere migration script | Supabase SQL Editor |
+
+### 🟢 Miglioramenti — Bassa priorità / post-lancio
+
+| # | Task | Dettaglio |
+|---|---|---|
+| 7 | **Rate limiting su inquiries** | Il form di richiesta annuncio usa `anonKey` senza limite. Considerare captcha o rate limit via Supabase Edge Function per evitare spam | Supabase Edge Functions |
+| 8 | **Paginazione ricerca annunci** | La ricerca server-side restituisce tutti i matching results senza limite. Aggiungere `&limit=50` e paginazione per dataset grandi | `ListingsViewModel.searchListings()` |
+| 9 | **Signed URLs listing-photos private** | Se in futuro si vuole mostrare foto solo agli utenti loggati (annunci premium), il bucket `listing-photos` dovrà diventare privato | Supabase Storage |
+| 10 | **Test Worker notifiche** | Verificare che `RentCheckWorker` invii correttamente le notifiche pre-scadenza dopo il fix del namespace prefs (già fixato, da testare su device reale) | QA manuale |
+
+---
+
+> **Nota**: i fix di sicurezza #1-#3 sono **consigliati prima della pubblicazione su Google Play** se l'app gestisce dati di terzi (contratti, documenti personali degli inquilini).
