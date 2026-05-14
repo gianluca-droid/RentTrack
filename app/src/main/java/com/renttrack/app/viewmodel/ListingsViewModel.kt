@@ -60,6 +60,10 @@ class ListingsViewModel(
     private val _myInquiries = MutableStateFlow<List<Inquiry>>(emptyList())
     val myInquiries: StateFlow<List<Inquiry>> = _myInquiries.asStateFlow()
 
+    // Badge: contatore richieste non ancora viste
+    private val _unreadInquiriesCount = MutableStateFlow(0)
+    val unreadInquiriesCount: StateFlow<Int> = _unreadInquiriesCount.asStateFlow()
+
     private val _inquiriesLoading = MutableStateFlow(false)
     val inquiriesLoading: StateFlow<Boolean> = _inquiriesLoading.asStateFlow()
 
@@ -105,6 +109,9 @@ class ListingsViewModel(
                     }
                 }
                 _myInquiries.value = list
+                // Calcola richieste non viste dall'ultima visita
+                val seenCount = prefs.getInt("seen_inquiries_count", 0)
+                _unreadInquiriesCount.value = (list.size - seenCount).coerceAtLeast(0)
             } catch (e: Exception) {
                 _toast.value = "Errore caricamento richieste: ${e.message}"
             } finally {
@@ -113,6 +120,11 @@ class ListingsViewModel(
         }
     }
 
+    /** Chiamata quando l'utente naviga nella schermata Richieste: azzera il badge. */
+    fun markInquiriesAsRead() {
+        prefs.edit().putInt("seen_inquiries_count", _myInquiries.value.size).apply()
+        _unreadInquiriesCount.value = 0
+    }
 
     private val _isSubmitting = MutableStateFlow(false)
     val isSubmitting: StateFlow<Boolean> = _isSubmitting.asStateFlow()

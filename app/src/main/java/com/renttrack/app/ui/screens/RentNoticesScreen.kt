@@ -41,6 +41,7 @@ fun RentNoticesScreen(viewModel: SupabaseRentViewModel) {
     var showConfirmSendDialog by remember { mutableStateOf<SCedolino?>(null) }
     var showPagamentoDialog by remember { mutableStateOf<SCedolino?>(null) }
     var deleteTarget by remember { mutableStateOf<SCedolino?>(null) }
+    var editTarget   by remember { mutableStateOf<SCedolino?>(null) }
     var filterStatus by remember { mutableStateOf<String?>(null) }
     var showArchive by remember { mutableStateOf(false) }
 
@@ -153,6 +154,11 @@ fun RentNoticesScreen(viewModel: SupabaseRentViewModel) {
                                         text = { Text("Dettaglio", color = TextPrimary) },
                                         leadingIcon = { Icon(Icons.Filled.Visibility, null, tint = Cyan400, modifier = Modifier.size(18.dp)) },
                                         onClick = { showDetailDialog = cwi; showMenu = false }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Modifica", color = TextPrimary) },
+                                        leadingIcon = { Icon(Icons.Filled.Edit, null, tint = Cyan400, modifier = Modifier.size(18.dp)) },
+                                        onClick = { editTarget = cedolino; showMenu = false }
                                     )
                                     if (cwi != null) {
                                         DropdownMenuItem(
@@ -451,7 +457,7 @@ fun RentNoticesScreen(viewModel: SupabaseRentViewModel) {
                     color = DarkSurface.copy(alpha = 0.92f)
                 ) {
                     Text(
-                        "Addebita spesa extra",
+                        "Quota extra inquilino",
                         style = MaterialTheme.typography.labelSmall,
                         color = TextSecondary,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -523,6 +529,18 @@ fun RentNoticesScreen(viewModel: SupabaseRentViewModel) {
             onCreate = { cedolino, items ->
                 viewModel.addCedolinoWithItems(cedolino, items)
                 showSingleDialog = false
+            }
+        )
+    }
+
+    // Dialog: modifica cedolino
+    editTarget?.let { ced ->
+        EditCedolinoDialog(
+            cedolino = ced,
+            onDismiss = { editTarget = null },
+            onSave = { updated ->
+                viewModel.updateCedolino(updated)
+                editTarget = null
             }
         )
     }
@@ -1096,10 +1114,15 @@ fun QuotaDirectaDialog(
     var unitExpanded by remember { mutableStateOf(false) }
     var catExpanded by remember { mutableStateOf(false) }
 
-    // Data scadenza default: fine mese prossimo
-    val defaultDue = remember {
-        val cal = java.util.Calendar.getInstance().apply { add(java.util.Calendar.MONTH, 1); set(java.util.Calendar.DAY_OF_MONTH, getActualMaximum(java.util.Calendar.DAY_OF_MONTH)) }
-        cal.timeInMillis
+    // Scadenza reattiva all'unità selezionata: usa paymentDayOfMonth dall'anagrafica
+    val defaultDue by remember(selectedUnit) {
+        derivedStateOf {
+            java.util.Calendar.getInstance().apply {
+                add(java.util.Calendar.MONTH, 1)
+                set(java.util.Calendar.DAY_OF_MONTH, (selectedUnit?.paymentDayOfMonth ?: 5).coerceIn(1, 28))
+                set(java.util.Calendar.HOUR_OF_DAY, 23); set(java.util.Calendar.MINUTE, 59); set(java.util.Calendar.SECOND, 59)
+            }.timeInMillis
+        }
     }
 
     AlertDialog(
@@ -1149,6 +1172,17 @@ fun QuotaDirectaDialog(
                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal)
                 )
                 OutlinedTextField(periodo, { periodo = it }, label = { Text("Periodo (es. Maggio 2026)") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                // Scadenza calcolata dall'anagrafica
+                selectedUnit?.let { u ->
+                    Surface(shape = RoundedCornerShape(8.dp), color = Amber400.copy(alpha = 0.08f), modifier = Modifier.fillMaxWidth()) {
+                        Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Filled.CalendarMonth, null, tint = Amber400, modifier = Modifier.size(14.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Scadenza: ${Formatters.date(defaultDue)}  (giorno ${u.paymentDayOfMonth} da anagrafica)",
+                                style = MaterialTheme.typography.labelSmall, color = com.renttrack.app.ui.theme.TextSecondary)
+                        }
+                    }
+                }
             }
         },
         confirmButton = {
@@ -1163,6 +1197,67 @@ fun QuotaDirectaDialog(
             ) { Text("Addebita", fontWeight = FontWeight.Bold) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Annulla", color = com.renttrack.app.ui.theme.TextSecondary) } }
+    )
+}
+
+// ─── Dialog: Modifica cedolino (periodo + scadenza) ───────────────────────────
+@Composable
+private fun EditCedolinoDialog(
+    cedolino: SCedolino,
+    onDismiss: () -> Unit,
+    onSave: (SCedolino) -> Unit
+) {
+    val cal = remember { Calendar.getInstance().apply { timeInMillis = cedolino.dueDate } }
+    var period    by remember { mutableStateOf(cedolino.period) }
+    var dueDayStr by remember { mutableStateOf(cal.get(Calendar.DAY_OF_MONTH).toString()) }
+
+    AlertDialog(
+        onDismissRequest = { /* usa Annulla */ },
+        containerColor = DarkSurface,
+        icon = { Icon(Icons.Filled.Edit, null, tint = Cyan400) },
+        title = { Text("Modifica avviso", color = TextPrimary, fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = period, onValueChange = { period = it },
+                    label = { Text("Periodo (es. Maggio 2026)") },
+                    modifier = Modifier.fillMaxWidth(), singleLine = true
+                )
+                Text(
+                    "Scadenza attuale: ${Formatters.date(cedolino.dueDate)}",
+                    style = MaterialTheme.typography.bodySmall, color = TextMuted
+                )
+                OutlinedTextField(
+                    value = dueDayStr,
+                    onValueChange = { if (it.length <= 2 && (it.toIntOrNull() ?: 0) <= 28) dueDayStr = it },
+                    label = { Text("Nuovo giorno scadenza (1–28)") },
+                    modifier = Modifier.fillMaxWidth(), singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    supportingText = { Text("Mese e anno restano invariati", color = TextMuted) }
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val newDay = dueDayStr.toIntOrNull()?.coerceIn(1, 28) ?: cal.get(Calendar.DAY_OF_MONTH)
+                    val newDueCal = Calendar.getInstance().apply {
+                        timeInMillis = cedolino.dueDate
+                        set(Calendar.DAY_OF_MONTH, newDay)
+                    }
+                    onSave(cedolino.copy(period = period.trim(), dueDate = newDueCal.timeInMillis))
+                },
+                enabled = period.isNotBlank(),
+                colors = ButtonDefaults.buttonColors(containerColor = Cyan400, contentColor = DarkBg)
+            ) {
+                Icon(Icons.Filled.Save, null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("Salva", fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Annulla", color = TextSecondary) }
+        }
     )
 }
 

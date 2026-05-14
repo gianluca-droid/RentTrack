@@ -46,19 +46,32 @@ fun AnnunciScreen(
 
     var query         by remember { mutableStateOf("") }
     var maxPrice      by remember { mutableStateOf("") }
+    var minPrice      by remember { mutableStateOf("") }
     var onlyFurnished by remember { mutableStateOf(false) }
+    var onlyAvailable by remember { mutableStateOf(false) }
+    var sortOrder     by remember { mutableStateOf("default") } // default | priceAsc | priceDesc
     var showFilters   by remember { mutableStateOf(false) }
 
     val allListings = (state as? ListingsUiState.Success)?.listings ?: emptyList()
-    val listings = allListings.filter { l ->
+    val filteredListings = allListings.filter { l ->
         (query.isBlank() ||
             l.city.contains(query, ignoreCase = true) ||
             l.zone.contains(query, ignoreCase = true) ||
             l.title.contains(query, ignoreCase = true)) &&
         (maxPrice.isBlank() || l.priceMonthly <= (maxPrice.toDoubleOrNull() ?: Double.MAX_VALUE)) &&
-        (!onlyFurnished || l.furnished)
+        (minPrice.isBlank() || l.priceMonthly >= (minPrice.toDoubleOrNull() ?: 0.0)) &&
+        (!onlyFurnished || l.furnished) &&
+        (!onlyAvailable || l.isAvailable)
     }
-    val activeFilters = (if (maxPrice.isNotBlank()) 1 else 0) + (if (onlyFurnished) 1 else 0)
+    val listings = when (sortOrder) {
+        "priceAsc"  -> filteredListings.sortedBy { it.priceMonthly }
+        "priceDesc" -> filteredListings.sortedByDescending { it.priceMonthly }
+        else        -> filteredListings
+    }
+    val activeFilters = listOf(
+        maxPrice.isNotBlank(), minPrice.isNotBlank(), onlyFurnished, onlyAvailable,
+        sortOrder != "default"
+    ).count { it }
 
     // Carica annunci al primo avvio della schermata
     LaunchedEffect(Unit) { viewModel.loadPublicListings() }
@@ -191,40 +204,93 @@ fun AnnunciScreen(
                         // Filtri espandibili
                         AnimatedVisibility(visible = showFilters) {
                             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                OutlinedTextField(
-                                    value = maxPrice,
-                                    onValueChange = { maxPrice = it.filter { c -> c.isDigit() } },
-                                    label = { Text("Prezzo massimo (€/mese)", color = TextMuted) },
-                                    singleLine = true,
-                                    modifier = Modifier.fillMaxWidth(),
-                                    shape = RoundedCornerShape(12.dp),
-                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = Cyan400, unfocusedBorderColor = Color(0xFF1E3A5F),
-                                        cursorColor = Cyan400, focusedTextColor = TextPrimary,
-                                        unfocusedTextColor = TextPrimary,
-                                        focusedContainerColor = Color(0xFF0D1F38),
-                                        unfocusedContainerColor = Color(0xFF0D1F38),
-                                        focusedLabelColor = Cyan400
-                                    ),
-                                    leadingIcon = { Text("€", color = TextMuted, modifier = Modifier.padding(start = 12.dp)) }
-                                )
+                                // Riga prezzo min-max
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    OutlinedTextField(
+                                        value = minPrice,
+                                        onValueChange = { minPrice = it.filter { c -> c.isDigit() } },
+                                        label = { Text("Min €/mese", color = TextMuted) },
+                                        singleLine = true, modifier = Modifier.weight(1f),
+                                        shape = RoundedCornerShape(12.dp),
+                                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                                        colors = OutlinedTextFieldDefaults.colors(
+                                            focusedBorderColor = Cyan400, unfocusedBorderColor = Color(0xFF1E3A5F),
+                                            cursorColor = Cyan400, focusedTextColor = TextPrimary,
+                                            unfocusedTextColor = TextPrimary,
+                                            focusedContainerColor = Color(0xFF0D1F38),
+                                            unfocusedContainerColor = Color(0xFF0D1F38),
+                                            focusedLabelColor = Cyan400
+                                        )
+                                    )
+                                    OutlinedTextField(
+                                        value = maxPrice,
+                                        onValueChange = { maxPrice = it.filter { c -> c.isDigit() } },
+                                        label = { Text("Max €/mese", color = TextMuted) },
+                                        singleLine = true, modifier = Modifier.weight(1f),
+                                        shape = RoundedCornerShape(12.dp),
+                                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                                        colors = OutlinedTextFieldDefaults.colors(
+                                            focusedBorderColor = Cyan400, unfocusedBorderColor = Color(0xFF1E3A5F),
+                                            cursorColor = Cyan400, focusedTextColor = TextPrimary,
+                                            unfocusedTextColor = TextPrimary,
+                                            focusedContainerColor = Color(0xFF0D1F38),
+                                            unfocusedContainerColor = Color(0xFF0D1F38),
+                                            focusedLabelColor = Cyan400
+                                        )
+                                    )
+                                }
+                                // Chip: solo arredati + solo disponibili
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     FilterChip(
                                         selected = onlyFurnished,
                                         onClick = { onlyFurnished = !onlyFurnished },
-                                        label = { Text("🛋 Solo arredati") },
+                                        label = { Text("🛋 Arredato") },
                                         colors = FilterChipDefaults.filterChipColors(
                                             selectedContainerColor = Cyan400.copy(alpha = 0.2f),
                                             selectedLabelColor = Cyan400
                                         )
                                     )
+                                    FilterChip(
+                                        selected = onlyAvailable,
+                                        onClick = { onlyAvailable = !onlyAvailable },
+                                        label = { Text("🔓 Disponibile") },
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = Green400.copy(alpha = 0.2f),
+                                            selectedLabelColor = Green400
+                                        )
+                                    )
+                                }
+                                // Chip ordinamento
+                                Text("Ordina per:", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    FilterChip(
+                                        selected = sortOrder == "priceAsc",
+                                        onClick = { sortOrder = if (sortOrder == "priceAsc") "default" else "priceAsc" },
+                                        label = { Text("€ Crescente") },
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = Amber400.copy(alpha = 0.2f),
+                                            selectedLabelColor = Amber400
+                                        )
+                                    )
+                                    FilterChip(
+                                        selected = sortOrder == "priceDesc",
+                                        onClick = { sortOrder = if (sortOrder == "priceDesc") "default" else "priceDesc" },
+                                        label = { Text("€ Decrescente") },
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = Amber400.copy(alpha = 0.2f),
+                                            selectedLabelColor = Amber400
+                                        )
+                                    )
                                     if (activeFilters > 0) {
-                                        TextButton(onClick = { maxPrice = ""; onlyFurnished = false }) {
+                                        TextButton(onClick = {
+                                            maxPrice = ""; minPrice = ""
+                                            onlyFurnished = false; onlyAvailable = false
+                                            sortOrder = "default"
+                                        }) {
                                             Text("Azzera", color = TextMuted, style = MaterialTheme.typography.labelSmall)
                                         }
                                     }
@@ -251,7 +317,7 @@ fun AnnunciScreen(
                         )
                         if (query.isNotBlank() || activeFilters > 0) {
                             TextButton(
-                                onClick = { query = ""; maxPrice = ""; onlyFurnished = false },
+                                onClick = { query = ""; maxPrice = ""; minPrice = ""; onlyFurnished = false; onlyAvailable = false; sortOrder = "default" },
                                 contentPadding = PaddingValues(0.dp)
                             ) {
                                 Text("Rimuovi filtri", color = Cyan400, style = MaterialTheme.typography.labelSmall)

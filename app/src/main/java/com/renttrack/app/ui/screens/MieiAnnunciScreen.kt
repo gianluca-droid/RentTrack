@@ -36,6 +36,7 @@ fun MieiAnnunciScreen(
     val isLoading   by viewModel.myListingsLoading.collectAsState()
     val toast       by viewModel.toast.collectAsState()
     val myInquiries by viewModel.myInquiries.collectAsState()
+    val unreadCount by viewModel.unreadInquiriesCount.collectAsState()
     var toDelete by remember { mutableStateOf<Listing?>(null) }
     var toEdit   by remember { mutableStateOf<Listing?>(null) }
 
@@ -75,13 +76,13 @@ fun MieiAnnunciScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkBg),
                 actions = {
-                    // Richieste con badge numerico
+                    // Richieste con badge solo per quelle non ancora viste
                     BadgedBox(
                         badge = {
-                            if (myInquiries.isNotEmpty()) {
+                            if (unreadCount > 0) {
                                 Badge(containerColor = Red400) {
                                     Text(
-                                        "${myInquiries.size}",
+                                        "$unreadCount",
                                         color = androidx.compose.ui.graphics.Color.White,
                                         style = MaterialTheme.typography.labelSmall
                                     )
@@ -90,8 +91,11 @@ fun MieiAnnunciScreen(
                         },
                         modifier = Modifier.padding(end = 4.dp)
                     ) {
-                        IconButton(onClick = onRichieste) {
-                            Icon(Icons.Filled.MarkEmailUnread, "Richieste ricevute", tint = Cyan400)
+                        IconButton(onClick = {
+                            viewModel.markInquiriesAsRead()
+                            onRichieste()
+                        }) {
+                            Icon(Icons.Filled.MarkEmailUnread, "Richieste ricevute", tint = if (unreadCount > 0) Red400 else Cyan400)
                         }
                     }
                     // Nuovo annuncio
