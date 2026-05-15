@@ -128,10 +128,25 @@ CREATE POLICY "owner_all_nuova_tabella" ON public.nuova_tabella
 
 ### Funzionalità
 - [ ] Report PDF riepilogativo annuale/mensile (per commercialista)
-- [ ] Vista calendario scadenze
+- [ ] Vista calendario scadenze (contratti, IMU, cedolari)
 - [ ] Dettaglio inquilino con storia locativa completa
 - [ ] Affitto ricorrente mensile automatico
 - [ ] Versione inglese (UK / Australia / USA)
+- [ ] Alert contratti in scadenza (30/60/90 giorni)
+- [ ] Indice ISTAT aggiornamento canone
+
+### 💎 Funzionalità PRO (a pagamento — da implementare)
+
+> Queste feature differenziano il piano Free dal Pro e giustificano €6,99/mese.
+
+| # | Feature | Descrizione tecnica | Priorità |
+|---|---|---|---|
+| P1 | **Excel con grafici nativi** | Aggiungere a `XlsxExporter`: grafico a barre (entrate/uscite per mese) e grafico a torta (spese per categoria) in formato Open XML nativo. Apribile ed editabile in Excel/LibreOffice. | 🔴 Alta |
+| P2 | **Report PDF annuale** | Generatore PDF completo per commercialista: copertina, KPI, tabella movimenti, firma digitale. Usare Canvas nativo come `CedolinoPdfGenerator`. | 🔴 Alta |
+| P3 | **Simulazione fiscale cedolare secca** | Calcolo imponibile annuo × 21% (ordinaria) / 10% (concordato). Foglio dedicato nell'XLSX e sezione in Settings. | 🟡 Media |
+| P4 | **Foglio Scadenzario nell'XLSX** | Terzo foglio nel file Excel con contratti in scadenza, date IMU (giugno/dicembre), revisioni ISTAT. | 🟡 Media |
+| P5 | **Foglio Fiscale nell'XLSX** | Quarto foglio con quadro RB simulato, da portare al commercialista. | 🟡 Media |
+| P6 | **Multi-owner / Condivisione proprietà** | Possibilità di condividere una proprietà con un co-proprietario (es. coniuge). Schema DB: tabella `property_members`. | 🟠 Bassa |
 
 ### Produzione
 - [ ] Configurazione SMTP reale per email transazionali
