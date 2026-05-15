@@ -38,6 +38,15 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 
+// ─── Helper: URL pubblico Supabase Storage ────────────────────────────────────
+// I documenti sono salvati su Supabase Storage (non in locale).
+// filePath contiene il path relativo es. "condoId/uuid_nome.pdf"
+private const val SUPABASE_DOCS_URL =
+    "https://zjqrtuposdrimzjoydgh.supabase.co/storage/v1/object/public/documenti/"
+
+private fun documentoPublicUrl(filePath: String): String =
+    if (filePath.startsWith("http")) filePath else "$SUPABASE_DOCS_URL$filePath"
+
 enum class DocSortOrder(val label: String, val icon: String) {
     DATE_DESC("Più recenti", "🕐"),
     DATE_ASC("Più vecchi", "🕰"),
@@ -346,19 +355,15 @@ fun DocumentiScreen(viewModel: SupabaseRentViewModel) {
                                     if (doc.fileType == "Foto") {
                                         photoViewer = doc
                                     } else {
-                                        val file = File(doc.filePath)
-                                        if (file.exists()) {
-                                            val uri = androidx.core.content.FileProvider.getUriForFile(
-                                                context, "${context.packageName}.provider", file)
-                                            val mimeType = when (doc.fileType) {
-                                                "Word" -> "application/msword"
-                                                else -> "application/pdf"
-                                            }
-                                            context.startActivity(Intent(Intent.ACTION_VIEW).apply {
-                                                setDataAndType(uri, mimeType)
-                                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
-                                            })
+                                        val url = documentoPublicUrl(doc.filePath)
+                                        val mimeType = when (doc.fileType) {
+                                            "Word" -> "application/msword"
+                                            else   -> "application/pdf"
                                         }
+                                        context.startActivity(Intent(Intent.ACTION_VIEW).apply {
+                                            setDataAndType(Uri.parse(url), mimeType)
+                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        })
                                     }
                                 },
                                 onEdit = { documentoToEdit = doc },
@@ -377,37 +382,29 @@ fun DocumentiScreen(viewModel: SupabaseRentViewModel) {
                                     if (doc.fileType == "Foto") {
                                         photoViewer = doc
                                     } else {
-                                        val file = File(doc.filePath)
-                                        if (file.exists()) {
-                                            val uri = androidx.core.content.FileProvider.getUriForFile(
-                                                context, "${context.packageName}.provider", file)
-                                            val mimeType = when (doc.fileType) {
-                                                "Word" -> "application/msword"
-                                                else -> "application/pdf"
-                                            }
-                                            context.startActivity(Intent(Intent.ACTION_VIEW).apply {
-                                                setDataAndType(uri, mimeType)
-                                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
-                                            })
+                                        val url = documentoPublicUrl(doc.filePath)
+                                        val mimeType = when (doc.fileType) {
+                                            "Word" -> "application/msword"
+                                            else   -> "application/pdf"
                                         }
+                                        context.startActivity(Intent(Intent.ACTION_VIEW).apply {
+                                            setDataAndType(Uri.parse(url), mimeType)
+                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        })
                                     }
                                 },
                                 onEdit = { documentoToEdit = doc },
                                 onDelete = { documentoToDelete = doc },
                                 onShare = {
-                                    val file = File(doc.filePath)
-                                    if (file.exists()) {
-                                        val uri = androidx.core.content.FileProvider.getUriForFile(
-                                            context, "${context.packageName}.provider", file)
-                                        context.startActivity(Intent.createChooser(
-                                            Intent(Intent.ACTION_SEND).apply {
-                                                type = context.contentResolver.getType(uri) ?: "*/*"
-                                                putExtra(Intent.EXTRA_STREAM, uri)
-                                                putExtra(Intent.EXTRA_SUBJECT, doc.titolo)
-                                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                            }, "Condividi ${doc.titolo}"
-                                        ))
-                                    }
+                                    val url = documentoPublicUrl(doc.filePath)
+                                    context.startActivity(Intent.createChooser(
+                                        Intent(Intent.ACTION_SEND).apply {
+                                            type = "text/plain"
+                                            putExtra(Intent.EXTRA_TEXT, url)
+                                            putExtra(Intent.EXTRA_SUBJECT, doc.titolo)
+                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        }, "Condividi ${doc.titolo}"
+                                    ))
                                 }
                             )
                         }
@@ -445,7 +442,7 @@ fun DocumentiScreen(viewModel: SupabaseRentViewModel) {
                 ) {
                     // Immagine
                     AsyncImage(
-                        model = File(doc.filePath),
+                        model = documentoPublicUrl(doc.filePath),
                         contentDescription = doc.titolo,
                         contentScale = ContentScale.Fit,
                         modifier = Modifier.fillMaxSize()
@@ -594,9 +591,9 @@ fun DocumentCard(
                 // Anteprima immagine o icona
                 Surface(shape = RoundedCornerShape(12.dp), color = fileColor.copy(alpha = 0.15f), modifier = Modifier.size(56.dp)) {
                     Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                        if (documento.fileType == "Foto" && File(documento.filePath).exists()) {
+                        if (documento.fileType == "Foto" && documento.filePath.isNotBlank()) {
                             AsyncImage(
-                                model = File(documento.filePath),
+                                model = documentoPublicUrl(documento.filePath),
                                 contentDescription = null,
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier.fillMaxSize()
@@ -702,7 +699,7 @@ fun DocumentGridCard(
     catch (e: Exception) { Cyan400 }
     val fileColor = try { Color(android.graphics.Color.parseColor(FileTypes.getColorHex(documento.fileType))) }
     catch (e: Exception) { Cyan400 }
-    val isPhoto = documento.fileType == "Foto" && File(documento.filePath).exists()
+    val isPhoto = documento.fileType == "Foto" && documento.filePath.isNotBlank()
 
     Surface(
         onClick = onOpen,
@@ -717,7 +714,7 @@ fun DocumentGridCard(
             // Background: foto reale o icona
             if (isPhoto) {
                 AsyncImage(
-                    model = File(documento.filePath),
+                    model = documentoPublicUrl(documento.filePath),
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
