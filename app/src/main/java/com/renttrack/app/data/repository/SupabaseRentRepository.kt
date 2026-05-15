@@ -301,13 +301,22 @@ class SupabaseRentRepository(private val prefs: SharedPreferences) {
         post("/cedolini?id=eq.${c.id}&owner_id=eq.$uid", body, "PATCH", "return=minimal")
     }
 
-    suspend fun deleteCedolino(id: String) = withContext(Dispatchers.IO) {
+    suspend fun deleteCedolino(id: String, unitId: String = "", condominioId: String = "") = withContext(Dispatchers.IO) {
         val uid = userId
-        // 1. Elimina prima i pagamenti associati (cedolino_id = id)
+        // 1. Elimina pagamenti collegati esplicitamente (cedolino_id = id)
         post("/payments?cedolino_id=eq.$id&owner_id=eq.$uid", "", "DELETE", "return=minimal")
-        // 2. Elimina le voci del cedolino
+        // 2. Safety: elimina anche payment orfani legati all'unit+condominio senza cedolino_id
+        //    (es. pagamenti registrati manualmente senza collegare il cedolino)
+        if (unitId.isNotBlank() && condominioId.isNotBlank()) {
+            // Elimina i payment della stessa unit che NON hanno cedolino_id (orfani generici)
+            // Nota: questa riga è conservativa — rimuove solo payment senza cedolino_id,
+            // non tocca i payment collegati ad altri cedolini
+            post("/payments?unit_id=eq.$unitId&condominio_id=eq.$condominioId&cedolino_id=is.null&owner_id=eq.$uid",
+                 "", "DELETE", "return=minimal")
+        }
+        // 3. Elimina le voci del cedolino
         post("/cedolino_items?cedolino_id=eq.$id&owner_id=eq.$uid", "", "DELETE", "return=minimal")
-        // 3. Elimina il cedolino
+        // 4. Elimina il cedolino
         post("/cedolini?id=eq.$id&owner_id=eq.$uid", "", "DELETE", "return=minimal")
     }
 
@@ -367,6 +376,28 @@ class SupabaseRentRepository(private val prefs: SharedPreferences) {
     suspend fun deleteTenantHistory(id: String) = withContext(Dispatchers.IO) {
         val uid = userId
         post("/tenant_history?id=eq.$id&owner_id=eq.$uid", "", "DELETE", "return=minimal")
+    }
+
+    /**
+     * Elimina lo storico inquilino e, opzionalmente, tutti i pagamenti registrati
+     * durante il periodo di locazione di quell'inquilino.
+     *
+     * @param h            Record STenantHistory da eliminare
+     * @param deleteOrphanPayments  Se true, elimina i payment dell'unità che non
+     *                     hanno cedolino_id (registrati manualmente nel periodo).
+     *                     Default false per sicurezza (non cancella dati storici validi).
+     */
+    suspend fun deleteTenantHistoryWithCascade(
+        h: STenantHistory,
+        deleteOrphanPayments: Boolean = false
+    ) = withContext(Dispatchers.IO) {
+        val uid = userId
+        if (deleteOrphanPayments && h.unitId.isNotBlank() && h.condominioId.isNotBlank()) {
+            // Elimina payment orfani (senza cedolino_id) per questa unità
+            post("/payments?unit_id=eq.${h.unitId}&condominio_id=eq.${h.condominioId}&cedolino_id=is.null&owner_id=eq.$uid",
+                 "", "DELETE", "return=minimal")
+        }
+        post("/tenant_history?id=eq.${h.id}&owner_id=eq.$uid", "", "DELETE", "return=minimal")
     }
 
     // ── JSON Parsers ──────────────────────────────────────────────────────────
