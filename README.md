@@ -2,6 +2,30 @@
 
 App Android per la gestione degli affitti — lato proprietario.
 
+---
+
+## 🐛 Bug noti da verificare (post-aggiornamento 15/05/2026)
+
+> Questi problemi erano presenti prima dell'aggiornamento del 15/05/2026.
+> Alcuni potrebbero essere già risolti — verificare su build installata.
+
+| # | Bug | Descrizione | File coinvolto | Stato |
+|---|---|---|---|---|
+| B1 | **Modifiche avviso non salvate** | Modificando un avviso di pagamento (periodo, importo, scadenza) le modifiche non persistevano su Supabase dopo il salvataggio. Fix applicato: `EditCedolinoDialog` ora include il campo importo + `onSave` passa `total` aggiornato. | `RentNoticesScreen.kt` → `EditCedolinoDialog` | ⚠️ Da verificare su device |
+| B2 | **Avviso eliminato ancora visibile nel Report** | Dopo aver eliminato un cedolino, il Report (scheda Panoramica o Archivio) mostrava ancora i dati del record eliminato se lo scope era "Tutte" o "Custom". Fix: `refresh()` ora ricarica `_reportPayments`/`_reportExpenses` per tutti gli scope. | `SupabaseRentViewModel.kt` → `refresh()` | ⚠️ Da verificare su device |
+| B3 | **Totali Dashboard non aggiornati** | La Dashboard potrebbe mostrare totali "vecchi" (spese, incassi) se i dati non vengono riletti dopo un'eliminazione. Correlato a B2. | `DashboardScreen.kt`, `SupabaseRentViewModel.kt` | ❓ Da indagare |
+| B4 | **N+1 query cedolini** | Per ogni cedolino viene fatta una query separata a `cedolino_items`. Con molti avvisi l'app è lenta al caricamento della schermata Avvisi. | `SupabaseRentViewModel.kt` → `refresh()` | ❓ Performance da misurare |
+| B5 | **Versione app statica** | La schermata Impostazioni mostra `1.0.0 (build 1)` hardcoded invece di leggere `BuildConfig.VERSION_NAME`. | `SettingsScreen.kt` riga 108 | 🟢 Fix banale (5 min) |
+| B6 | **Pull-to-refresh assente** | Impossibile forzare refresh manuale dei dati senza uscire e rientrare nella schermata. | Tutte le schermate con `LazyColumn` | ❓ Da implementare |
+
+### Legenda
+- ⚠️ **Da verificare su device** — fix nel codice, ma non confermato su build installata
+- ❓ **Da indagare** — comportamento segnalato, causa non confermata
+- 🟢 **Fix banale** — pochi minuti di lavoro, non ancora applicato
+- ✅ **Risolto e verificato** — confermato funzionante su build installata
+
+---
+
 ## Target
 Piccoli proprietari privati con 2–5 appartamenti in affitto.
 
