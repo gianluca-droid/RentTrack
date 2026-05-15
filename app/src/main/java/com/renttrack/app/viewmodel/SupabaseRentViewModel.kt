@@ -720,7 +720,7 @@ class SupabaseRentViewModel(application: Application) : AndroidViewModel(applica
     }
 
     fun deleteCedolino(c: SCedolino) = viewModelScope.launch {
-        try { repo.deleteCedolino(c.id, c.unitId, c.condominioId); refresh() } catch (e: Exception) { _error.value = e.message }
+        try { repo.deleteCedolino(c.id, c.unitId, c.condominioId, c.dueDate); refresh() } catch (e: Exception) { _error.value = e.message }
     }
 
     fun markCedolinoPaid(c: SCedolino) = viewModelScope.launch {

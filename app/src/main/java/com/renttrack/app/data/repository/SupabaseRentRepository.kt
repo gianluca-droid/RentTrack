@@ -301,18 +301,44 @@ class SupabaseRentRepository(private val prefs: SharedPreferences) {
         post("/cedolini?id=eq.${c.id}&owner_id=eq.$uid", body, "PATCH", "return=minimal")
     }
 
-    suspend fun deleteCedolino(id: String, unitId: String = "", condominioId: String = "") = withContext(Dispatchers.IO) {
+    /**
+     * Elimina un cedolino e i suoi dati correlati.
+     *
+     * Cascata payments:
+     *  a) DELETE esatto: payments con cedolino_id = id  (caso markCedolinoPaidWithPayment)
+     *  b) DELETE time-scoped: payments senza cedolino_id registrati nella finestra
+     *     temporale del cedolino (±45 giorni dal dueDate) per la stessa unit/condominio.
+     *     Gestisce il caso in cui il pagamento era stato inserito manualmente
+     *     senza collegarlo al cedolino.
+     *     La finestra limita il rischio di eliminare pagamenti di altri mesi.
+     *
+     * @param id           UUID del cedolino
+     * @param unitId       UUID dell'unità (per DELETE time-scoped)
+     * @param condominioId UUID del condominio (per DELETE time-scoped)
+     * @param dueDateMs    Timestamp scadenza cedolino in ms (per finestra temporale)
+     */
+    suspend fun deleteCedolino(
+        id: String,
+        unitId: String = "",
+        condominioId: String = "",
+        dueDateMs: Long = 0L
+    ) = withContext(Dispatchers.IO) {
         val uid = userId
-        // 1. Elimina pagamenti collegati esplicitamente (cedolino_id = id)
+        // 1. DELETE primario: payment esplicitamente collegati (cedolino_id = id)
         post("/payments?cedolino_id=eq.$id&owner_id=eq.$uid", "", "DELETE", "return=minimal")
-        // 2. Safety: elimina anche payment orfani legati all'unit+condominio senza cedolino_id
-        //    (es. pagamenti registrati manualmente senza collegare il cedolino)
-        if (unitId.isNotBlank() && condominioId.isNotBlank()) {
-            // Elimina i payment della stessa unit che NON hanno cedolino_id (orfani generici)
-            // Nota: questa riga è conservativa — rimuove solo payment senza cedolino_id,
-            // non tocca i payment collegati ad altri cedolini
-            post("/payments?unit_id=eq.$unitId&condominio_id=eq.$condominioId&cedolino_id=is.null&owner_id=eq.$uid",
-                 "", "DELETE", "return=minimal")
+        // 2. DELETE time-scoped: payment manuali (cedolino_id = null) nella finestra del cedolino
+        //    Finestra: dueDate -45 giorni ... dueDate +45 giorni
+        //    Elimina solo payment senza cedolino_id della stessa unit, evita di colpire altri mesi
+        if (unitId.isNotBlank() && condominioId.isNotBlank() && dueDateMs > 0L) {
+            val windowMs = 45L * 24 * 60 * 60 * 1000   // 45 giorni in ms
+            val from = dueDateMs - windowMs
+            val to   = dueDateMs + windowMs
+            post(
+                "/payments?unit_id=eq.$unitId&condominio_id=eq.$condominioId" +
+                "&cedolino_id=is.null&owner_id=eq.$uid" +
+                "&date=gte.$from&date=lte.$to",
+                "", "DELETE", "return=minimal"
+            )
         }
         // 3. Elimina le voci del cedolino
         post("/cedolino_items?cedolino_id=eq.$id&owner_id=eq.$uid", "", "DELETE", "return=minimal")
