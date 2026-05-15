@@ -352,13 +352,14 @@ fun DocumentiScreen(viewModel: SupabaseRentViewModel) {
                             DocumentGridCard(
                                 documento = doc,
                                 onOpen = {
-                                    if (doc.fileType == "Foto") {
+                                    if (doc.fileType == "Foto" || doc.fileType.startsWith("image/")) {
                                         photoViewer = doc
                                     } else {
                                         val url = documentoPublicUrl(doc.filePath)
                                         val mimeType = when (doc.fileType) {
                                             "Word" -> "application/msword"
-                                            else   -> "application/pdf"
+                                            "PDF"  -> "application/pdf"
+                                            else   -> doc.fileType.ifBlank { "application/octet-stream" }
                                         }
                                         context.startActivity(Intent(Intent.ACTION_VIEW).apply {
                                             setDataAndType(Uri.parse(url), mimeType)
@@ -379,13 +380,14 @@ fun DocumentiScreen(viewModel: SupabaseRentViewModel) {
                                 documento = doc,
                                 units = units,
                                 onOpen = {
-                                    if (doc.fileType == "Foto") {
+                                    if (doc.fileType == "Foto" || doc.fileType.startsWith("image/")) {
                                         photoViewer = doc
                                     } else {
                                         val url = documentoPublicUrl(doc.filePath)
                                         val mimeType = when (doc.fileType) {
                                             "Word" -> "application/msword"
-                                            else   -> "application/pdf"
+                                            "PDF"  -> "application/pdf"
+                                            else   -> doc.fileType.ifBlank { "application/octet-stream" }
                                         }
                                         context.startActivity(Intent(Intent.ACTION_VIEW).apply {
                                             setDataAndType(Uri.parse(url), mimeType)
@@ -591,7 +593,7 @@ fun DocumentCard(
                 // Anteprima immagine o icona
                 Surface(shape = RoundedCornerShape(12.dp), color = fileColor.copy(alpha = 0.15f), modifier = Modifier.size(56.dp)) {
                     Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                        if (documento.fileType == "Foto" && documento.filePath.isNotBlank()) {
+                        if ((documento.fileType == "Foto" || documento.fileType.startsWith("image/")) && documento.filePath.isNotBlank()) {
                             AsyncImage(
                                 model = documentoPublicUrl(documento.filePath),
                                 contentDescription = null,
@@ -699,7 +701,7 @@ fun DocumentGridCard(
     catch (e: Exception) { Cyan400 }
     val fileColor = try { Color(android.graphics.Color.parseColor(FileTypes.getColorHex(documento.fileType))) }
     catch (e: Exception) { Cyan400 }
-    val isPhoto = documento.fileType == "Foto" && documento.filePath.isNotBlank()
+    val isPhoto = (documento.fileType == "Foto" || documento.fileType.startsWith("image/")) && documento.filePath.isNotBlank()
 
     Surface(
         onClick = onOpen,

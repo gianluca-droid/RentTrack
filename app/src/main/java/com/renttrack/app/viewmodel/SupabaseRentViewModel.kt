@@ -553,7 +553,7 @@ class SupabaseRentViewModel(application: Application) : AndroidViewModel(applica
                 filePath = filePath,
                 fileName = fileName,
                 fileSize = bytes.size.toLong(),
-                fileType = mimeType,
+                fileType = com.renttrack.app.data.model.FileTypes.fromMimeType(mimeType),
                 note = note,
                 sommario = sommario,
                 visibilita = visibilita,
