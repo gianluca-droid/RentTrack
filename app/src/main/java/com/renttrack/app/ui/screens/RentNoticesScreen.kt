@@ -1200,7 +1200,7 @@ fun QuotaDirectaDialog(
     )
 }
 
-// ─── Dialog: Modifica cedolino (periodo + scadenza) ───────────────────────────
+// ─── Dialog: Modifica cedolino (periodo + scadenza + importo) ─────────────────
 @Composable
 private fun EditCedolinoDialog(
     cedolino: SCedolino,
@@ -1208,8 +1208,9 @@ private fun EditCedolinoDialog(
     onSave: (SCedolino) -> Unit
 ) {
     val cal = remember { Calendar.getInstance().apply { timeInMillis = cedolino.dueDate } }
-    var period    by remember { mutableStateOf(cedolino.period) }
-    var dueDayStr by remember { mutableStateOf(cal.get(Calendar.DAY_OF_MONTH).toString()) }
+    var period      by remember { mutableStateOf(cedolino.period) }
+    var dueDayStr   by remember { mutableStateOf(cal.get(Calendar.DAY_OF_MONTH).toString()) }
+    var importoStr  by remember { mutableStateOf(cedolino.total.toString()) }
 
     AlertDialog(
         onDismissRequest = { /* usa Annulla */ },
@@ -1218,11 +1219,36 @@ private fun EditCedolinoDialog(
         title = { Text("Modifica avviso", color = TextPrimary, fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                // Periodo
                 OutlinedTextField(
                     value = period, onValueChange = { period = it },
                     label = { Text("Periodo (es. Maggio 2026)") },
-                    modifier = Modifier.fillMaxWidth(), singleLine = true
+                    modifier = Modifier.fillMaxWidth(), singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Cyan400,
+                        unfocusedBorderColor = TextMuted.copy(alpha = 0.3f),
+                        focusedContainerColor = DarkSurface,
+                        unfocusedContainerColor = DarkSurface,
+                        cursorColor = Cyan400
+                    )
                 )
+                // Importo
+                OutlinedTextField(
+                    value = importoStr,
+                    onValueChange = { importoStr = it },
+                    label = { Text("Importo (€)") },
+                    leadingIcon = { Icon(Icons.Filled.EuroSymbol, null, tint = TextMuted, modifier = Modifier.size(18.dp)) },
+                    modifier = Modifier.fillMaxWidth(), singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Cyan400,
+                        unfocusedBorderColor = TextMuted.copy(alpha = 0.3f),
+                        focusedContainerColor = DarkSurface,
+                        unfocusedContainerColor = DarkSurface,
+                        cursorColor = Cyan400
+                    )
+                )
+                // Scadenza
                 Text(
                     "Scadenza attuale: ${Formatters.date(cedolino.dueDate)}",
                     style = MaterialTheme.typography.bodySmall, color = TextMuted
@@ -1233,11 +1259,19 @@ private fun EditCedolinoDialog(
                     label = { Text("Nuovo giorno scadenza (1–28)") },
                     modifier = Modifier.fillMaxWidth(), singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    supportingText = { Text("Mese e anno restano invariati", color = TextMuted) }
+                    supportingText = { Text("Mese e anno restano invariati", color = TextMuted) },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Cyan400,
+                        unfocusedBorderColor = TextMuted.copy(alpha = 0.3f),
+                        focusedContainerColor = DarkSurface,
+                        unfocusedContainerColor = DarkSurface,
+                        cursorColor = Cyan400
+                    )
                 )
             }
         },
         confirmButton = {
+            val newTotal = importoStr.replace(",", ".").toDoubleOrNull() ?: cedolino.total
             Button(
                 onClick = {
                     val newDay = dueDayStr.toIntOrNull()?.coerceIn(1, 28) ?: cal.get(Calendar.DAY_OF_MONTH)
@@ -1245,9 +1279,15 @@ private fun EditCedolinoDialog(
                         timeInMillis = cedolino.dueDate
                         set(Calendar.DAY_OF_MONTH, newDay)
                     }
-                    onSave(cedolino.copy(period = period.trim(), dueDate = newDueCal.timeInMillis))
+                    onSave(
+                        cedolino.copy(
+                            period  = period.trim(),
+                            dueDate = newDueCal.timeInMillis,
+                            total   = newTotal
+                        )
+                    )
                 },
-                enabled = period.isNotBlank(),
+                enabled = period.isNotBlank() && newTotal > 0,
                 colors = ButtonDefaults.buttonColors(containerColor = Cyan400, contentColor = DarkBg)
             ) {
                 Icon(Icons.Filled.Save, null, modifier = Modifier.size(16.dp))

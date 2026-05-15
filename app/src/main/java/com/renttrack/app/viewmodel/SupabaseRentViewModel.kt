@@ -531,10 +531,35 @@ class SupabaseRentViewModel(application: Application) : AndroidViewModel(applica
                     }
                     _tenantHistory.value = repo.getTenantHistory(condId)
                     _documenti.value = repo.getDocumenti(condId)
-                    // Sync report data when scope is ACTIVE
-                    if (_reportScope.value == ReportScope.ACTIVE) {
-                        _reportExpenses.value = _expenses.value
-                        _reportPayments.value = _payments.value
+                    // Sync report data in base allo scope corrente
+                    when (_reportScope.value) {
+                        ReportScope.ACTIVE -> {
+                            _reportExpenses.value = _expenses.value
+                            _reportPayments.value = _payments.value
+                        }
+                        ReportScope.ALL -> {
+                            val allExp = mutableListOf<SExpense>()
+                            val allPay = mutableListOf<SPayment>()
+                            _allCondomini.value.forEach { condo ->
+                                allExp += repo.getExpensesByCondominio(condo.id)
+                                allPay += repo.getPaymentsByCondominio(condo.id)
+                            }
+                            _reportExpenses.value = allExp
+                            _reportPayments.value = allPay
+                        }
+                        ReportScope.CUSTOM -> {
+                            val ids = _reportSelectedIds.value
+                            if (ids.isNotEmpty()) {
+                                val allExp = mutableListOf<SExpense>()
+                                val allPay = mutableListOf<SPayment>()
+                                ids.forEach { id ->
+                                    allExp += repo.getExpensesByCondominio(id)
+                                    allPay += repo.getPaymentsByCondominio(id)
+                                }
+                                _reportExpenses.value = allExp
+                                _reportPayments.value = allPay
+                            }
+                        }
                     }
                 }
             } catch (e: Exception) {

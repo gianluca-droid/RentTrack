@@ -286,10 +286,17 @@ class SupabaseRentRepository(private val prefs: SharedPreferences) {
     suspend fun updateCedolino(c: SCedolino) = withContext(Dispatchers.IO) {
         val uid = userId
         val body = JSONObject().apply {
-            put("status", c.status); put("paid_amount", c.paidAmount)
+            // Status & payment fields
+            put("status", c.status)
+            put("paid_amount", c.paidAmount)
             put("sent_to_resident", c.sentToResident)
             if (c.sentAt != null) put("sent_at", c.sentAt) else put("sent_at", JSONObject.NULL)
             if (c.paidDate != null) put("paid_date", c.paidDate) else put("paid_date", JSONObject.NULL)
+            // Editable fields (period, amount, dates) — Fix: previously missing from PATCH
+            put("period", c.period)
+            put("total", c.total)
+            put("issue_date", c.issueDate)
+            if (c.dueDate != null) put("due_date", c.dueDate) else put("due_date", JSONObject.NULL)
         }.toString()
         post("/cedolini?id=eq.${c.id}&owner_id=eq.$uid", body, "PATCH", "return=minimal")
     }

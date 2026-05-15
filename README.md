@@ -133,6 +133,7 @@ CREATE POLICY "owner_all_nuova_tabella" ON public.nuova_tabella
 | 4 | **Ownership filter su PATCH/DELETE** | Le query UPDATE/DELETE non aggiungono `&owner_id=eq.$uid` (defense-in-depth). La RLS protegge lato DB, ma il filtro client è best practice | `SupabaseRentRepository.kt` |
 | 5 | **SMTP reale notifiche email** | Attualmente le email transazionali usano il servizio demo Supabase (limite 3/ora). Configurare provider SMTP reale (SendGrid / Resend) | Supabase Dashboard → Auth → SMTP |
 | 6 | **Aggiornare annunci con city/zona vuota** | Gli annunci creati prima dell'aggiunta del campo città obbligatorio potrebbero avere `city = NULL`. Aggiornare manualmente da Supabase Dashboard o aggiungere migration script | Supabase SQL Editor |
+| 7 | **Pagina eliminazione account** | Google Play Data Safety richiede URL dedicato per cancellazione account. Creare pagina su Google Sites (o in-app) con istruzioni: inviare email a gianlucadelfini@yahoo.it con oggetto "Elimina account RentTrack". Attualmente usa URL privacy policy come placeholder. | Google Sites + Play Console → Sicurezza dei dati |
 
 ### 🟢 Miglioramenti — Bassa priorità / post-lancio
 
