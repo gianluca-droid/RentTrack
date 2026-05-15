@@ -376,7 +376,38 @@ class ListingsViewModel(
         }
     }
 
-    // ── Attiva / disattiva annuncio ───────────────────────────────────────────
+    // ── Aggiunta foto a annuncio esistente ────────────────────────────────────
+    fun addPhotosToListing(listingId: String, photoUris: List<Uri>, onDone: () -> Unit = {}) {
+        if (photoUris.isEmpty()) { onDone(); return }
+        viewModelScope.launch {
+            _isSubmitting.value = true
+            try {
+                val token = authToken ?: throw Exception("Non autenticato")
+                val currentListing = _myListings.value.find { it.id == listingId }
+                val nextOrder = (currentListing?.photos?.maxOfOrNull { it.displayOrder } ?: -1) + 1
+                val needsCover = currentListing?.photos.isNullOrEmpty()
+                withContext(Dispatchers.IO) {
+                    photoUris.forEachIndexed { index, uri ->
+                        val url = uploadPhoto(token, uri, listingId)
+                        if (url != null) savePhotoRecord(
+                            token, listingId, url,
+                            isCover = needsCover && index == 0,
+                            order   = nextOrder + index
+                        )
+                    }
+                }
+                loadMyListings()
+                _toast.value = "📸 ${photoUris.size} foto aggiunt${if (photoUris.size == 1) "a" else "e"}!"
+                onDone()
+            } catch (e: Exception) {
+                _toast.value = "Errore upload foto: ${e.message}"
+            } finally {
+                _isSubmitting.value = false
+            }
+        }
+    }
+
+
 
     /** Imposta o revoca la promozione "In evidenza" su un annuncio.
      *  In futuro questo sarà collegato al pagamento: il backend attiverà

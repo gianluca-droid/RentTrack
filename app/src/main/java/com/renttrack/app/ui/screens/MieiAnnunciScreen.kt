@@ -1,5 +1,7 @@
 package com.renttrack.app.ui.screens
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
@@ -616,6 +618,11 @@ private fun EditListingSheet(
     var price         by remember { mutableStateOf(listing.priceMonthly.toInt().toString()) }
     var description   by remember { mutableStateOf(listing.description) }
     var availableFrom by remember { mutableStateOf(listing.availableFrom) }
+    var newPhotoUris  by remember { mutableStateOf<List<android.net.Uri>>(emptyList()) }
+
+    val photoPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetMultipleContents()
+    ) { uris -> newPhotoUris = newPhotoUris + uris }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -696,6 +703,84 @@ private fun EditListingSheet(
                 modifier = Modifier.fillMaxWidth().heightIn(min = 100.dp),
                 shape = RoundedCornerShape(12.dp), colors = fieldColors, maxLines = 6
             )
+            // ── Sezione foto ───────────────────────────────────────────────
+            Text(
+                "📷 Foto annuncio",
+                color = TextPrimary,
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold)
+            )
+            // Foto esistenti
+            if (listing.photos.isNotEmpty()) {
+                androidx.compose.foundation.lazy.LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(listing.photos) { photo ->
+                        Box(
+                            modifier = Modifier
+                                .size(72.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                        ) {
+                            AsyncImage(
+                                model = photo.url,
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                            if (photo.isCover) {
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.BottomCenter)
+                                        .fillMaxWidth()
+                                        .background(DarkBg.copy(alpha = 0.6f))
+                                        .padding(2.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text("Cover", style = MaterialTheme.typography.labelSmall, color = Cyan400)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            // Nuove foto selezionate
+            if (newPhotoUris.isNotEmpty()) {
+                androidx.compose.foundation.lazy.LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(newPhotoUris) { uri ->
+                        Box(
+                            modifier = Modifier
+                                .size(72.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .border(1.5.dp, Cyan400, RoundedCornerShape(10.dp))
+                        ) {
+                            AsyncImage(
+                                model = uri,
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                    }
+                }
+                Text(
+                    "${newPhotoUris.size} nuova/e foto da caricare",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Cyan400
+                )
+            }
+            OutlinedButton(
+                onClick = { photoPicker.launch("image/*") },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Cyan400),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Cyan400.copy(alpha = 0.4f)),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(Icons.Filled.AddPhotoAlternate, null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Aggiungi foto", style = MaterialTheme.typography.labelMedium)
+            }
+
 
             Button(
                 onClick = {
@@ -705,7 +790,11 @@ private fun EditListingSheet(
                         title = title, address = address, city = city, zone = zone,
                         priceMonthly = priceVal, description = description,
                         availableFrom = availableFrom,
-                        onSuccess = onDismiss
+                        onSuccess = {
+                            // Carica le nuove foto selezionate, poi chiude il sheet
+                            viewModel.addPhotosToListing(listing.id, newPhotoUris) { onDismiss() }
+                            if (newPhotoUris.isEmpty()) onDismiss()
+                        }
                     )
                 },
                 enabled = !isSubmitting && title.isNotBlank() && city.isNotBlank(),
