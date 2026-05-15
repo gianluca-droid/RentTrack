@@ -284,106 +284,161 @@ private fun PanoramicaTab(viewModel: SupabaseRentViewModel) {
                 )
             )
         }
-        // ── Bottone Export CSV con dialog selezione immobile ────
+        // ── Pannello Export Professionale ───────────────────────────
         item {
-            val ctx = LocalContext.current
-            val allCondomini    by viewModel.allCondomini.collectAsState()
-            val activeCondoId   by viewModel.activeCondominioId.collectAsState()
+            val ctx           = LocalContext.current
+            val allCondominiE by viewModel.allCondomini.collectAsState()
+            val activeCondoId by viewModel.activeCondominioId.collectAsState()
             var showExportDialog by remember { mutableStateOf(false) }
 
-            OutlinedButton(
-                onClick = { showExportDialog = true },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = Cyan400),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Cyan400.copy(alpha = 0.5f)),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Icon(Icons.Filled.Download, null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Column {
-                    Text(
-                        "Esporta CSV",
-                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold)
-                    )
-                    Text(
-                        "Scegli quale immobile esportare",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = TextMuted
-                    )
+            // Sezione header
+            Text(
+                "📤 Esporta Report",
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                color = TextPrimary
+            )
+            Spacer(Modifier.height(8.dp))
+
+            // Due CTA affiancate: CSV e Excel
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                // ── CSV
+                OutlinedButton(
+                    onClick = { showExportDialog = true },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Cyan400),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Cyan400.copy(alpha = 0.6f)),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(vertical = 6.dp)
+                    ) {
+                        Icon(Icons.Filled.TableChart, null, modifier = Modifier.size(22.dp))
+                        Spacer(Modifier.height(4.dp))
+                        Text("CSV", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
+                        Text("Excel compatibile", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                    }
+                }
+                // ── Excel (XLSX)
+                Button(
+                    onClick = { showExportDialog = true },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A6B5A)),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(vertical = 6.dp)
+                    ) {
+                        Icon(Icons.Filled.GridOn, null, modifier = Modifier.size(22.dp))
+                        Spacer(Modifier.height(4.dp))
+                        Text("Excel", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
+                        Text("Report premium .xlsx", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.7f))
+                    }
                 }
             }
 
-            // ── Dialog selezione immobile per export ───────────────
+            // ── Dialog export professionale ────────────────────────────
             if (showExportDialog) {
-                // 0 = solo attiva, 1 = tutte, 2 = custom
                 var mode by remember { mutableIntStateOf(0) }
+                var exportFmt by remember { mutableIntStateOf(1) } // 0=CSV, 1=XLSX
                 var customPicked by remember {
                     mutableStateOf(setOf(activeCondoId).filter { it.isNotBlank() }.toSet())
                 }
                 val availableYears by viewModel.reportAvailableYears.collectAsState()
-                var selectedExportYear by remember { mutableStateOf<Int?>(null) } // null = tutti gli anni
+                var selectedExportYear by remember { mutableStateOf<Int?>(null) }
 
                 AlertDialog(
                     onDismissRequest = { showExportDialog = false },
                     containerColor = DarkSurface,
                     shape = RoundedCornerShape(20.dp),
                     icon = {
-                        Icon(Icons.Filled.Download, null, tint = Cyan400, modifier = Modifier.size(28.dp))
-                    },
-                    title = {
-                        Text(
-                            "Esporta CSV",
-                            color = TextPrimary,
-                            fontWeight = FontWeight.Bold
+                        Icon(
+                            if (exportFmt == 1) Icons.Filled.GridOn else Icons.Filled.TableChart,
+                            null, tint = Cyan400, modifier = Modifier.size(28.dp)
                         )
                     },
+                    title = { Text("Esporta Report", color = TextPrimary, fontWeight = FontWeight.Bold) },
                     text = {
-                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text(
-                                "Seleziona quale immobile includere nell'export:",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = TextMuted
-                            )
-                            Spacer(Modifier.height(4.dp))
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
 
-                            // ── Opzione: Solo attiva
-                            val activeCondo = allCondomini.find { it.id == activeCondoId }
+                            // ── Selezione formato ──────────────────────────────────
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = DarkCard
+                            ) {
+                                Row(modifier = Modifier.fillMaxWidth().padding(4.dp)) {
+                                    listOf(
+                                        0 to "CSV",
+                                        1 to "Excel (.xlsx)"
+                                    ).forEach { (fmt, label) ->
+                                        val selected = exportFmt == fmt
+                                        Surface(
+                                            shape = RoundedCornerShape(10.dp),
+                                            color = if (selected) Cyan400 else Color.Transparent,
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            TextButton(
+                                                onClick = { exportFmt = fmt },
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                Text(
+                                                    label,
+                                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                                                    color = if (selected) DarkBg else TextMuted
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // ── Descrizione formato ─────────────────────────────────
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = Cyan400.copy(alpha = 0.06f),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    if (exportFmt == 1)
+                                        "📊 Excel professionale con 2 fogli:\n• Riepilogo KPI (entrate, uscite, saldo)\n• Movimenti con colori brand, freeze header e filtri auto"
+                                    else
+                                        "📋 CSV compatibile Excel italiano:\n• Header premium con logo e KPI\n• Tabella ordinata, encoding UTF-8 BOM",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = TextSecondary,
+                                    modifier = Modifier.padding(10.dp)
+                                )
+                            }
+
+                            HorizontalDivider(color = TextMuted.copy(alpha = 0.15f))
+
+                            // ── Selezione immobile ──────────────────────────────────
+                            Text("Immobile:", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                            val activeCondo = allCondominiE.find { it.id == activeCondoId }
                             ExportOptionRow(
-                                selected = mode == 0,
-                                onClick = { mode = 0 },
+                                selected = mode == 0, onClick = { mode = 0 },
                                 label = activeCondo?.let {
-                                    if (it.indirizzo.isNotBlank()) "${it.nome} — ${it.indirizzo}"
-                                    else it.nome
+                                    if (it.indirizzo.isNotBlank()) "${it.nome} — ${it.indirizzo}" else it.nome
                                 } ?: "Proprietà attiva",
                                 sublabel = "Solo questa proprietà"
                             )
-
-                            // ── Opzione: Tutte
                             ExportOptionRow(
-                                selected = mode == 1,
-                                onClick = { mode = 1 },
+                                selected = mode == 1, onClick = { mode = 1 },
                                 label = "Tutte le proprietà",
-                                sublabel = "${allCondomini.size} immobili"
+                                sublabel = "${allCondominiE.size} immobili"
                             )
-
-                            // ── Opzione: Selezione custom (visibile solo se >1 immobile)
-                            if (allCondomini.size > 1) {
+                            if (allCondominiE.size > 1) {
                                 ExportOptionRow(
-                                    selected = mode == 2,
-                                    onClick = { mode = 2 },
+                                    selected = mode == 2, onClick = { mode = 2 },
                                     label = "Selezione personalizzata",
                                     sublabel = if (mode == 2) "${customPicked.size} selezionati" else "Scegli quali includere"
                                 )
-
-                                // Checkbox lista immobili (visibile solo in modalità custom)
                                 androidx.compose.animation.AnimatedVisibility(visible = mode == 2) {
                                     Column(
-                                        modifier = androidx.compose.ui.Modifier
-                                            .fillMaxWidth()
-                                            .padding(start = 16.dp, top = 4.dp),
+                                        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, top = 4.dp),
                                         verticalArrangement = Arrangement.spacedBy(2.dp)
                                     ) {
-                                        allCondomini.forEach { condo ->
+                                        allCondominiE.forEach { condo ->
                                             Row(
                                                 verticalAlignment = Alignment.CenterVertically,
                                                 modifier = Modifier.fillMaxWidth()
@@ -392,25 +447,15 @@ private fun PanoramicaTab(viewModel: SupabaseRentViewModel) {
                                                     checked = condo.id in customPicked,
                                                     onCheckedChange = { checked ->
                                                         customPicked = customPicked.toMutableSet().also {
-                                                            if (checked) it.add(condo.id)
-                                                            else it.remove(condo.id)
+                                                            if (checked) it.add(condo.id) else it.remove(condo.id)
                                                         }
                                                     },
                                                     colors = CheckboxDefaults.colors(checkedColor = Cyan400)
                                                 )
                                                 Column {
-                                                    Text(
-                                                        condo.nome,
-                                                        color = TextPrimary,
-                                                        style = MaterialTheme.typography.bodySmall
-                                                    )
-                                                    if (condo.indirizzo.isNotBlank()) {
-                                                        Text(
-                                                            condo.indirizzo,
-                                                            color = TextMuted,
-                                                            style = MaterialTheme.typography.labelSmall
-                                                        )
-                                                    }
+                                                    Text(condo.nome, color = TextPrimary, style = MaterialTheme.typography.bodySmall)
+                                                    if (condo.indirizzo.isNotBlank())
+                                                        Text(condo.indirizzo, color = TextMuted, style = MaterialTheme.typography.labelSmall)
                                                 }
                                             }
                                         }
@@ -418,20 +463,13 @@ private fun PanoramicaTab(viewModel: SupabaseRentViewModel) {
                                 }
                             }
 
-                            // ── Sezione filtro anno ────────────────────────────────
+                            // ── Filtro anno ─────────────────────────────────────────
                             if (availableYears.isNotEmpty()) {
-                                Spacer(Modifier.height(4.dp))
-                                HorizontalDivider(color = androidx.compose.ui.graphics.Color(0xFF2D3748))
-                                Spacer(Modifier.height(4.dp))
-                                Text(
-                                    "Periodo:",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = TextMuted
-                                )
+                                HorizontalDivider(color = TextMuted.copy(alpha = 0.15f))
+                                Text("Periodo:", style = MaterialTheme.typography.labelSmall, color = TextMuted)
                                 androidx.compose.foundation.lazy.LazyRow(
                                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
-                                    // Chip "Tutti"
                                     item {
                                         FilterChip(
                                             selected = selectedExportYear == null,
@@ -469,24 +507,29 @@ private fun PanoramicaTab(viewModel: SupabaseRentViewModel) {
                                     1 -> viewModel.setReportScope(SupabaseRentViewModel.ReportScope.ALL)
                                     2 -> viewModel.setReportScope(SupabaseRentViewModel.ReportScope.CUSTOM, customPicked)
                                 }
-                                viewModel.exportCSVAfterScope(ctx, mode, customPicked, activeCondoId, selectedExportYear)
+                                if (exportFmt == 1) {
+                                    viewModel.exportXLSXAfterScope(ctx, mode, customPicked, activeCondoId, selectedExportYear)
+                                } else {
+                                    viewModel.exportCSVAfterScope(ctx, mode, customPicked, activeCondoId, selectedExportYear)
+                                }
                             },
                             enabled = canConfirm,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Cyan400,
-                                contentColor = androidx.compose.ui.graphics.Color.Black
-                            ),
+                            colors = ButtonDefaults.buttonColors(containerColor = Cyan400, contentColor = DarkBg),
                             shape = RoundedCornerShape(10.dp)
                         ) {
-                            Icon(Icons.Filled.Download, null, modifier = Modifier.size(16.dp))
+                            Icon(
+                                if (exportFmt == 1) Icons.Filled.GridOn else Icons.Filled.TableChart,
+                                null, modifier = Modifier.size(16.dp)
+                            )
                             Spacer(Modifier.width(6.dp))
-                            Text("Esporta", fontWeight = FontWeight.Bold)
+                            Text(
+                                if (exportFmt == 1) "Esporta Excel" else "Esporta CSV",
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                     },
                     dismissButton = {
-                        TextButton(onClick = { showExportDialog = false }) {
-                            Text("Annulla", color = TextMuted)
-                        }
+                        TextButton(onClick = { showExportDialog = false }) { Text("Annulla", color = TextMuted) }
                     }
                 )
             }

@@ -6,44 +6,51 @@ import com.renttrack.app.data.model.SPayment
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
 /**
- * Genera contenuto CSV professionale compatibile con Excel italiano.
+ * Genera un report CSV professionale stile software gestionale immobiliare.
+ *
+ * Struttura output:
+ *   [1] HEADER PREMIUM  — logo RentTrack, immobile, periodo, data generazione
+ *   [2] KPI SUMMARY     — Totale entrate, uscite, saldo netto, n° movimenti
+ *   [3] SEPARATORE      — Linea visiva
+ *   [4] TABELLA DATI    — Colonne allineate, ordinamento cronologico desc
+ *   [5] FOOTER          — Riga totali bold
  *
  * Specifiche tecniche:
  *  - BOM UTF-8 (\uFEFF) → apertura corretta in Excel su Windows
  *  - Separatore ";" (standard europeo)
- *  - Importi italiani: "1.200,50 €"
- *  - Date italiane: "14/05/2026"
- *  - Auto-escaping RFC 4180 (virgolette se il campo contiene ";" o a capo)
- *  - Righe ordinate per data decrescente
- *
- * Predisposto per futura estensione: PdfExporter, ExcelExporter.
+ *  - Importi: "1.200,50 €" (Locale.ITALIAN)
+ *  - Date: "14/05/2026"
+ *  - Auto-escaping RFC 4180
  */
 object CsvExporter {
 
     private const val BOM = "\uFEFF"
     private const val SEP = ";"
 
-    private val DATE_FMT = SimpleDateFormat("dd/MM/yyyy", Locale.ITALIAN)
-    private val NUM_FMT  = DecimalFormat("#,##0.00", DecimalFormatSymbols(Locale.ITALIAN))
+    private val DATE_FMT  = SimpleDateFormat("dd/MM/yyyy", Locale.ITALIAN)
+    private val MONTH_FMT = SimpleDateFormat("MMMM yyyy", Locale.ITALIAN)
+    private val NUM_FMT   = DecimalFormat("#,##0.00", DecimalFormatSymbols(Locale.ITALIAN))
 
-    /** Header colonne — leggibili da commercialisti e landlord. */
+    /** Colonne principali — stile accounting professionale */
     private val HEADERS = listOf(
-        "Tipo", "Categoria", "Data", "Importo (€)", "Descrizione", "Stato", "Immobile", "Note"
+        "Data", "Tipo", "Categoria / Descrizione", "Riferimento", "Importo (€)", "Immobile", "Note"
     )
 
+    // ─── Entry point principale ──────────────────────────────────────────
+
     /**
-     * Costruisce il contenuto CSV completo.
+     * Costruisce il contenuto CSV completo con header premium e KPI summary.
      *
-     * @param payments   Lista pagamenti (incassi affitto)
-     * @param expenses   Lista spese (uscite)
-     * @param condoMap   Mappa id → SCondominio per risolvere etichette immobile
-     * @param scopeLabel Etichetta dello scope (es. "Appartamento Roma — Via Latina 12")
-     * @param filterYear Anno di filtro (null = tutti gli anni)
-     * @return String pronta per writeText() — il BOM è già incluso
+     * @param payments   Pagamenti (entrate affitto)
+     * @param expenses   Spese (uscite)
+     * @param condoMap   id → SCondominio per risolvere etichette
+     * @param scopeLabel Etichetta immobile/scope ("Via Appia 333, Roma")
+     * @param filterYear Anno filtro (null = tutti gli anni)
      */
     fun buildCsvContent(
         payments: List<SPayment>,
@@ -53,79 +60,150 @@ object CsvExporter {
         filterYear: Int?
     ): String {
         val sb = StringBuilder()
-
-        // BOM per compatibilità Excel Windows
         sb.append(BOM)
 
-        // Intestazione report
-        val yearLabel = filterYear?.toString() ?: "tutti gli anni"
-        sb.appendLine("# RentTrack Export — $scopeLabel — $yearLabel")
-        sb.appendLine("# Generato il ${DATE_FMT.format(Date())}")
-        sb.appendLine()
+        val totalIn  = payments.sumOf { it.amount }
+        val totalOut = expenses.sumOf { it.amount }
+        val balance  = totalIn - totalOut
+        val rowCount = payments.size + expenses.size
 
-        // Header colonne
+        val periodoLabel = when {
+            filterYear != null -> "Anno $filterYear"
+            else -> buildDateRangeLabel(payments, expenses)
+        }
+
+        // ── [1] HEADER PREMIUM ───────────────────────────────────────
+        sb.appendLine("${SEP}${SEP}${SEP}${SEP}${SEP}${SEP}")
+        sb.appendLine("${SEP}  ██████╗ ███████╗███╗   ██╗████████╗${SEP}${SEP}${SEP}${SEP}${SEP}")
+        sb.appendLine("${SEP}  ██╔══██╗██╔════╝████╗  ██║╚══██╔══╝${SEP}${SEP}${SEP}${SEP}${SEP}")
+        sb.appendLine("${SEP}  ██████╔╝█████╗  ██╔██╗ ██║   ██║   ${SEP}${SEP}${SEP}${SEP}${SEP}")
+        sb.appendLine("${SEP}  ██╔══██╗██╔══╝  ██║╚██╗██║   ██║   ${SEP}${SEP}${SEP}${SEP}${SEP}")
+        sb.appendLine("${SEP}  ██║  ██║███████╗██║ ╚████║   ██║   ${SEP}${SEP}${SEP}${SEP}${SEP}")
+        sb.appendLine("${SEP}  ╚═╝  ╚═╝╚══════╝╚═╝  ╚═══╝   ╚═╝   ${SEP}${SEP}${SEP}${SEP}${SEP}")
+        sb.appendLine("${SEP}${SEP}${SEP}${SEP}${SEP}${SEP}")
+        sb.appendLine("${SEP}  REPORT ECONOMICO IMMOBILIARE${SEP}${SEP}${SEP}${SEP}${SEP}")
+        sb.appendLine("${SEP}${SEP}${SEP}${SEP}${SEP}${SEP}")
+        sb.appendLine("${SEP}  Immobile${SEP}${SEP}${escape(scopeLabel)}${SEP}${SEP}${SEP}")
+        sb.appendLine("${SEP}  Periodo${SEP}${SEP}${escape(periodoLabel)}${SEP}${SEP}${SEP}")
+        sb.appendLine("${SEP}  Generato il${SEP}${SEP}${DATE_FMT.format(Date())}${SEP}${SEP}${SEP}")
+        sb.appendLine("${SEP}  Software${SEP}${SEP}RentTrack — Gestione Immobiliare${SEP}${SEP}${SEP}")
+        sb.appendLine("${SEP}${SEP}${SEP}${SEP}${SEP}${SEP}")
+        sb.appendLine(divider())
+
+        // ── [2] KPI SUMMARY ──────────────────────────────────────────
+        sb.appendLine("${SEP}  RIEPILOGO FINANZIARIO${SEP}${SEP}${SEP}${SEP}${SEP}")
+        sb.appendLine("${SEP}${SEP}${SEP}${SEP}${SEP}${SEP}")
+        sb.appendLine("${SEP}  Totale Entrate (Affitti incassati)${SEP}${SEP}${formatAmt(totalIn)}${SEP}${SEP}${SEP}")
+        sb.appendLine("${SEP}  Totale Uscite (Spese deducibili)${SEP}${SEP}${formatAmt(totalOut)}${SEP}${SEP}${SEP}")
+        sb.appendLine("${SEP}${SEP}${SEP}${SEP}${SEP}${SEP}")
+        val balanceLabel = if (balance >= 0) "SALDO NETTO  ▲ POSITIVO" else "SALDO NETTO  ▼ NEGATIVO"
+        sb.appendLine("${SEP}  $balanceLabel${SEP}${SEP}${formatAmt(balance)}${SEP}${SEP}${SEP}")
+        sb.appendLine("${SEP}  Numero movimenti totali${SEP}${SEP}$rowCount${SEP}${SEP}${SEP}")
+        sb.appendLine("${SEP}  di cui Entrate${SEP}${SEP}${payments.size}${SEP}${SEP}${SEP}")
+        sb.appendLine("${SEP}  di cui Uscite${SEP}${SEP}${expenses.size}${SEP}${SEP}${SEP}")
+        sb.appendLine("${SEP}${SEP}${SEP}${SEP}${SEP}${SEP}")
+        sb.appendLine(divider())
+
+        // ── [3] TABELLA DATI ─────────────────────────────────────────
+        sb.appendLine("${SEP}  DETTAGLIO MOVIMENTI${SEP}${SEP}${SEP}${SEP}${SEP}")
+        sb.appendLine("${SEP}${SEP}${SEP}${SEP}${SEP}${SEP}")
         sb.appendLine(csvRow(HEADERS))
 
-        // Raccoglie tutte le righe con timestamp per l'ordinamento
         val rows = mutableListOf<Pair<Long, String>>()
 
         payments.forEach { p ->
             val condoLabel = condoMap[p.condominioId]?.toLabel() ?: ""
-            rows += p.date to csvRow(
-                listOf(
-                    "Incasso",
-                    "Affitto",
-                    DATE_FMT.format(Date(p.date)),
-                    formatAmount(p.amount),
-                    p.reference.ifBlank { "Pagamento affitto" },
-                    "Pagato",
-                    condoLabel,
-                    p.notes
-                )
-            )
+            val desc = buildString {
+                append("Affitto")
+                if (p.reference.isNotBlank()) append(" — ${p.reference}")
+            }
+            rows += p.date to csvRow(listOf(
+                DATE_FMT.format(Date(p.date)),
+                "ENTRATA",
+                desc,
+                p.method.ifBlank { "—" },
+                formatAmt(p.amount),
+                condoLabel,
+                p.notes.ifBlank { "—" }
+            ))
         }
 
         expenses.forEach { e ->
             val condoLabel = condoMap[e.condominioId]?.toLabel() ?: ""
-            rows += e.date to csvRow(
-                listOf(
-                    "Uscita",
-                    e.category,
-                    DATE_FMT.format(Date(e.date)),
-                    formatAmount(e.amount),
-                    e.description,
-                    "-",
-                    condoLabel,
-                    e.notes
-                )
-            )
+            val desc = buildString {
+                append(e.category)
+                if (e.description.isNotBlank()) append(" — ${e.description}")
+            }
+            rows += e.date to csvRow(listOf(
+                DATE_FMT.format(Date(e.date)),
+                "USCITA",
+                desc,
+                "—",
+                formatAmt(e.amount),
+                condoLabel,
+                e.notes.ifBlank { "—" }
+            ))
         }
 
-        // Ordine cronologico decrescente (più recente in cima)
         rows.sortByDescending { it.first }
         rows.forEach { sb.appendLine(it.second) }
+
+        // ── [4] FOOTER TOTALI ────────────────────────────────────────
+        sb.appendLine(divider())
+        sb.appendLine(csvRow(listOf(
+            "TOTALI", "", "", "",
+            formatAmt(totalIn + totalOut),
+            "",
+            ""
+        )))
+        sb.appendLine("${SEP}  Entrate${SEP}${SEP}${SEP}${formatAmt(totalIn)}${SEP}${SEP}")
+        sb.appendLine("${SEP}  Uscite${SEP}${SEP}${SEP}${formatAmt(totalOut)}${SEP}${SEP}")
+        sb.appendLine("${SEP}  Saldo Netto${SEP}${SEP}${SEP}${formatAmt(balance)}${SEP}${SEP}")
+        sb.appendLine(divider())
+        sb.appendLine()
+        sb.appendLine("${SEP}  Report generato da RentTrack — Software Gestione Immobiliare${SEP}${SEP}${SEP}${SEP}${SEP}")
 
         return sb.toString()
     }
 
-    // ── Helpers ──────────────────────────────────────────────────
+    // ── Helpers ──────────────────────────────────────────────────────────
 
     private fun csvRow(fields: List<String>): String =
         fields.joinToString(SEP) { escape(it) }
 
-    /** RFC 4180: racchiude in virgolette se il campo contiene SEP, " o newline. */
+    /** RFC 4180: virgolette se il campo contiene SEP, " o newline. */
     private fun escape(field: String): String {
         val needsQuote = field.contains(SEP) || field.contains('"') || field.contains('\n')
         return if (needsQuote) "\"${field.replace("\"", "\"\"")}\"" else field
     }
 
-    /** Formatta come "1.200,50 €" (stile italiano). */
-    private fun formatAmount(amount: Double): String = "${NUM_FMT.format(amount)} €"
+    /** Importo stile "1.200,50 €" */
+    private fun formatAmt(amount: Double): String = "${NUM_FMT.format(amount)} €"
+
+    /** Linea separatrice visiva (adattata al numero di colonne) */
+    private fun divider(): String = "${SEP}${SEP}${SEP}${SEP}${SEP}${SEP}"
+
+    /**
+     * Determina il range date dai dati (per il label periodo quando filterYear == null).
+     * Restituisce "01/2026 – 12/2026" oppure "Tutti i movimenti".
+     */
+    private fun buildDateRangeLabel(payments: List<SPayment>, expenses: List<SExpense>): String {
+        val allDates = payments.map { it.date } + expenses.map { it.date }
+        if (allDates.isEmpty()) return "Tutti i movimenti"
+        val minTs = allDates.min()
+        val maxTs = allDates.max()
+        val cal = Calendar.getInstance()
+        cal.timeInMillis = minTs
+        val fromLabel = "${cal.get(Calendar.MONTH) + 1}/${cal.get(Calendar.YEAR)}"
+        cal.timeInMillis = maxTs
+        val toLabel = "${cal.get(Calendar.MONTH) + 1}/${cal.get(Calendar.YEAR)}"
+        return if (fromLabel == toLabel) fromLabel else "$fromLabel – $toLabel"
+    }
 }
 
-/** Etichetta leggibile di un condominio: "Nome — Via, Città". */
+/** Etichetta leggibile di un condominio: "Nome — Via, Città" */
 private fun SCondominio.toLabel(): String = buildString {
     append(nome)
     if (indirizzo.isNotBlank()) append(" — $indirizzo")
-    if (citta.isNotBlank()) append(", $citta")
+    if (citta.isNotBlank())     append(", $citta")
 }

@@ -9,6 +9,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.renttrack.app.PropertyManager
 import com.renttrack.app.data.export.CsvExporter
+import com.renttrack.app.data.export.XlsxExporter
 import com.renttrack.app.data.export.ExportService
 import com.renttrack.app.data.model.*
 import com.renttrack.app.data.repository.SupabaseRentRepository
@@ -381,6 +382,79 @@ class SupabaseRentViewModel(application: Application) : AndroidViewModel(applica
 
         } catch (e: Exception) {
             _backupStatus.value = "❌ Errore esportazione: ${e.message}"
+        }
+    }
+
+    /**
+     * Export XLSX professionale con fogli multipli e styling brand.
+     * Stessa firma di exportCSVAfterScope, produce .xlsx via XlsxExporter.
+     */
+    fun exportXLSXAfterScope(
+        context: Context,
+        mode: Int,
+        customIds: Set<String>,
+        activeCondoId: String,
+        filterYear: Int? = null
+    ) = viewModelScope.launch {
+        _backupStatus.value = "⏳ Generazione Excel in corso…"
+        try {
+            val condIds = when (mode) {
+                0    -> listOf(activeCondoId).filter { it.isNotBlank() }
+                1    -> _allCondomini.value.map { it.id }
+                2    -> customIds.toList()
+                else -> listOf(activeCondoId)
+            }
+            val activeCondo = _allCondomini.value.find { it.id == activeCondoId }
+            val scopeLabel = when (mode) {
+                0    -> activeCondo?.run { "$nome${if (indirizzo.isNotBlank()) " — $indirizzo" else ""}" } ?: "Proprietà attiva"
+                1    -> "Tutte le proprietà (${_allCondomini.value.size})"
+                2    -> "${customIds.size} proprietà selezionate"
+                else -> "Proprietà attiva"
+            }
+            val allExp = mutableListOf<SExpense>()
+            val allPay = mutableListOf<SPayment>()
+            withContext(Dispatchers.IO) {
+                condIds.forEach { id ->
+                    allExp += repo.getExpensesByCondominio(id)
+                    allPay += repo.getPaymentsByCondominio(id)
+                }
+            }
+            val cal = Calendar.getInstance()
+            val filteredPay = if (filterYear != null)
+                allPay.filter { cal.apply { timeInMillis = it.date }.get(Calendar.YEAR) == filterYear }
+            else allPay
+            val filteredExp = if (filterYear != null)
+                allExp.filter { cal.apply { timeInMillis = it.date }.get(Calendar.YEAR) == filterYear }
+            else allExp
+            val condoMap = _allCondomini.value.associateBy { it.id }
+            val xlsxBytes = withContext(Dispatchers.IO) {
+                XlsxExporter.buildXlsx(
+                    payments   = filteredPay,
+                    expenses   = filteredExp,
+                    condoMap   = condoMap,
+                    scopeLabel = scopeLabel,
+                    filterYear = filterYear
+                )
+            }
+            val fileName = when (mode) {
+                0    -> ExportService.buildXlsxFileName(
+                            condoName    = activeCondo?.nome ?: "",
+                            condoAddress = activeCondo?.indirizzo ?: "",
+                            condoCitta   = activeCondo?.citta ?: "",
+                            filterYear   = filterYear
+                        )
+                1    -> ExportService.buildXlsxFileName("tutte_le_proprieta", "", "", filterYear)
+                2    -> ExportService.buildXlsxFileName("selezione_${customIds.size}_proprieta", "", "", filterYear)
+                else -> ExportService.buildXlsxFileName("renttrack", "", "", filterYear)
+            }
+            val file = withContext(Dispatchers.IO) {
+                ExportService.writeBytesToCache(context, xlsxBytes, fileName)
+            }
+            ExportService.shareXlsxFile(context, file)
+            val rowCount = filteredPay.size + filteredExp.size
+            _backupStatus.value = "✅ Excel esportato: $rowCount movimenti — $fileName"
+        } catch (e: Exception) {
+            _backupStatus.value = "❌ Errore Excel: ${e.message}"
         }
     }
 
