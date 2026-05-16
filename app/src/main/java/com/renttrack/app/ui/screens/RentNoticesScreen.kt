@@ -53,9 +53,6 @@ fun RentNoticesScreen(viewModel: SupabaseRentViewModel) {
     var selectionMode     by remember { mutableStateOf(false) }
     var selectedIds       by remember { mutableStateOf<Set<String>>(emptySet()) }
     var showBulkDueDateDialog by remember { mutableStateOf(false) }
-    // Dopo modifica singola: salva (newDay + lista snapshot) per proporre propagazione
-    // La lista viene catturata al momento del salvataggio per evitare flicker da refresh ViewModel
-    var pendingDueDateSpread by remember { mutableStateOf<Pair<Int, List<SCedolino>>?>(null) }
 
     val openCedolini = remember(cedolini) { cedolini.filter { it.status != "Pagato" }.sortedBy { it.dueDate } }
     val paidCedolini = remember(cedolini) { cedolini.filter { it.status == "Pagato" }.sortedByDescending { it.paidDate } }
@@ -713,47 +710,22 @@ fun RentNoticesScreen(viewModel: SupabaseRentViewModel) {
         )
     }
 
-    // Dialog: modifica cedolino
+    // Dialog: modifica cedolino (2 step: modifica + eventuale propagazione scadenza)
     editTarget?.let { ced ->
+        val sameUnitOthers = openCedolini.filter { it.unitId == ced.unitId && it.id != ced.id }
         EditCedolinoDialog(
-            cedolino = ced,
-            onDismiss = { editTarget = null },
-            onSave = { updated ->
-                val originalDay = Calendar.getInstance()
-                    .apply { timeInMillis = ced.dueDate }
-                    .get(Calendar.DAY_OF_MONTH)
-                val newDay = Calendar.getInstance()
-                    .apply { timeInMillis = updated.dueDate }
-                    .get(Calendar.DAY_OF_MONTH)
+            cedolino       = ced,
+            sameUnitOthers = sameUnitOthers,
+            onDismiss      = { editTarget = null },
+            onSave         = { updated, propagateIds ->
                 viewModel.updateCedolino(updated)
+                if (propagateIds.isNotEmpty()) {
+                    val day = Calendar.getInstance()
+                        .apply { timeInMillis = updated.dueDate }
+                        .get(Calendar.DAY_OF_MONTH)
+                    viewModel.bulkUpdateDueDayForCedolini(propagateIds, day)
+                }
                 editTarget = null
-                // Se il giorno di scadenza è cambiato E ci sono altri avvisi aperti
-                // dello stesso inquilino, offri di propagare la modifica
-                if (newDay != originalDay) {
-                    // Snapshot della lista PRIMA del refresh del ViewModel
-                    val others = openCedolini.filter {
-                        it.unitId == updated.unitId && it.id != updated.id
-                    }
-                    if (others.isNotEmpty()) {
-                        pendingDueDateSpread = Pair(newDay, others)
-                    }
-                }
-            }
-        )
-    }
-
-    // Dialog: propaga giorno scadenza agli altri avvisi dello stesso inquilino
-    // othersOfSameUnit viene dalla snapshot catturata al salvataggio, non ricalcolata
-    pendingDueDateSpread?.let { (newDay, snapshotOthers) ->
-        PropagateDueDateDialog(
-            newDay        = newDay,
-            otherCedolini = snapshotOthers,
-            onDismiss     = { pendingDueDateSpread = null },
-            onApply       = { selectedIds ->
-                if (selectedIds.isNotEmpty()) {
-                    viewModel.bulkUpdateDueDayForCedolini(selectedIds, newDay)
-                }
-                pendingDueDateSpread = null
             }
         )
     }
@@ -1541,106 +1513,196 @@ private fun PropagateDueDateDialog(
     )
 }
 
-// ─── Dialog: Modifica cedolino (periodo + scadenza + importo) ─────────────────
+// ─── Dialog: Modifica cedolino — Step 1: form | Step 2: propaga scadenza ─────
 @Composable
 private fun EditCedolinoDialog(
     cedolino: SCedolino,
+    sameUnitOthers: List<SCedolino>,          // altri avvisi aperti dello stesso inquilino
     onDismiss: () -> Unit,
-    onSave: (SCedolino) -> Unit
+    onSave: (SCedolino, Set<String>) -> Unit  // cedolino aggiornato + IDs da propagare
 ) {
-    val cal = remember { Calendar.getInstance().apply { timeInMillis = cedolino.dueDate } }
-    var period      by remember { mutableStateOf(cedolino.period) }
-    var dueDayStr   by remember { mutableStateOf(cal.get(Calendar.DAY_OF_MONTH).toString()) }
-    var importoStr  by remember { mutableStateOf(cedolino.total.toString()) }
+    val cal        = remember { Calendar.getInstance().apply { timeInMillis = cedolino.dueDate } }
+    var period     by remember { mutableStateOf(cedolino.period) }
+    var dueDayStr  by remember { mutableStateOf(cal.get(Calendar.DAY_OF_MONTH).toString()) }
+    var importoStr by remember { mutableStateOf(cedolino.total.toString()) }
 
-    AlertDialog(
-        onDismissRequest = { /* usa Annulla */ },
-        containerColor = DarkSurface,
-        icon = { Icon(Icons.Filled.Edit, null, tint = Cyan400) },
-        title = { Text("Modifica avviso", color = TextPrimary, fontWeight = FontWeight.Bold) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                // Periodo
-                OutlinedTextField(
-                    value = period, onValueChange = { period = it },
-                    label = { Text("Periodo (es. Maggio 2026)") },
-                    modifier = Modifier.fillMaxWidth(), singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Cyan400,
-                        unfocusedBorderColor = TextMuted.copy(alpha = 0.3f),
-                        focusedContainerColor = DarkSurface,
-                        unfocusedContainerColor = DarkSurface,
-                        cursorColor = Cyan400
+    // Step 1 = modifica, Step 2 = propaga scadenza (solo se giorno cambia e ci sono altri)
+    var step           by remember { mutableIntStateOf(1) }
+    var pendingUpdated by remember { mutableStateOf<SCedolino?>(null) }
+    var propagateIds   by remember { mutableStateOf(sameUnitOthers.map { it.id }.toSet()) }
+
+    val tfColors = OutlinedTextFieldDefaults.colors(
+        focusedBorderColor    = Cyan400,
+        unfocusedBorderColor  = TextMuted.copy(alpha = 0.3f),
+        focusedContainerColor = DarkSurface, unfocusedContainerColor = DarkSurface,
+        cursorColor = Cyan400
+    )
+
+    if (step == 1) {
+        AlertDialog(
+            onDismissRequest = { /* usa Annulla */ },
+            containerColor   = DarkSurface,
+            icon  = { Icon(Icons.Filled.Edit, null, tint = Cyan400) },
+            title = { Text("Modifica avviso", color = TextPrimary, fontWeight = FontWeight.Bold) },
+            text  = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedTextField(
+                        value = period, onValueChange = { period = it },
+                        label = { Text("Periodo (es. Maggio 2026)") },
+                        modifier = Modifier.fillMaxWidth(), singleLine = true, colors = tfColors
                     )
-                )
-                // Importo
-                OutlinedTextField(
-                    value = importoStr,
-                    onValueChange = { importoStr = it },
-                    label = { Text("Importo (€)") },
-                    leadingIcon = { Icon(Icons.Filled.EuroSymbol, null, tint = TextMuted, modifier = Modifier.size(18.dp)) },
-                    modifier = Modifier.fillMaxWidth(), singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Cyan400,
-                        unfocusedBorderColor = TextMuted.copy(alpha = 0.3f),
-                        focusedContainerColor = DarkSurface,
-                        unfocusedContainerColor = DarkSurface,
-                        cursorColor = Cyan400
+                    OutlinedTextField(
+                        value = importoStr, onValueChange = { importoStr = it },
+                        label = { Text("Importo (€)") },
+                        leadingIcon = { Icon(Icons.Filled.EuroSymbol, null, tint = TextMuted, modifier = Modifier.size(18.dp)) },
+                        modifier = Modifier.fillMaxWidth(), singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        colors = tfColors
                     )
-                )
-                // Scadenza
-                Text(
-                    "Scadenza attuale: ${Formatters.date(cedolino.dueDate)}",
-                    style = MaterialTheme.typography.bodySmall, color = TextMuted
-                )
-                OutlinedTextField(
-                    value = dueDayStr,
-                    onValueChange = { if (it.length <= 2 && (it.toIntOrNull() ?: 0) <= 28) dueDayStr = it },
-                    label = { Text("Nuovo giorno scadenza (1–28)") },
-                    modifier = Modifier.fillMaxWidth(), singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    supportingText = { Text("Mese e anno restano invariati", color = TextMuted) },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Cyan400,
-                        unfocusedBorderColor = TextMuted.copy(alpha = 0.3f),
-                        focusedContainerColor = DarkSurface,
-                        unfocusedContainerColor = DarkSurface,
-                        cursorColor = Cyan400
+                    Text("Scadenza attuale: ${Formatters.date(cedolino.dueDate)}",
+                        style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                    OutlinedTextField(
+                        value = dueDayStr,
+                        onValueChange = { if (it.length <= 2 && (it.toIntOrNull() ?: 0) <= 28) dueDayStr = it },
+                        label = { Text("Nuovo giorno scadenza (1–28)") },
+                        modifier = Modifier.fillMaxWidth(), singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        supportingText = { Text("Mese e anno restano invariati", color = TextMuted) },
+                        colors = tfColors
                     )
-                )
-            }
-        },
-        confirmButton = {
-            val newTotal = importoStr.replace(",", ".").toDoubleOrNull() ?: cedolino.total
-            Button(
-                onClick = {
-                    val newDay = dueDayStr.toIntOrNull()?.coerceIn(1, 28) ?: cal.get(Calendar.DAY_OF_MONTH)
-                    val newDueCal = Calendar.getInstance().apply {
-                        timeInMillis = cedolino.dueDate
-                        set(Calendar.DAY_OF_MONTH, newDay)
-                    }
-                    onSave(
-                        cedolino.copy(
+                }
+            },
+            confirmButton = {
+                val newTotal = importoStr.replace(",", ".").toDoubleOrNull() ?: cedolino.total
+                Button(
+                    onClick = {
+                        val originalDay = cal.get(Calendar.DAY_OF_MONTH)
+                        val newDay      = dueDayStr.toIntOrNull()?.coerceIn(1, 28) ?: originalDay
+                        val newDueCal   = Calendar.getInstance().apply {
+                            timeInMillis = cedolino.dueDate
+                            set(Calendar.DAY_OF_MONTH, newDay)
+                        }
+                        val updated = cedolino.copy(
                             period  = period.trim(),
                             dueDate = newDueCal.timeInMillis,
                             total   = newTotal
                         )
-                    )
-                },
-                enabled = period.isNotBlank() && newTotal > 0,
-                colors = ButtonDefaults.buttonColors(containerColor = Cyan400, contentColor = DarkBg)
-            ) {
-                Icon(Icons.Filled.Save, null, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(6.dp))
-                Text("Salva", fontWeight = FontWeight.Bold)
+                        if (newDay != originalDay && sameUnitOthers.isNotEmpty()) {
+                            // Passa allo step 2 per scegliere a chi propagare
+                            pendingUpdated = updated
+                            step = 2
+                        } else {
+                            onSave(updated, emptySet())
+                        }
+                    },
+                    enabled = period.isNotBlank() && (importoStr.replace(",", ".").toDoubleOrNull() ?: 0.0) > 0,
+                    colors  = ButtonDefaults.buttonColors(containerColor = Cyan400, contentColor = DarkBg)
+                ) {
+                    Icon(Icons.Filled.Save, null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Salva", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismiss) { Text("Annulla", color = TextSecondary) }
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Annulla", color = TextSecondary) }
-        }
-    )
+        )
+    } else {
+        // ── Step 2: Propaga il nuovo giorno agli altri avvisi ──────────────────
+        val newDay    = dueDayStr.toIntOrNull()?.coerceIn(1, 28) ?: cal.get(Calendar.DAY_OF_MONTH)
+        val allSel    = propagateIds.size == sameUnitOthers.size
+        AlertDialog(
+            onDismissRequest = { /* usa i pulsanti */ },
+            containerColor   = DarkSurface,
+            icon  = { Icon(Icons.Filled.CalendarToday, null, tint = Cyan400) },
+            title = {
+                Text("Applica giorno $newDay agli altri avvisi?",
+                    color = TextPrimary, fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleSmall)
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Vuoi applicare il giorno $newDay anche agli altri avvisi aperti di questo inquilino?",
+                        style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                    // Toggle tutti
+                    Row(
+                        modifier = Modifier.fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Cyan400.copy(alpha = 0.06f))
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = allSel,
+                            onCheckedChange = {
+                                propagateIds = if (allSel) emptySet()
+                                              else sameUnitOthers.map { it.id }.toSet()
+                            },
+                            colors = CheckboxDefaults.colors(checkedColor = Cyan400)
+                        )
+                        Text(
+                            if (allSel) "Deseleziona tutti" else "Seleziona tutti (${sameUnitOthers.size})",
+                            style = MaterialTheme.typography.labelMedium, color = Cyan400,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    HorizontalDivider(color = TextMuted.copy(alpha = 0.12f))
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        sameUnitOthers.forEach { ced ->
+                            val checked = ced.id in propagateIds
+                            Row(
+                                modifier = Modifier.fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(if (checked) Cyan400.copy(alpha = 0.05f) else Color.Transparent)
+                                    .clickable {
+                                        propagateIds = if (checked) propagateIds - ced.id
+                                                      else propagateIds + ced.id
+                                    }
+                                    .padding(horizontal = 4.dp, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Checkbox(
+                                    checked = checked,
+                                    onCheckedChange = {
+                                        propagateIds = if (checked) propagateIds - ced.id
+                                                       else propagateIds + ced.id
+                                    },
+                                    colors = CheckboxDefaults.colors(checkedColor = Cyan400)
+                                )
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(ced.period,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = if (checked) TextPrimary else TextSecondary,
+                                        fontWeight = if (checked) FontWeight.SemiBold else FontWeight.Normal)
+                                    Text("Scad. ${Formatters.date(ced.dueDate)} · €%.2f".format(ced.total),
+                                        style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick  = { onSave(pendingUpdated!!, propagateIds) },
+                    enabled  = propagateIds.isNotEmpty(),
+                    colors   = ButtonDefaults.buttonColors(containerColor = Cyan400, contentColor = DarkBg)
+                ) {
+                    Icon(Icons.Filled.CalendarToday, null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Applica a ${propagateIds.size} avvis${if (propagateIds.size == 1) "o" else "i"}",
+                        fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { onSave(pendingUpdated!!, emptySet()) }) {
+                    Text("Solo questo avviso", color = TextSecondary)
+                }
+            }
+        )
+    }
 }
+
 
 // ─── Dialog: Registra Pagamento con Metodo ───────────────────────────────────
 @OptIn(ExperimentalMaterial3Api::class)
