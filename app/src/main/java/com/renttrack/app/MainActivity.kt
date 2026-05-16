@@ -450,27 +450,22 @@ fun MainApp(
             exitTransition   = { fadeOut() }
         ) {
             composable(Screen.Annunci.route) {
-                SubscriptionGate(
-                    subscriptionViewModel = subscriptionViewModel,
-                    onDismiss = { navController.popBackStack() }
-                ) {
-                    AnnunciScreen(
-                        viewModel = listingsViewModel,
-                        isLoggedIn = isLoggedIn,
-                        onListingClick = { listing ->
-                            listingsViewModel.loadPublicListings()
-                            navController.currentBackStackEntry
-                                ?.savedStateHandle?.set("listing", listing)
-                            navController.navigate(Screen.DettaglioAnnuncio.route)
-                        },
-                        onLoginClick = {
-                            navController.navigate(Screen.Login.route)
-                        },
-                        onCreaAnnuncio = {
-                            navController.navigate(Screen.CreaAnnuncio.route)
-                        }
-                    )
-                }
+                AnnunciScreen(
+                    viewModel = listingsViewModel,
+                    isLoggedIn = isLoggedIn,
+                    onListingClick = { listing ->
+                        listingsViewModel.loadPublicListings()
+                        navController.currentBackStackEntry
+                            ?.savedStateHandle?.set("listing", listing)
+                        navController.navigate(Screen.DettaglioAnnuncio.route)
+                    },
+                    onLoginClick = {
+                        navController.navigate(Screen.Login.route)
+                    },
+                    onCreaAnnuncio = {
+                        navController.navigate(Screen.CreaAnnuncio.route)
+                    }
+                )
             }
             composable(Screen.DettaglioAnnuncio.route) { backStack ->
                 val listing = navController.previousBackStackEntry
@@ -492,6 +487,7 @@ fun MainApp(
             composable(Screen.MieiAnnunci.route) {
                 MieiAnnunciScreen(
                     viewModel = listingsViewModel,
+                    subscriptionViewModel = subscriptionViewModel,
                     onCreaAnnuncio = { navController.navigate(Screen.CreaAnnuncio.route) },
                     onRichieste = { navController.navigate(Screen.Richieste.route) { launchSingleTop = true } },
                     onBack = { navController.popBackStack() }

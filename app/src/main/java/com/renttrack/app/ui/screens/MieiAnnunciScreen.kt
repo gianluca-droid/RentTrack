@@ -27,9 +27,13 @@ import com.renttrack.app.ui.theme.*
 import com.renttrack.app.viewmodel.ListingsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
+import com.renttrack.app.ui.screens.PaywallScreen
+import com.renttrack.app.viewmodel.SubscriptionViewModel
+
 @Composable
 fun MieiAnnunciScreen(
     viewModel: ListingsViewModel,
+    subscriptionViewModel: SubscriptionViewModel,
     onCreaAnnuncio: () -> Unit,
     onRichieste: () -> Unit,
     onBack: () -> Unit
@@ -39,6 +43,8 @@ fun MieiAnnunciScreen(
     val toast       by viewModel.toast.collectAsState()
     val myInquiries by viewModel.myInquiries.collectAsState()
     val unreadCount by viewModel.unreadInquiriesCount.collectAsState()
+    val isPremium   by subscriptionViewModel.isPremium.collectAsState()
+    var showPaywall by remember { mutableStateOf(false) }
     var toDelete by remember { mutableStateOf<Listing?>(null) }
     var toEdit   by remember { mutableStateOf<Listing?>(null) }
 
@@ -221,7 +227,11 @@ fun MieiAnnunciScreen(
                                         viewModel.toggleAvailable(listing.id, listing.isAvailable)
                                     },
                                     onToggleFeatured = {
-                                        viewModel.toggleFeatured(listing.id, listing.isFeatured)
+                                        if (isPremium) {
+                                            viewModel.toggleFeatured(listing.id, listing.isFeatured)
+                                        } else {
+                                            showPaywall = true
+                                        }
                                     },
                                     onDelete = { toDelete = listing },
                                     onEdit   = { toEdit = listing }
@@ -270,6 +280,14 @@ fun MieiAnnunciScreen(
                 }
             }
         }
+    }
+
+    // Paywall overlay per "Metti in evidenza"
+    if (showPaywall) {
+        PaywallScreen(
+            subscriptionViewModel = subscriptionViewModel,
+            onDismiss = { showPaywall = false }
+        )
     }
 
     // Dialog conferma elimina

@@ -242,15 +242,15 @@ fun PaywallScreen(
 @Composable
 private fun PaywallFeatureList() {
     val features = listOf(
-        Triple(Icons.Filled.Business,        "Immobili illimitati",          true),
-        Triple(Icons.Filled.People,          "Inquilini illimitati",         true),
-        Triple(Icons.Filled.Description,     "Avvisi affitto illimitati",    true),
-        Triple(Icons.Filled.BarChart,        "Reports finanziari completi",  true),
-        Triple(Icons.Filled.FolderOpen,      "Archivio documenti",           true),
-        Triple(Icons.Filled.PictureAsPdf,    "Generazione PDF cedolini",     true),
-        Triple(Icons.Filled.FileDownload,    "Export CSV",                   true),
-        Triple(Icons.Filled.Storefront,      "Vetrina pubblica annunci",     true),
-        Triple(Icons.Filled.Widgets,         "Widget schermata home",        true),
+        Triple(Icons.Filled.Business,        "Immobili illimitati",                   true),
+        Triple(Icons.Filled.People,          "Inquilini illimitati",                  true),
+        Triple(Icons.Filled.Description,     "Avvisi affitto illimitati",             true),
+        Triple(Icons.Filled.BarChart,        "Reports finanziari completi",           true),
+        Triple(Icons.Filled.FolderOpen,      "Archivio documenti",                    true),
+        Triple(Icons.Filled.PictureAsPdf,    "Generazione PDF cedolini",              true),
+        Triple(Icons.Filled.FileDownload,    "Export CSV",                            true),
+        Triple(Icons.Filled.TrendingUp,      "⭐ Annunci in cima alla vetrina",       true),
+        Triple(Icons.Filled.Widgets,         "Widget schermata home",                 true),
     )
 
     Surface(
