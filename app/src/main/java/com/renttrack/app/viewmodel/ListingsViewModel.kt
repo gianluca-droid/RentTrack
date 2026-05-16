@@ -645,6 +645,44 @@ class ListingsViewModel(
         )
     }
 
+    /** Elimina una foto dal DB e dallo Storage, poi aggiorna i feed. */
+    fun deletePhoto(photoId: String, photoUrl: String, onDone: () -> Unit = {}) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val token = authToken ?: return@launch
+                // 1. Elimina dal DB
+                val dbConn = URL("$baseUrl/rest/v1/listing_photos?id=eq.$photoId")
+                    .openConnection() as HttpURLConnection
+                dbConn.requestMethod = "DELETE"
+                dbConn.setRequestProperty("apikey", anonKey)
+                dbConn.setRequestProperty("Authorization", "Bearer $token")
+                dbConn.setRequestProperty("Prefer", "return=minimal")
+                val dbCode = dbConn.responseCode
+                if (dbCode !in 200..299) {
+                    val err = dbConn.errorStream?.bufferedReader()?.readText() ?: "HTTP $dbCode"
+                    android.util.Log.e("ListingsVM", "deletePhoto DB: $err")
+                }
+                // 2. Elimina dallo Storage (cleanup)
+                val storagePrefix = "$baseUrl/storage/v1/object/public/listing-photos/"
+                if (photoUrl.contains(storagePrefix)) {
+                    val objectPath = photoUrl.removePrefix(storagePrefix)
+                    val storConn = URL("$baseUrl/storage/v1/object/listing-photos/$objectPath")
+                        .openConnection() as HttpURLConnection
+                    storConn.requestMethod = "DELETE"
+                    storConn.setRequestProperty("apikey", anonKey)
+                    storConn.setRequestProperty("Authorization", "Bearer $token")
+                    storConn.responseCode // esegui la richiesta
+                }
+                // 3. Aggiorna i feed
+                loadMyListings()
+                loadPublicListings()
+                withContext(Dispatchers.Main) { onDone() }
+            } catch (e: Exception) {
+                android.util.Log.e("ListingsVM", "deletePhoto: ${e.message}")
+            }
+        }
+    }
+
     // ── Parser JSON → photos ──────────────────────────────────────────────────
     private fun parsePhotos(arr: JSONArray, listingId: String): List<ListingPhoto> =
         (0 until arr.length()).map { j ->

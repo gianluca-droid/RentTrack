@@ -619,6 +619,9 @@ private fun EditListingSheet(
     var description   by remember { mutableStateOf(listing.description) }
     var availableFrom by remember { mutableStateOf(listing.availableFrom) }
     var newPhotoUris  by remember { mutableStateOf<List<android.net.Uri>>(emptyList()) }
+    var existingPhotos by remember { mutableStateOf(listing.photos) }
+    val MAX_PHOTOS = 10
+    val totalPhotos get() = existingPhotos.size + newPhotoUris.size
 
     val photoPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.GetMultipleContents()
@@ -705,34 +708,43 @@ private fun EditListingSheet(
                 modifier = Modifier.fillMaxWidth().heightIn(min = 100.dp),
                 shape = RoundedCornerShape(12.dp), colors = fieldColors, maxLines = 6
             )
+
             // ── Sezione foto ───────────────────────────────────────────────
-            Text(
-                "📷 Foto annuncio",
-                color = TextPrimary,
-                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold)
-            )
-            // Foto esistenti
-            if (listing.photos.isNotEmpty()) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "📷 Foto annuncio",
+                    color = TextPrimary,
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold)
+                )
+                Text(
+                    "$totalPhotos / $MAX_PHOTOS",
+                    color = if (totalPhotos >= MAX_PHOTOS) Amber400 else TextMuted,
+                    style = MaterialTheme.typography.labelSmall
+                )
+            }
+            // Foto esistenti con pulsante ❌
+            if (existingPhotos.isNotEmpty()) {
                 androidx.compose.foundation.lazy.LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(listing.photos) { photo ->
-                        Box(
-                            modifier = Modifier
-                                .size(72.dp)
-                                .clip(RoundedCornerShape(10.dp))
-                        ) {
+                    items(existingPhotos) { photo ->
+                        Box(modifier = Modifier.size(72.dp)) {
                             AsyncImage(
                                 model = photo.url,
                                 contentDescription = null,
                                 contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize()
+                                modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(10.dp))
                             )
                             if (photo.isCover) {
                                 Box(
                                     modifier = Modifier
                                         .align(Alignment.BottomCenter)
                                         .fillMaxWidth()
+                                        .clip(RoundedCornerShape(bottomStart = 10.dp, bottomEnd = 10.dp))
                                         .background(DarkBg.copy(alpha = 0.6f))
                                         .padding(2.dp),
                                     contentAlignment = Alignment.Center
@@ -740,28 +752,58 @@ private fun EditListingSheet(
                                     Text("Cover", style = MaterialTheme.typography.labelSmall, color = Cyan400)
                                 }
                             }
+                            // Pulsante ❌ elimina foto
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(3.dp)
+                                    .size(20.dp)
+                                    .background(Color(0xCC000000), RoundedCornerShape(50))
+                                    .clickable {
+                                        // Rimozione ottimistica: aggiorna UI immediatamente
+                                        existingPhotos = existingPhotos.filter { it.id != photo.id }
+                                        viewModel.deletePhoto(photo.id, photo.url)
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Filled.Close, null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(12.dp)
+                                )
+                            }
                         }
                     }
                 }
             }
-            // Nuove foto selezionate
+            // Nuove foto selezionate con pulsante ❌
             if (newPhotoUris.isNotEmpty()) {
                 androidx.compose.foundation.lazy.LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(newPhotoUris) { uri ->
-                        Box(
-                            modifier = Modifier
-                                .size(72.dp)
-                                .clip(RoundedCornerShape(10.dp))
-                                .border(1.5.dp, Cyan400, RoundedCornerShape(10.dp))
-                        ) {
+                        Box(modifier = Modifier.size(72.dp)) {
                             AsyncImage(
                                 model = uri,
                                 contentDescription = null,
                                 contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize()
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .border(1.5.dp, Cyan400, RoundedCornerShape(10.dp))
                             )
+                            // Pulsante ❌ rimuove dalla selezione (non ancora caricata)
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(3.dp)
+                                    .size(20.dp)
+                                    .background(Color(0xCC000000), RoundedCornerShape(50))
+                                    .clickable { newPhotoUris = newPhotoUris.filter { it != uri } },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Filled.Close, null, tint = Color.White, modifier = Modifier.size(12.dp))
+                            }
                         }
                     }
                 }
@@ -774,13 +816,17 @@ private fun EditListingSheet(
             OutlinedButton(
                 onClick = { photoPicker.launch("image/*") },
                 modifier = Modifier.fillMaxWidth(),
+                enabled = totalPhotos < MAX_PHOTOS,
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = Cyan400),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Cyan400.copy(alpha = 0.4f)),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Cyan400.copy(alpha = if (totalPhotos < MAX_PHOTOS) 0.4f else 0.15f)),
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Icon(Icons.Filled.AddPhotoAlternate, null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("Aggiungi foto", style = MaterialTheme.typography.labelMedium)
+                Text(
+                    if (totalPhotos >= MAX_PHOTOS) "Limite $MAX_PHOTOS foto raggiunto" else "Aggiungi foto",
+                    style = MaterialTheme.typography.labelMedium
+                )
             }
 
 
