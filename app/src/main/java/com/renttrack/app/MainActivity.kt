@@ -546,7 +546,8 @@ fun MainApp(
                         navController.navigate(Screen.MieiAnnunci.route) { launchSingleTop = true }
                     },
                     onVediVetrina = {
-                        // Pulsante "Vedi vetrina" → vetrina pubblica
+                        // Refresh feed prima di navigare → dati sempre aggiornati
+                        listingsViewModel.loadPublicListings()
                         navController.navigate(Screen.Annunci.route) { launchSingleTop = true }
                     },
                     onCreaAnnuncio = {
