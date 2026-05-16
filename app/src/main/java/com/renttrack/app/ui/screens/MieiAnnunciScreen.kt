@@ -791,9 +791,12 @@ private fun EditListingSheet(
                         priceMonthly = priceVal, description = description,
                         availableFrom = availableFrom,
                         onSuccess = {
-                            // Carica le nuove foto selezionate, poi chiude il sheet
-                            viewModel.addPhotosToListing(listing.id, newPhotoUris) { onDismiss() }
-                            if (newPhotoUris.isEmpty()) onDismiss()
+                            if (newPhotoUris.isNotEmpty()) {
+                                // Carica le foto: onDismiss è chiamato nel finally di addPhotosToListing
+                                viewModel.addPhotosToListing(listing.id, newPhotoUris) { onDismiss() }
+                            } else {
+                                onDismiss()
+                            }
                         }
                     )
                 },

@@ -399,11 +399,11 @@ class ListingsViewModel(
                 loadMyListings()
                 loadPublicListings()
                 _toast.value = "📸 ${photoUris.size} foto aggiunt${if (photoUris.size == 1) "a" else "e"}!"
-                onDone()
             } catch (e: Exception) {
                 _toast.value = "Errore upload foto: ${e.message}"
             } finally {
                 _isSubmitting.value = false
+                onDone()   // chiude sempre il sheet, anche in caso di errore
             }
         }
     }
