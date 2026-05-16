@@ -687,6 +687,34 @@ class SupabaseRentViewModel(application: Application) : AndroidViewModel(applica
         try { repo.deleteUnit(u.id); refresh() } catch (e: Exception) { _error.value = e.message }
     }
 
+    // ── Operazioni bulk su cedolini (multi-select) ─────────────────────
+    fun bulkUpdateDueDayForCedolini(ids: Set<String>, newDay: Int) = viewModelScope.launch {
+        try {
+            val snapshot = _cedolini.value
+            val cal = java.util.Calendar.getInstance()
+            ids.forEach { id ->
+                val c = snapshot.find { it.id == id } ?: return@forEach
+                cal.timeInMillis = c.dueDate
+                val maxDay = cal.getActualMaximum(java.util.Calendar.DAY_OF_MONTH)
+                cal.set(java.util.Calendar.DAY_OF_MONTH, newDay.coerceIn(1, maxDay))
+                repo.updateCedolino(c.copy(dueDate = cal.timeInMillis))
+            }
+            refresh()
+        } catch (e: Exception) { _error.value = e.message }
+    }
+
+    fun bulkMarkSent(ids: Set<String>) = viewModelScope.launch {
+        try {
+            val snapshot = _cedolini.value
+            val now = System.currentTimeMillis()
+            ids.forEach { id ->
+                val c = snapshot.find { it.id == id } ?: return@forEach
+                repo.updateCedolino(c.copy(sentToResident = true, sentAt = now))
+            }
+            refresh()
+        } catch (e: Exception) { _error.value = e.message }
+    }
+
     // ── Expense CRUD ──────────────────────────────────────────────────
     fun addExpense(e: SExpense) = viewModelScope.launch {
         try { repo.insertExpense(e); refresh() } catch (e2: Exception) { _error.value = e2.message }

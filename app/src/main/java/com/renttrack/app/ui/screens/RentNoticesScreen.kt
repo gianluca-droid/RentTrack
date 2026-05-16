@@ -44,6 +44,10 @@ fun RentNoticesScreen(viewModel: SupabaseRentViewModel) {
     var editTarget   by remember { mutableStateOf<SCedolino?>(null) }
     var filterStatus by remember { mutableStateOf<String?>(null) }
     var showArchive by remember { mutableStateOf(false) }
+    // ── Selezione multipla ────────────────────────────────────────────
+    var selectionMode     by remember { mutableStateOf(false) }
+    var selectedIds       by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var showBulkDueDateDialog by remember { mutableStateOf(false) }
 
     val openCedolini = remember(cedolini) { cedolini.filter { it.status != "Pagato" }.sortedBy { it.dueDate } }
     val paidCedolini = remember(cedolini) { cedolini.filter { it.status == "Pagato" }.sortedByDescending { it.paidDate } }
@@ -111,6 +115,37 @@ fun RentNoticesScreen(viewModel: SupabaseRentViewModel) {
                             }
                         }
                     }
+                    // Bottone Seleziona
+                    Spacer(Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (selectionMode) {
+                            TextButton(onClick = {
+                                selectedIds = if (selectedIds.size == openCedolini.size)
+                                    emptySet() else openCedolini.map { it.id }.toSet()
+                            }) {
+                                Text(
+                                    if (selectedIds.size == openCedolini.size) "Deseleziona tutti" else "Seleziona tutti",
+                                    color = Cyan400, style = MaterialTheme.typography.labelMedium
+                                )
+                            }
+                            TextButton(onClick = { selectionMode = false; selectedIds = emptySet() }) {
+                                Text("Annulla", color = TextMuted, style = MaterialTheme.typography.labelMedium)
+                            }
+                        } else if (openCedolini.isNotEmpty()) {
+                            TextButton(onClick = { selectionMode = true }) {
+                                Icon(Icons.Filled.CheckBox, null, tint = Cyan400, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Seleziona", color = Cyan400, style = MaterialTheme.typography.labelMedium)
+                            }
+                            if (selectedIds.isNotEmpty()) {
+                                Text("${selectedIds.size} selezionati", color = TextMuted, style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                    }
                 }
 
                 // ─── Cedolini aperti ────────────────────────────────────
@@ -137,8 +172,29 @@ fun RentNoticesScreen(viewModel: SupabaseRentViewModel) {
                     var showMenu by remember { mutableStateOf(false) }
                     val cwi = cedoliniWithItems.find { it.cedolino.id == cedolino.id }
 
-                    ItemCard(onDelete = { deleteTarget = cedolino }) {
+                    val isSelected = cedolino.id in selectedIds
+                    ItemCard(
+                        modifier = if (selectionMode) Modifier
+                            .clickable {
+                                selectedIds = if (isSelected) selectedIds - cedolino.id
+                                             else selectedIds + cedolino.id
+                            }
+                            .then(if (isSelected) Modifier.border(1.5.dp, Cyan400, RoundedCornerShape(14.dp)) else Modifier)
+                        else Modifier,
+                        onDelete = if (!selectionMode) { { deleteTarget = cedolino } } else null
+                    ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (selectionMode) {
+                                Checkbox(
+                                    checked = isSelected,
+                                    onCheckedChange = { checked ->
+                                        selectedIds = if (checked) selectedIds + cedolino.id
+                                                      else selectedIds - cedolino.id
+                                    },
+                                    colors = CheckboxDefaults.colors(checkedColor = Cyan400)
+                                )
+                                Spacer(Modifier.width(4.dp))
+                            }
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(viewModel.getUnitName(cedolino.unitId), style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = TextPrimary)
                                 Text(cedolino.period, style = MaterialTheme.typography.bodySmall, color = Cyan400)
@@ -437,12 +493,65 @@ fun RentNoticesScreen(viewModel: SupabaseRentViewModel) {
                     }
                 }
 
-                item { Spacer(Modifier.height(100.dp)) }
+            item { Spacer(Modifier.height(if (selectionMode) 140.dp else 100.dp)) }
             }
         }
 
-        // FAB menu con tre opzioni
-        Column(
+        // ── Barra azioni bulk (visibile in modalità selezione) ────────────
+        androidx.compose.animation.AnimatedVisibility(
+            visible = selectionMode,
+            enter = androidx.compose.animation.slideInVertically { it },
+            exit = androidx.compose.animation.slideOutVertically { it },
+            modifier = Modifier.align(Alignment.BottomCenter)
+        ) {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = DarkSurface,
+                shadowElevation = 12.dp,
+                shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+            ) {
+                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                    Text(
+                        if (selectedIds.isEmpty()) "Seleziona gli avvisi" else "${selectedIds.size} avvisi selezionati",
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                        color = if (selectedIds.isEmpty()) TextMuted else Cyan400
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick = { if (selectedIds.isNotEmpty()) showBulkDueDateDialog = true },
+                            enabled = selectedIds.isNotEmpty(),
+                            colors = ButtonDefaults.buttonColors(containerColor = Cyan400, contentColor = DarkBg),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Filled.CalendarMonth, null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Cambia scadenza", style = MaterialTheme.typography.labelMedium)
+                        }
+                        Button(
+                            onClick = {
+                                if (selectedIds.isNotEmpty()) {
+                                    viewModel.bulkMarkSent(selectedIds)
+                                    selectionMode = false; selectedIds = emptySet()
+                                }
+                            },
+                            enabled = selectedIds.isNotEmpty(),
+                            colors = ButtonDefaults.buttonColors(containerColor = Green500, contentColor = Color.White),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Filled.Send, null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Segna inviati", style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
+                }
+            }
+        }
+
+        // FAB menu — nascosto in modalità selezione
+        if (!selectionMode) Column(
             modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
             horizontalAlignment = Alignment.End,
             verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -529,6 +638,69 @@ fun RentNoticesScreen(viewModel: SupabaseRentViewModel) {
             onCreate = { cedolino, items ->
                 viewModel.addCedolinoWithItems(cedolino, items)
                 showSingleDialog = false
+            }
+        )
+    }
+
+    // Dialog: modifica data scadenza su avvisi selezionati
+    if (showBulkDueDateDialog) {
+        var dayInput by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { showBulkDueDateDialog = false },
+            containerColor = DarkSurface,
+            icon = { Icon(Icons.Filled.CalendarMonth, null, tint = Cyan400) },
+            title = {
+                Text(
+                    "Cambia giorno di scadenza",
+                    color = TextPrimary,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "Applica a ${selectedIds.size} avvisi selezionati.\nInserisci il nuovo giorno del mese (1–31):",
+                        color = TextSecondary,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    OutlinedTextField(
+                        value = dayInput,
+                        onValueChange = { dayInput = it.filter { c -> c.isDigit() }.take(2) },
+                        label = { Text("Giorno (es. 15)") },
+                        singleLine = true,
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                            keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+                        ),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Cyan400,
+                            unfocusedBorderColor = TextMuted.copy(alpha = 0.4f),
+                            focusedLabelColor = Cyan400,
+                            focusedTextColor = TextPrimary,
+                            unfocusedTextColor = TextPrimary
+                        )
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val newDay = dayInput.toIntOrNull()?.coerceIn(1, 31)
+                        if (newDay != null) {
+                            viewModel.bulkUpdateDueDayForCedolini(selectedIds, newDay)
+                            showBulkDueDateDialog = false
+                            selectionMode = false
+                            selectedIds = emptySet()
+                        }
+                    },
+                    enabled = dayInput.toIntOrNull()?.let { it in 1..31 } == true
+                ) {
+                    Text("Applica", color = Cyan400, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showBulkDueDateDialog = false }) {
+                    Text("Annulla", color = TextSecondary)
+                }
             }
         )
     }
