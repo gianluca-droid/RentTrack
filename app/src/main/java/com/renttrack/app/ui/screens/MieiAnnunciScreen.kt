@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+
 package com.renttrack.app.ui.screens
 
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -28,7 +30,6 @@ import com.renttrack.app.viewmodel.ListingsViewModel
 import com.renttrack.app.viewmodel.SubscriptionViewModel
 
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MieiAnnunciScreen(
     viewModel: ListingsViewModel,

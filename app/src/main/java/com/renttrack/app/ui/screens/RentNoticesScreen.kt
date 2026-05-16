@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+
 package com.renttrack.app.ui.screens
 
 import androidx.compose.foundation.background
