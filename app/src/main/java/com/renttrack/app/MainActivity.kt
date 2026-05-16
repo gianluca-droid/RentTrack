@@ -272,6 +272,16 @@ fun MainApp(
                                 expanded = showOverflowMenu,
                                 onDismissRequest = { showOverflowMenu = false }
                             ) {
+                            // Vedi vetrina pubblica
+                                DropdownMenuItem(
+                                    text = { Text("Vedi vetrina pubblica", color = TextPrimary) },
+                                    leadingIcon = { Icon(Icons.Filled.Visibility, null, tint = Cyan400) },
+                                    onClick = {
+                                        showOverflowMenu = false
+                                        listingsViewModel.loadPublicListings()
+                                        navController.navigate(Screen.Annunci.route) { launchSingleTop = true }
+                                    }
+                                )
                             // Cambia proprietà
                                 DropdownMenuItem(
                                     text = { Text("Cambia proprietà", color = TextPrimary) },
