@@ -45,6 +45,9 @@ fun RentNoticesScreen(viewModel: SupabaseRentViewModel) {
     var showDetailDialog by remember { mutableStateOf<SCedolinoWithItems?>(null) }
     var showConfirmSendDialog by remember { mutableStateOf<SCedolino?>(null) }
     var showPagamentoDialog by remember { mutableStateOf<SCedolino?>(null) }
+    // Ricevuta: (cedolino, metodo, riferimento, importoPagato)
+    data class ReceiptData(val cedolino: SCedolino, val method: String, val reference: String, val paid: Double)
+    var pendingReceipt by remember { mutableStateOf<ReceiptData?>(null) }
     var deleteTarget by remember { mutableStateOf<SCedolino?>(null) }
     var editTarget   by remember { mutableStateOf<SCedolino?>(null) }
     var filterStatus by remember { mutableStateOf<String?>(null) }
@@ -412,7 +415,13 @@ fun RentNoticesScreen(viewModel: SupabaseRentViewModel) {
                             Text(Formatters.currency(cedolino.total), style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold), color = TextPrimary, modifier = Modifier.weight(1f), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                             Column(horizontalAlignment = Alignment.End) {
                                 Text("Scad. ${Formatters.date(cedolino.dueDate)}", style = MaterialTheme.typography.bodySmall, color = if (isOverdue) Color(0xFFFF6B6B) else TextMuted)
-                                if (isOverdue) Text("⚠ SCADUTO", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = Color(0xFFFF6B6B))
+                                if (isOverdue) {
+                                    val giorni = ((System.currentTimeMillis() - cedolino.dueDate) / (24L * 60 * 60 * 1000)).toInt().coerceAtLeast(1)
+                                    val residuo = (cedolino.total - cedolino.paidAmount).coerceAtLeast(0.0)
+                                    val mora = residuo * 0.05 * giorni / 365.0
+                                    Text("⚠ SCADUTO · $giorni gg", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = Color(0xFFFF6B6B))
+                                    if (mora > 0.01) Text("Mora stimata: ${Formatters.currency(mora)}", style = MaterialTheme.typography.labelSmall, color = Color(0xFFFF6B6B).copy(alpha = 0.75f))
+                                }
                             }
                         }
                         if (cedolino.paidAmount > 0) {
@@ -818,6 +827,54 @@ fun RentNoticesScreen(viewModel: SupabaseRentViewModel) {
             onConfirm = { method, reference ->
                 viewModel.markCedolinoPaidWithPayment(cedolino, method, reference)
                 showPagamentoDialog = null
+                // Proponi ricevuta PDF
+                pendingReceipt = ReceiptData(cedolino, method, reference, cedolino.total - cedolino.paidAmount)
+            }
+        )
+    }
+
+    // Dialog: genera ricevuta post-pagamento
+    pendingReceipt?.let { rd ->
+        val ctx = androidx.compose.ui.platform.LocalContext.current
+        AlertDialog(
+            onDismissRequest = { pendingReceipt = null },
+            containerColor = com.renttrack.app.ui.theme.DarkSurface,
+            icon = { androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Filled.PictureAsPdf, null, tint = com.renttrack.app.ui.theme.Green400) },
+            title = { androidx.compose.material3.Text("Pagamento registrato! ✅", color = com.renttrack.app.ui.theme.TextPrimary, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) },
+            text  = { androidx.compose.material3.Text("Vuoi generare e condividere la ricevuta PDF per ${viewModel.getUnitName(rd.cedolino.unitId)}?", color = com.renttrack.app.ui.theme.TextSecondary) },
+            confirmButton = {
+                androidx.compose.material3.Button(
+                    onClick = {
+                        pendingReceipt = null
+                        try {
+                            val cwi = openCedolini.find { it.cedolino.id == rd.cedolino.id }
+                            val uri = com.renttrack.app.util.CedolinoPdfGenerator.generateReceiptAndShare(
+                                context      = ctx,
+                                cedolino     = rd.cedolino,
+                                items        = cwi?.items ?: emptyList(),
+                                tenantName   = viewModel.getUnitName(rd.cedolino.unitId),
+                                propertyName = viewModel.getCondoName(),
+                                paymentMethod = rd.method,
+                                reference    = rd.reference,
+                                paidAmount   = rd.paid
+                            )
+                            val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                type = "application/pdf"
+                                putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            }
+                            ctx.startActivity(android.content.Intent.createChooser(intent, "Condividi ricevuta").addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+                        } catch (e: Exception) { android.util.Log.e("Receipt", "Errore ricevuta: ${e.message}") }
+                    },
+                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = com.renttrack.app.ui.theme.Green400, contentColor = com.renttrack.app.ui.theme.DarkBg)
+                ) {
+                    androidx.compose.material3.Text("Genera PDF", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { pendingReceipt = null }) {
+                    androidx.compose.material3.Text("No grazie", color = com.renttrack.app.ui.theme.TextSecondary)
+                }
             }
         )
     }

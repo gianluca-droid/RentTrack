@@ -74,12 +74,15 @@ class RentTrackWidget : AppWidgetProvider() {
                     val repo      = SupabaseRentRepository(prefs)
                     val condomini = repo.getCondomini()
 
-                    var totalPay      = 0.0
-                    var totalExp      = 0.0
-                    var openCedolini  = 0
-                    var nextDueDate   = Long.MAX_VALUE
-                    var nextDueName   = ""
-                    val now           = System.currentTimeMillis()
+                    var totalPay        = 0.0
+                    var totalExp        = 0.0
+                    var openCedolini    = 0
+                    var overdueCount    = 0
+                    var dueSoon7        = 0        // scadono entro 7 giorni
+                    var nextDueDate     = Long.MAX_VALUE
+                    var nextDueName     = ""
+                    val now             = System.currentTimeMillis()
+                    val in7Days         = now + 7L * 24 * 60 * 60 * 1000
 
                     for (condo in condomini) {
                         val units    = repo.getUnitsByCondominio(condo.id)
@@ -93,7 +96,9 @@ class RentTrackWidget : AppWidgetProvider() {
 
                         cedolini.filter { it.status != "Pagato" }.forEach { ced ->
                             openCedolini++
-                            if (ced.dueDate in (now + 1)..nextDueDate) {
+                            if (ced.dueDate < now) overdueCount++
+                            if (ced.dueDate in now..in7Days) dueSoon7++
+                            if (ced.dueDate > now && ced.dueDate < nextDueDate) {
                                 nextDueDate = ced.dueDate
                                 nextDueName = unitMap[ced.unitId]?.ownerName ?: ""
                             }
@@ -107,13 +112,26 @@ class RentTrackWidget : AppWidgetProvider() {
                                   else "${String.format("%.0f", saldo)} €"
                     val saldoColor = if (saldo >= 0) 0xFF00C896.toInt() else 0xFFFF6B6B.toInt()
 
-                    val nextDueStr = if (nextDueDate == Long.MAX_VALUE) "Nessuna"
-                                    else "${dateFmt.format(Date(nextDueDate))} — $nextDueName"
+                    // Widget open count: evidenzia se ci sono scaduti
+                    val openStr = when {
+                        overdueCount > 0 -> "⚠ $overdueCount scad."
+                        else             -> "$openCedolini av."
+                    }
+                    val openColor = if (overdueCount > 0) 0xFFFF6B6B.toInt() else 0xFFFFCC44.toInt()
 
-                    // Aggiorna widget sul main thread (RemoteViews è thread-safe)
+                    // Next due: mostra "X in 7 gg · " + prima scadenza
+                    val nextDueStr = when {
+                        dueSoon7 > 0 && nextDueDate != Long.MAX_VALUE ->
+                            "$dueSoon7 in 7 gg · ${dateFmt.format(Date(nextDueDate))} $nextDueName"
+                        nextDueDate != Long.MAX_VALUE ->
+                            "${dateFmt.format(Date(nextDueDate))} — $nextDueName"
+                        else -> "Nessuna scadenza"
+                    }
+
                     views.setTextViewText(R.id.widget_saldo, saldoStr)
                     views.setTextColor(R.id.widget_saldo, saldoColor)
-                    views.setTextViewText(R.id.widget_open_count, "$openCedolini")
+                    views.setTextViewText(R.id.widget_open_count, openStr)
+                    views.setTextColor(R.id.widget_open_count, openColor)
                     views.setTextViewText(R.id.widget_next_due, nextDueStr)
 
                 } catch (e: Exception) {

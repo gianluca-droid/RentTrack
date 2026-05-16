@@ -135,7 +135,42 @@ fun DashboardScreen(
             }
         }
 
-        // ─── Card Annunci ─────────────────────────────────────────
+        // ─── KPI: Occupazione + Scadenze prossimi 7 giorni ──────────────
+        item {
+            val in7Days = now + 7L * 24 * 60 * 60 * 1000
+            val scadenzeSettimana = remember(cedoliniWithItems) {
+                cedoliniWithItems.filter {
+                    it.cedolino.status != "Pagato" &&
+                    it.cedolino.dueDate in now..in7Days
+                }
+            }
+            val scadenzeImporto = remember(scadenzeSettimana) {
+                scadenzeSettimana.sumOf { it.cedolino.total - it.cedolino.paidAmount }
+            }
+            val unitiConInquilino = remember(units) { units.count { it.ownerName.isNotBlank() } }
+            val pctOcc = if (units.isEmpty()) 0 else unitiConInquilino * 100 / units.size
+
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                SummaryCard(
+                    title    = "Occupazione",
+                    value    = if (units.isEmpty()) "—" else "$unitiConInquilino/${units.size}",
+                    icon     = Icons.Filled.Home,
+                    accentColor = Cyan400,
+                    modifier = Modifier.weight(1f),
+                    subtitle = if (units.isEmpty()) "Nessuna unità" else "$pctOcc% occupato"
+                )
+                SummaryCard(
+                    title    = "Scadono in 7 gg",
+                    value    = "${scadenzeSettimana.size}",
+                    icon     = Icons.Filled.CalendarToday,
+                    accentColor = if (scadenzeSettimana.isEmpty()) Green400 else Amber400,
+                    modifier = Modifier.weight(1f),
+                    subtitle = if (scadenzeSettimana.isEmpty()) "Tutto in ordine"
+                               else Formatters.currency(scadenzeImporto)
+                )
+            }
+        }
+
         item {
             val myListings by listingsViewModel.myListings.collectAsState()
             val activeCount = myListings.count { it.isActive }

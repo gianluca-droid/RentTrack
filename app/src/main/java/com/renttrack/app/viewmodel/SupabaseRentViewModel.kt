@@ -649,6 +649,11 @@ class SupabaseRentViewModel(application: Application) : AndroidViewModel(applica
     fun getUnitName(unitId: String) =
         _units.value.find { it.id == unitId }?.let { "Int. ${it.number} - ${it.ownerName}" } ?: "Sconosciuto"
 
+    fun getCondoName(): String =
+        _allCondomini.value.find { it.id == _activeCondominioId.value }
+            ?.let { "${it.nome}${if (it.indirizzo.isNotBlank()) " — ${it.indirizzo}" else ""}" }
+            ?: "Proprietà"
+
     // ── Condominio CRUD ───────────────────────────────────────────────
     fun addCondominio(c: SCondominio, andSelect: Boolean = false) = viewModelScope.launch {
         try {
