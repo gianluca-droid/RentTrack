@@ -25,10 +25,8 @@ import coil.compose.AsyncImage
 import com.renttrack.app.data.model.Listing
 import com.renttrack.app.ui.theme.*
 import com.renttrack.app.viewmodel.ListingsViewModel
-
-@OptIn(ExperimentalMaterial3Api::class)
-import com.renttrack.app.ui.screens.PaywallScreen
 import com.renttrack.app.viewmodel.SubscriptionViewModel
+
 
 @Composable
 fun MieiAnnunciScreen(
