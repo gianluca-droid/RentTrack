@@ -50,26 +50,28 @@ fun SummaryCard(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = DarkCard)
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(accentColor.copy(alpha = 0.15f)),
-                contentAlignment = Alignment.Center
+            // Icona + titolo su una riga compatta
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Icon(icon, contentDescription = null, tint = accentColor, modifier = Modifier.size(24.dp))
+                Icon(icon, contentDescription = null, tint = accentColor, modifier = Modifier.size(14.dp))
+                Text(title, style = MaterialTheme.typography.labelSmall, color = TextSecondary, maxLines = 1)
             }
-            Spacer(Modifier.width(14.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.labelMedium, color = TextSecondary)
-                Text(value, style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold), color = TextPrimary)
-                if (subtitle != null) {
-                    Text(subtitle, style = MaterialTheme.typography.bodySmall, color = TextMuted)
-                }
+            // Valore grande — ora ha tutta la larghezza della card
+            Text(
+                value,
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                color = TextPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (subtitle != null) {
+                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = TextMuted, maxLines = 1)
             }
         }
     }
@@ -92,34 +94,32 @@ fun ClickableSummaryCard(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = DarkCard)
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(accentColor.copy(alpha = 0.15f)),
-                contentAlignment = Alignment.Center
+            // Icona + titolo + freccia su una riga
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Icon(icon, contentDescription = null, tint = accentColor, modifier = Modifier.size(24.dp))
+                Icon(icon, contentDescription = null, tint = accentColor, modifier = Modifier.size(14.dp))
+                Text(title, style = MaterialTheme.typography.labelSmall, color = TextSecondary,
+                    maxLines = 1, modifier = Modifier.weight(1f))
+                Icon(Icons.Filled.ArrowForward, null, tint = accentColor.copy(alpha = 0.6f),
+                    modifier = Modifier.size(12.dp))
             }
-            Spacer(Modifier.width(14.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.labelMedium, color = TextSecondary)
-                Text(value, style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold), color = TextPrimary)
-                if (subtitle != null) {
-                    Text(subtitle, style = MaterialTheme.typography.bodySmall, color = TextMuted)
-                }
-            }
-            // Freccia → indica che è cliccabile
-            Icon(
-                imageVector = Icons.Filled.ArrowForward,
-                contentDescription = null,
-                tint = accentColor.copy(alpha = 0.6f),
-                modifier = Modifier.size(16.dp)
+            // Valore — larghezza piena
+            Text(
+                value,
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                color = TextPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
+            if (subtitle != null) {
+                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = TextMuted, maxLines = 1)
+            }
         }
     }
 }
