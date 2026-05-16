@@ -593,7 +593,8 @@ class ListingsViewModel(
 
     private fun uploadPhoto(token: String, uri: Uri, listingId: String): String? {
         return try {
-            val bytes = contentResolver.openInputStream(uri)?.readBytes() ?: return null
+            val bytes = contentResolver.openInputStream(uri)?.readBytes()
+                ?: run { android.util.Log.e("ListingsVM", "uploadPhoto: impossibile leggere URI $uri"); return null }
             val filename = "$listingId/${UUID.randomUUID()}.jpg"
             val conn = URL("$baseUrl/storage/v1/object/listing-photos/$filename")
                 .openConnection() as HttpURLConnection
@@ -601,12 +602,23 @@ class ListingsViewModel(
             conn.setRequestProperty("apikey", anonKey)
             conn.setRequestProperty("Authorization", "Bearer $token")
             conn.setRequestProperty("Content-Type", "image/jpeg")
+            conn.setRequestProperty("x-upsert", "true")
+            conn.connectTimeout = 30_000
+            conn.readTimeout    = 60_000
             conn.doOutput = true
             conn.outputStream.use { it.write(bytes) }
-            if (conn.responseCode in 200..299) {
+            val code = conn.responseCode
+            return if (code in 200..299) {
                 "$baseUrl/storage/v1/object/public/listing-photos/$filename"
-            } else null
-        } catch (e: Exception) { null }
+            } else {
+                val err = conn.errorStream?.bufferedReader()?.readText() ?: "HTTP $code"
+                android.util.Log.e("ListingsVM", "uploadPhoto HTTP $code: $err")
+                throw Exception("Upload foto fallito (HTTP $code). Controlla le policy del bucket listing-photos su Supabase.")
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("ListingsVM", "uploadPhoto exception: ${e.message}")
+            throw e   // ri-lancia per far fallire addPhotosToListing con il messaggio corretto
+        }
     }
 
     private fun savePhotoRecord(
