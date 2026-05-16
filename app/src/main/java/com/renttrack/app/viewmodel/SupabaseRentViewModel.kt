@@ -675,7 +675,12 @@ class SupabaseRentViewModel(application: Application) : AndroidViewModel(applica
     }
 
     fun updateUnit(u: SCondoUnit) = viewModelScope.launch {
-        try { repo.updateUnit(u); refresh() } catch (e: Exception) { _error.value = e.message }
+        try {
+            repo.updateUnit(u)
+            // Propaga il nuovo giorno di scadenza agli avvisi aperti esistenti
+            repo.updateOpenCedoliniPaymentDay(u.id, u.paymentDayOfMonth)
+            refresh()
+        } catch (e: Exception) { _error.value = e.message }
     }
 
     fun deleteUnit(u: SCondoUnit) = viewModelScope.launch {

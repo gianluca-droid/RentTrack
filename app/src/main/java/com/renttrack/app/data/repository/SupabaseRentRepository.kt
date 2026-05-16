@@ -209,6 +209,37 @@ class SupabaseRentRepository(private val prefs: SharedPreferences) {
         post("/units?id=eq.$id&owner_id=eq.$uid", "", "DELETE", "return=minimal")
     }
 
+    /**
+     * Quando il proprietario cambia il giorno di scadenza di una unit,
+     * aggiorna la due_date di tutti i cedolini aperti (non Pagato)
+     * mantenendo mese e anno originali di ciascun avviso.
+     */
+    suspend fun updateOpenCedoliniPaymentDay(
+        unitId: String,
+        newPaymentDay: Int
+    ) = withContext(Dispatchers.IO) {
+        val uid = userId
+        val arr = JSONArray(
+            get("/cedolini?unit_id=eq.$unitId&owner_id=eq.$uid&status=neq.Pagato&order=due_date.asc")
+        )
+        val cal = java.util.Calendar.getInstance()
+        for (i in 0 until arr.length()) {
+            val c = arr.getJSONObject(i)
+            val cedolinoId = c.getString("id")
+            val currentDueDate = c.optLong("due_date", System.currentTimeMillis())
+            // Calcola nuova data: stesso mese/anno, nuovo giorno
+            cal.timeInMillis = currentDueDate
+            val maxDay = cal.getActualMaximum(java.util.Calendar.DAY_OF_MONTH)
+            cal.set(java.util.Calendar.DAY_OF_MONTH, newPaymentDay.coerceIn(1, maxDay))
+            val newDueDate = cal.timeInMillis
+            // PATCH solo la due_date
+            val body = org.json.JSONObject().apply {
+                put("due_date", newDueDate)
+            }.toString()
+            post("/cedolini?id=eq.$cedolinoId&owner_id=eq.$uid", body, "PATCH", "return=minimal")
+        }
+    }
+
     // ── Expenses ──────────────────────────────────────────────────────────────
 
     suspend fun getExpensesByCondominio(condominioId: String): List<SExpense> = withContext(Dispatchers.IO) {
