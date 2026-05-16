@@ -53,8 +53,9 @@ fun RentNoticesScreen(viewModel: SupabaseRentViewModel) {
     var selectionMode     by remember { mutableStateOf(false) }
     var selectedIds       by remember { mutableStateOf<Set<String>>(emptySet()) }
     var showBulkDueDateDialog by remember { mutableStateOf(false) }
-    // Dopo modifica singola: se il giorno cambia, propone di applicarlo ad altri avvisi
-    var pendingDueDateSpread by remember { mutableStateOf<Pair<SCedolino, Int>?>(null) }
+    // Dopo modifica singola: salva (newDay + lista snapshot) per proporre propagazione
+    // La lista viene catturata al momento del salvataggio per evitare flicker da refresh ViewModel
+    var pendingDueDateSpread by remember { mutableStateOf<Pair<Int, List<SCedolino>>?>(null) }
 
     val openCedolini = remember(cedolini) { cedolini.filter { it.status != "Pagato" }.sortedBy { it.dueDate } }
     val paidCedolini = remember(cedolini) { cedolini.filter { it.status == "Pagato" }.sortedByDescending { it.paidDate } }
@@ -729,11 +730,12 @@ fun RentNoticesScreen(viewModel: SupabaseRentViewModel) {
                 // Se il giorno di scadenza è cambiato E ci sono altri avvisi aperti
                 // dello stesso inquilino, offri di propagare la modifica
                 if (newDay != originalDay) {
+                    // Snapshot della lista PRIMA del refresh del ViewModel
                     val others = openCedolini.filter {
                         it.unitId == updated.unitId && it.id != updated.id
                     }
                     if (others.isNotEmpty()) {
-                        pendingDueDateSpread = Pair(updated, newDay)
+                        pendingDueDateSpread = Pair(newDay, others)
                     }
                 }
             }
@@ -741,15 +743,13 @@ fun RentNoticesScreen(viewModel: SupabaseRentViewModel) {
     }
 
     // Dialog: propaga giorno scadenza agli altri avvisi dello stesso inquilino
-    pendingDueDateSpread?.let { (saved, newDay) ->
-        val othersOfSameUnit = openCedolini.filter {
-            it.unitId == saved.unitId && it.id != saved.id
-        }
+    // othersOfSameUnit viene dalla snapshot catturata al salvataggio, non ricalcolata
+    pendingDueDateSpread?.let { (newDay, snapshotOthers) ->
         PropagateDueDateDialog(
-            newDay       = newDay,
-            otherCedolini = othersOfSameUnit,
-            onDismiss    = { pendingDueDateSpread = null },
-            onApply      = { selectedIds ->
+            newDay        = newDay,
+            otherCedolini = snapshotOthers,
+            onDismiss     = { pendingDueDateSpread = null },
+            onApply       = { selectedIds ->
                 if (selectedIds.isNotEmpty()) {
                     viewModel.bulkUpdateDueDayForCedolini(selectedIds, newDay)
                 }
