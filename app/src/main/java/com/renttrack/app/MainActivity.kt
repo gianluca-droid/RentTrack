@@ -20,12 +20,14 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.*
 import com.renttrack.app.ui.navigation.Screen
 import com.renttrack.app.ui.screens.*
+import com.renttrack.app.ui.components.SubscriptionGate
 import com.renttrack.app.ui.theme.*
 import com.renttrack.app.viewmodel.AuthViewModel
 import com.renttrack.app.viewmodel.AuthViewModelFactory
 import com.renttrack.app.viewmodel.AuthState
 import com.renttrack.app.viewmodel.ListingsViewModel
 import com.renttrack.app.viewmodel.ListingsViewModelFactory
+import com.renttrack.app.viewmodel.SubscriptionViewModel
 import com.renttrack.app.viewmodel.SupabaseRentViewModel
 
 class MainActivity : ComponentActivity() {
@@ -107,6 +109,7 @@ fun MainApp(
     // (non dopo il guard isLoading come prima, che causava race condition)
     val authViewModel: AuthViewModel = viewModel(factory = AuthViewModelFactory(context))
     val listingsViewModel: ListingsViewModel = viewModel(factory = ListingsViewModelFactory(context))
+    val subscriptionViewModel: SubscriptionViewModel = viewModel()
     val authState by authViewModel.authState.collectAsState()
     val isLoggedIn = authState is AuthState.LoggedIn
 
@@ -447,22 +450,27 @@ fun MainApp(
             exitTransition   = { fadeOut() }
         ) {
             composable(Screen.Annunci.route) {
-                AnnunciScreen(
-                    viewModel = listingsViewModel,
-                    isLoggedIn = isLoggedIn,
-                    onListingClick = { listing ->
-                        listingsViewModel.loadPublicListings()
-                        navController.currentBackStackEntry
-                            ?.savedStateHandle?.set("listing", listing)
-                        navController.navigate(Screen.DettaglioAnnuncio.route)
-                    },
-                    onLoginClick = {
-                        navController.navigate(Screen.Login.route)
-                    },
-                    onCreaAnnuncio = {
-                        navController.navigate(Screen.CreaAnnuncio.route)
-                    }
-                )
+                SubscriptionGate(
+                    subscriptionViewModel = subscriptionViewModel,
+                    onDismiss = { navController.popBackStack() }
+                ) {
+                    AnnunciScreen(
+                        viewModel = listingsViewModel,
+                        isLoggedIn = isLoggedIn,
+                        onListingClick = { listing ->
+                            listingsViewModel.loadPublicListings()
+                            navController.currentBackStackEntry
+                                ?.savedStateHandle?.set("listing", listing)
+                            navController.navigate(Screen.DettaglioAnnuncio.route)
+                        },
+                        onLoginClick = {
+                            navController.navigate(Screen.Login.route)
+                        },
+                        onCreaAnnuncio = {
+                            navController.navigate(Screen.CreaAnnuncio.route)
+                        }
+                    )
+                }
             }
             composable(Screen.DettaglioAnnuncio.route) { backStack ->
                 val listing = navController.previousBackStackEntry
@@ -570,8 +578,18 @@ fun MainApp(
             }
             composable(Screen.Affitti.route)    { RentNoticesScreen(viewModel) }
             composable(Screen.Expenses.route)   { ExpensesScreen(viewModel) }
-            composable(Screen.Documenti.route)  { DocumentiScreen(viewModel) }
-            composable(Screen.Reports.route)    { ReportsScreen(viewModel) }
+            composable(Screen.Documenti.route) {
+                SubscriptionGate(
+                    subscriptionViewModel = subscriptionViewModel,
+                    onDismiss = { navController.popBackStack() }
+                ) { DocumentiScreen(viewModel) }
+            }
+            composable(Screen.Reports.route) {
+                SubscriptionGate(
+                    subscriptionViewModel = subscriptionViewModel,
+                    onDismiss = { navController.popBackStack() }
+                ) { ReportsScreen(viewModel) }
+            }
             composable(Screen.ResetPassword.route) {
                 ResetPasswordScreen(
                     viewModel = authViewModel,
