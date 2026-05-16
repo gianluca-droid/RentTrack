@@ -621,7 +621,7 @@ private fun EditListingSheet(
     var newPhotoUris  by remember { mutableStateOf<List<android.net.Uri>>(emptyList()) }
     var existingPhotos by remember { mutableStateOf(listing.photos) }
     val MAX_PHOTOS = 10
-    val totalPhotos get() = existingPhotos.size + newPhotoUris.size
+    val totalPhotos = existingPhotos.size + newPhotoUris.size
 
     val photoPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.GetMultipleContents()
