@@ -29,10 +29,10 @@ class BillingManager(context: Context) : PurchasesUpdatedListener {
         const val PRODUCT_YEARLY  = "renttrack_pro_yearly"
         private const val TAG = "BillingManager"
         /**
-         * ⚠️ Impostare a FALSE prima di pubblicare sullo store!
-         * TRUE = sempre Pro (utile per sviluppo e test UI)
+         * ⚠️ RELEASE: impostato a FALSE → billing reale Google Play attivo.
+         * Per sviluppo locale: impostare a TRUE per testare le feature Pro senza acquisti.
          */
-        private const val FORCE_PREMIUM_FOR_TESTING = true
+        private const val FORCE_PREMIUM_FOR_TESTING = false
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
