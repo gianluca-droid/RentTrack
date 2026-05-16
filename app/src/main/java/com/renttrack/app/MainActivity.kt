@@ -582,7 +582,12 @@ fun MainApp(
                 ) { DocumentiScreen(viewModel) }
             }
             composable(Screen.Reports.route) {
-                ReportsScreen(viewModel, subscriptionViewModel = subscriptionViewModel)
+                SubscriptionGate(
+                    subscriptionViewModel = subscriptionViewModel,
+                    onDismiss = { navController.popBackStack() }
+                ) {
+                    ReportsScreen(viewModel, subscriptionViewModel = subscriptionViewModel)
+                }
             }
             composable(Screen.ResetPassword.route) {
                 ResetPasswordScreen(

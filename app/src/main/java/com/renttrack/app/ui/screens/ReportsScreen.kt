@@ -50,81 +50,47 @@ private val MONTHS = listOf("Gen","Feb","Mar","Apr","Mag","Giu","Lug","Ago","Set
 @Composable
 fun ReportsScreen(viewModel: SupabaseRentViewModel, subscriptionViewModel: SubscriptionViewModel) {
     var selectedTab by remember { mutableIntStateOf(0) }
-    val isPremium   by subscriptionViewModel.isPremium.collectAsState()
-    var showPaywall by remember { mutableStateOf(false) }
     val tabs = listOf("Panoramica", "Mensile", "Archivio")
 
     LaunchedEffect(Unit) { viewModel.setReportScope(SupabaseRentViewModel.ReportScope.ACTIVE) }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize().background(DarkBg)) {
-            TabRow(
-                selectedTabIndex = selectedTab,
-                containerColor = DarkSurface,
-                contentColor = Cyan400,
-                indicator = { tabPositions ->
-                    TabRowDefaults.SecondaryIndicator(
-                        modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
-                        color = Cyan400
-                    )
-                }
-            ) {
-                tabs.forEachIndexed { index, title ->
-                    Tab(
-                        selected = selectedTab == index,
-                        onClick = { selectedTab = index },
-                        text = {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Text(
-                                    title,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = if (selectedTab == index) Cyan400 else TextMuted
-                                )
-                                if (index > 0 && !isPremium) {
-                                    Icon(
-                                        Icons.Filled.Lock, null,
-                                        tint = Color(0xFFFFC947),
-                                        modifier = Modifier.size(10.dp)
-                                    )
-                                }
-                            }
-                        }
-                    )
-                }
+    Column(modifier = Modifier.fillMaxSize().background(DarkBg)) {
+        TabRow(
+            selectedTabIndex = selectedTab,
+            containerColor = DarkSurface,
+            contentColor = Cyan400,
+            indicator = { tabPositions ->
+                TabRowDefaults.SecondaryIndicator(
+                    modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
+                    color = Cyan400
+                )
             }
-
-            val navigateToMensile: (Int) -> Unit = { year ->
-                viewModel.setSelectedYear(year)
-                selectedTab = 1
-            }
-            Crossfade(targetState = selectedTab, label = "report_tabs") { tab ->
-                when (tab) {
-                    0 -> PanoramicaTab(viewModel, isPremium = isPremium, onUnlock = { showPaywall = true })
-                    1 -> if (isPremium) MensileTab(viewModel)
-                         else ReportProLockedCard(
-                             title = "Analisi Mensile",
-                             description = "Breakdown mensile di entrate e uscite con dettaglio per ogni mese dell'anno.",
-                             onUnlock = { showPaywall = true }
-                         )
-                    2 -> if (isPremium) ArchivioTab(viewModel, onViewMensile = navigateToMensile)
-                         else ReportProLockedCard(
-                             title = "Archivio Storico",
-                             description = "Storico completo per anno con confronto trend nel tempo.",
-                             onUnlock = { showPaywall = true }
-                         )
-                }
+        ) {
+            tabs.forEachIndexed { index, title ->
+                Tab(
+                    selected = selectedTab == index,
+                    onClick = { selectedTab = index },
+                    text = {
+                        Text(
+                            title,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (selectedTab == index) Cyan400 else TextMuted
+                        )
+                    }
+                )
             }
         }
 
-        // Paywall overlay
-        if (showPaywall) {
-            PaywallScreen(
-                subscriptionViewModel = subscriptionViewModel,
-                onDismiss = { showPaywall = false }
-            )
+        val navigateToMensile: (Int) -> Unit = { year ->
+            viewModel.setSelectedYear(year)
+            selectedTab = 1
+        }
+        Crossfade(targetState = selectedTab, label = "report_tabs") { tab ->
+            when (tab) {
+                0 -> PanoramicaTab(viewModel, isPremium = true, onUnlock = {})
+                1 -> MensileTab(viewModel)
+                2 -> ArchivioTab(viewModel, onViewMensile = navigateToMensile)
+            }
         }
     }
 }
