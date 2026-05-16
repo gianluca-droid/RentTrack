@@ -50,6 +50,8 @@ fun RentNoticesScreen(viewModel: SupabaseRentViewModel) {
     var selectionMode     by remember { mutableStateOf(false) }
     var selectedIds       by remember { mutableStateOf<Set<String>>(emptySet()) }
     var showBulkDueDateDialog by remember { mutableStateOf(false) }
+    // Dopo modifica singola: se il giorno cambia, propone di applicarlo ad altri avvisi
+    var pendingDueDateSpread by remember { mutableStateOf<Pair<SCedolino, Int>?>(null) }
 
     val openCedolini = remember(cedolini) { cedolini.filter { it.status != "Pagato" }.sortedBy { it.dueDate } }
     val paidCedolini = remember(cedolini) { cedolini.filter { it.status == "Pagato" }.sortedByDescending { it.paidDate } }
@@ -713,8 +715,42 @@ fun RentNoticesScreen(viewModel: SupabaseRentViewModel) {
             cedolino = ced,
             onDismiss = { editTarget = null },
             onSave = { updated ->
+                val originalDay = Calendar.getInstance()
+                    .apply { timeInMillis = ced.dueDate }
+                    .get(Calendar.DAY_OF_MONTH)
+                val newDay = Calendar.getInstance()
+                    .apply { timeInMillis = updated.dueDate }
+                    .get(Calendar.DAY_OF_MONTH)
                 viewModel.updateCedolino(updated)
                 editTarget = null
+                // Se il giorno di scadenza è cambiato E ci sono altri avvisi aperti
+                // dello stesso inquilino, offri di propagare la modifica
+                if (newDay != originalDay) {
+                    val others = openCedolini.filter {
+                        it.unitId == updated.unitId && it.id != updated.id
+                    }
+                    if (others.isNotEmpty()) {
+                        pendingDueDateSpread = Pair(updated, newDay)
+                    }
+                }
+            }
+        )
+    }
+
+    // Dialog: propaga giorno scadenza agli altri avvisi dello stesso inquilino
+    pendingDueDateSpread?.let { (saved, newDay) ->
+        val othersOfSameUnit = openCedolini.filter {
+            it.unitId == saved.unitId && it.id != saved.id
+        }
+        PropagateDueDateDialog(
+            newDay       = newDay,
+            otherCedolini = othersOfSameUnit,
+            onDismiss    = { pendingDueDateSpread = null },
+            onApply      = { selectedIds ->
+                if (selectedIds.isNotEmpty()) {
+                    viewModel.bulkUpdateDueDayForCedolini(selectedIds, newDay)
+                }
+                pendingDueDateSpread = null
             }
         )
     }
@@ -1371,6 +1407,134 @@ fun QuotaDirectaDialog(
             ) { Text("Addebita", fontWeight = FontWeight.Bold) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Annulla", color = com.renttrack.app.ui.theme.TextSecondary) } }
+    )
+}
+
+// ─── Dialog: Propaga giorno scadenza agli altri avvisi ───────────────────────
+@Composable
+private fun PropagateDueDateDialog(
+    newDay: Int,
+    otherCedolini: List<SCedolino>,
+    onDismiss: () -> Unit,
+    onApply: (Set<String>) -> Unit
+) {
+    // Di default tutti pre-selezionati
+    var selectedIds by remember { mutableStateOf(otherCedolini.map { it.id }.toSet()) }
+    val allSelected = selectedIds.size == otherCedolini.size
+
+    AlertDialog(
+        onDismissRequest = { /* usa i pulsanti */ },
+        containerColor = DarkSurface,
+        icon = { Icon(Icons.Filled.EventRepeat, null, tint = Cyan400) },
+        title = {
+            Text(
+                "Applica giorno $newDay ad altri avvisi?",
+                color = TextPrimary,
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleSmall
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    "La scadenza è stata aggiornata. Vuoi applicare il giorno $newDay anche agli altri avvisi aperti di questo inquilino?",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary
+                )
+
+                // Toggle seleziona/deseleziona tutti
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Cyan400.copy(alpha = 0.06f))
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(
+                        checked = allSelected,
+                        onCheckedChange = {
+                            selectedIds = if (allSelected) emptySet()
+                            else otherCedolini.map { it.id }.toSet()
+                        },
+                        colors = CheckboxDefaults.colors(checkedColor = Cyan400)
+                    )
+                    Text(
+                        if (allSelected) "Deseleziona tutti" else "Seleziona tutti (${otherCedolini.size})",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Cyan400,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                HorizontalDivider(color = TextMuted.copy(alpha = 0.12f))
+
+                // Lista avvisi con checkbox
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    otherCedolini.forEach { ced ->
+                        val isChecked = ced.id in selectedIds
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(
+                                    if (isChecked) Cyan400.copy(alpha = 0.05f)
+                                    else Color.Transparent
+                                )
+                                .clickable {
+                                    selectedIds = if (isChecked)
+                                        selectedIds - ced.id
+                                    else
+                                        selectedIds + ced.id
+                                }
+                                .padding(horizontal = 4.dp, vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = isChecked,
+                                onCheckedChange = {
+                                    selectedIds = if (isChecked)
+                                        selectedIds - ced.id else selectedIds + ced.id
+                                },
+                                colors = CheckboxDefaults.colors(checkedColor = Cyan400)
+                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    ced.period,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (isChecked) TextPrimary else TextSecondary,
+                                    fontWeight = if (isChecked) FontWeight.SemiBold else FontWeight.Normal
+                                )
+                                Text(
+                                    "Scad. ${Formatters.date(ced.dueDate)} · €%.2f".format(ced.total),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = TextMuted
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onApply(selectedIds) },
+                enabled = selectedIds.isNotEmpty(),
+                colors = ButtonDefaults.buttonColors(containerColor = Cyan400, contentColor = DarkBg)
+            ) {
+                Icon(Icons.Filled.EventRepeat, null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    "Applica a ${selectedIds.size} avvis${if (selectedIds.size == 1) "o" else "i"}",
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Solo questo (già salvato)", color = TextSecondary)
+            }
+        }
     )
 }
 
