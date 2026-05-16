@@ -207,7 +207,9 @@ private fun PanoramicaTab(viewModel: SupabaseRentViewModel) {
                         Text(
                             Formatters.currency(saldo),
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                            color = if (saldoPositive) Green400 else Color(0xFFFF6B6B)
+                            color = if (saldoPositive) Green400 else Color(0xFFFF6B6B),
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                         )
                     }
                 }

@@ -348,7 +348,7 @@ fun RentNoticesScreen(viewModel: SupabaseRentViewModel) {
                         }
                         Spacer(Modifier.height(10.dp))
                         Row(verticalAlignment = Alignment.Bottom) {
-                            Text(Formatters.currency(cedolino.total), style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold), color = TextPrimary, modifier = Modifier.weight(1f))
+                            Text(Formatters.currency(cedolino.total), style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold), color = TextPrimary, modifier = Modifier.weight(1f), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                             Column(horizontalAlignment = Alignment.End) {
                                 Text("Scad. ${Formatters.date(cedolino.dueDate)}", style = MaterialTheme.typography.bodySmall, color = if (isOverdue) Color(0xFFFF6B6B) else TextMuted)
                                 if (isOverdue) Text("⚠ SCADUTO", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = Color(0xFFFF6B6B))
