@@ -15,6 +15,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -1425,7 +1426,7 @@ private fun PropagateDueDateDialog(
     AlertDialog(
         onDismissRequest = { /* usa i pulsanti */ },
         containerColor = DarkSurface,
-        icon = { Icon(Icons.Filled.EventRepeat, null, tint = Cyan400) },
+        icon = { Icon(Icons.Filled.CalendarToday, null, tint = Cyan400) },
         title = {
             Text(
                 "Applica giorno $newDay ad altri avvisi?",
@@ -1522,7 +1523,7 @@ private fun PropagateDueDateDialog(
                 enabled = selectedIds.isNotEmpty(),
                 colors = ButtonDefaults.buttonColors(containerColor = Cyan400, contentColor = DarkBg)
             ) {
-                Icon(Icons.Filled.EventRepeat, null, modifier = Modifier.size(16.dp))
+                Icon(Icons.Filled.CalendarToday, null, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(6.dp))
                 Text(
                     "Applica a ${selectedIds.size} avvis${if (selectedIds.size == 1) "o" else "i"}",
