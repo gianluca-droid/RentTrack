@@ -627,11 +627,13 @@ private fun EditListingSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = DarkSurface,
-        tonalElevation = 0.dp
+        tonalElevation = 0.dp,
+        modifier = Modifier.fillMaxHeight(0.92f)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp)
                 .padding(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
