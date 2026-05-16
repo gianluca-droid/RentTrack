@@ -559,7 +559,13 @@ fun DocumentCard(
 ) {
     val catColor = try { Color(android.graphics.Color.parseColor(DocumentCategories.getColorHex(documento.categoria))) }
     catch (e: Exception) { Cyan400 }
-    val fileColor = try { Color(android.graphics.Color.parseColor(FileTypes.getColorHex(documento.fileType))) }
+    // Normalizza fileType: se è un raw MIME (es. "image/jpeg") lo converte in label (es. "Foto")
+    val fileTypeLabel = remember(documento.fileType) {
+        com.renttrack.app.data.model.FileTypes.fromMimeType(
+            if (documento.fileType.contains("/")) documento.fileType else ""
+        ).let { if (it != "Altro" || documento.fileType.contains("/")) it else documento.fileType }
+    }
+    val fileColor = try { Color(android.graphics.Color.parseColor(FileTypes.getColorHex(fileTypeLabel))) }
     catch (e: Exception) { Cyan400 }
     val dateStr = remember { documento.createdAt.ifBlank { "—" } }
 
@@ -602,8 +608,8 @@ fun DocumentCard(
                             )
                         } else {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(FileTypes.getIcon(documento.fileType), fontSize = 22.sp)
-                                Text(documento.fileType, fontSize = 8.sp, color = fileColor, fontWeight = FontWeight.Bold)
+                                Text(FileTypes.getIcon(fileTypeLabel), fontSize = 22.sp)
+                                Text(fileTypeLabel, fontSize = 8.sp, color = fileColor, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -699,7 +705,12 @@ fun DocumentGridCard(
 ) {
     val catColor = try { Color(android.graphics.Color.parseColor(DocumentCategories.getColorHex(documento.categoria))) }
     catch (e: Exception) { Cyan400 }
-    val fileColor = try { Color(android.graphics.Color.parseColor(FileTypes.getColorHex(documento.fileType))) }
+    val fileTypeLabel = remember(documento.fileType) {
+        com.renttrack.app.data.model.FileTypes.fromMimeType(
+            if (documento.fileType.contains("/")) documento.fileType else ""
+        ).let { if (it != "Altro" || documento.fileType.contains("/")) it else documento.fileType }
+    }
+    val fileColor = try { Color(android.graphics.Color.parseColor(FileTypes.getColorHex(fileTypeLabel))) }
     catch (e: Exception) { Cyan400 }
     val isPhoto = (documento.fileType == "Foto" || documento.fileType.startsWith("image/")) && documento.filePath.isNotBlank()
 
@@ -742,9 +753,9 @@ fun DocumentGridCard(
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(FileTypes.getIcon(documento.fileType), fontSize = 36.sp)
+                        Text(FileTypes.getIcon(fileTypeLabel), fontSize = 36.sp)
                         Spacer(Modifier.height(4.dp))
-                        Text(documento.fileType, fontSize = 10.sp, color = fileColor, fontWeight = FontWeight.Bold)
+                        Text(fileTypeLabel, fontSize = 10.sp, color = fileColor, fontWeight = FontWeight.Bold)
                     }
                 }
             }

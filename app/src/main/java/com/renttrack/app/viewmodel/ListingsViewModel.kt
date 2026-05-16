@@ -397,6 +397,7 @@ class ListingsViewModel(
                     }
                 }
                 loadMyListings()
+                loadPublicListings()
                 _toast.value = "📸 ${photoUris.size} foto aggiunt${if (photoUris.size == 1) "a" else "e"}!"
                 onDone()
             } catch (e: Exception) {
