@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Context
 import android.util.Log
 import com.android.billingclient.api.*
+import com.renttrack.app.BuildConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -18,6 +19,9 @@ import kotlinx.coroutines.launch
  * Product IDs configurati in Google Play Console:
  *   - renttrack_pro_monthly  → €4,99/mese (trial 7 giorni)
  *   - renttrack_pro_yearly   → €39,99/anno (trial 7 giorni)
+ *
+ * ⚠️ In DEBUG build, isPremium è sempre TRUE per facilitare i test.
+ *    In RELEASE build usa il billing reale di Google Play.
  */
 class BillingManager(context: Context) : PurchasesUpdatedListener {
 
@@ -37,7 +41,8 @@ class BillingManager(context: Context) : PurchasesUpdatedListener {
         .build()
 
     // ── State flows ──────────────────────────────────────────────────────────
-    private val _isPremium = MutableStateFlow(false)
+    // In DEBUG: sempre Pro per facilitare i test dello sviluppatore
+    private val _isPremium = MutableStateFlow(BuildConfig.DEBUG)
     val isPremium: StateFlow<Boolean> = _isPremium.asStateFlow()
 
     private val _products = MutableStateFlow<List<ProductDetails>>(emptyList())
