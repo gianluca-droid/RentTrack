@@ -595,17 +595,28 @@ class ListingsViewModel(
         return try {
             val bytes = contentResolver.openInputStream(uri)?.readBytes()
                 ?: run { android.util.Log.e("ListingsVM", "uploadPhoto: impossibile leggere URI $uri"); return null }
-            val filename = "$listingId/${UUID.randomUUID()}.jpg"
+
+            // MIME type reale dall'URI (evita 400 per Content-Type sbagliato)
+            val mimeType = contentResolver.getType(uri) ?: "image/jpeg"
+            val ext = when {
+                mimeType.contains("png")  -> "png"
+                mimeType.contains("webp") -> "webp"
+                mimeType.contains("gif")  -> "gif"
+                else                      -> "jpg"
+            }
+
+            val filename = "$listingId/${UUID.randomUUID()}.$ext"
             val conn = URL("$baseUrl/storage/v1/object/listing-photos/$filename")
                 .openConnection() as HttpURLConnection
             conn.requestMethod = "POST"
             conn.setRequestProperty("apikey", anonKey)
             conn.setRequestProperty("Authorization", "Bearer $token")
-            conn.setRequestProperty("Content-Type", "image/jpeg")
+            conn.setRequestProperty("Content-Type", mimeType)
             conn.setRequestProperty("x-upsert", "true")
             conn.connectTimeout = 30_000
             conn.readTimeout    = 60_000
             conn.doOutput = true
+            conn.setFixedLengthStreamingMode(bytes.size)   // Content-Length esplicito
             conn.outputStream.use { it.write(bytes) }
             val code = conn.responseCode
             return if (code in 200..299) {
@@ -613,11 +624,11 @@ class ListingsViewModel(
             } else {
                 val err = conn.errorStream?.bufferedReader()?.readText() ?: "HTTP $code"
                 android.util.Log.e("ListingsVM", "uploadPhoto HTTP $code: $err")
-                throw Exception("Upload foto fallito (HTTP $code). Controlla le policy del bucket listing-photos su Supabase.")
+                throw Exception("Upload foto fallito (HTTP $code): $err")
             }
         } catch (e: Exception) {
             android.util.Log.e("ListingsVM", "uploadPhoto exception: ${e.message}")
-            throw e   // ri-lancia per far fallire addPhotosToListing con il messaggio corretto
+            throw e
         }
     }
 
