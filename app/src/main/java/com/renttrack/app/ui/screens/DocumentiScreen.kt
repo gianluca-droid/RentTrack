@@ -559,11 +559,10 @@ fun DocumentCard(
 ) {
     val catColor = try { Color(android.graphics.Color.parseColor(DocumentCategories.getColorHex(documento.categoria))) }
     catch (e: Exception) { Cyan400 }
-    // Normalizza fileType: se è un raw MIME (es. "image/jpeg") lo converte in label (es. "Foto")
+    // Se fileType è un raw MIME (es. "image/jpeg") lo converte in label (es. "Foto")
     val fileTypeLabel = remember(documento.fileType) {
-        com.renttrack.app.data.model.FileTypes.fromMimeType(
-            if (documento.fileType.contains("/")) documento.fileType else ""
-        ).let { if (it != "Altro" || documento.fileType.contains("/")) it else documento.fileType }
+        if (documento.fileType.contains("/")) FileTypes.fromMimeType(documento.fileType)
+        else documento.fileType
     }
     val fileColor = try { Color(android.graphics.Color.parseColor(FileTypes.getColorHex(fileTypeLabel))) }
     catch (e: Exception) { Cyan400 }
@@ -706,9 +705,8 @@ fun DocumentGridCard(
     val catColor = try { Color(android.graphics.Color.parseColor(DocumentCategories.getColorHex(documento.categoria))) }
     catch (e: Exception) { Cyan400 }
     val fileTypeLabel = remember(documento.fileType) {
-        com.renttrack.app.data.model.FileTypes.fromMimeType(
-            if (documento.fileType.contains("/")) documento.fileType else ""
-        ).let { if (it != "Altro" || documento.fileType.contains("/")) it else documento.fileType }
+        if (documento.fileType.contains("/")) FileTypes.fromMimeType(documento.fileType)
+        else documento.fileType
     }
     val fileColor = try { Color(android.graphics.Color.parseColor(FileTypes.getColorHex(fileTypeLabel))) }
     catch (e: Exception) { Cyan400 }
