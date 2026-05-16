@@ -534,6 +534,7 @@ fun MainApp(
             composable(Screen.CondominioSelector.route) {
                 PropertySelectorScreen(
                     viewModel = viewModel,
+                    subscriptionViewModel = subscriptionViewModel,
                     onCondominioSelected = { condoId ->
                         viewModel.setActiveCondominio(condoId)
                         navController.navigate(Screen.Dashboard.route) {

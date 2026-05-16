@@ -21,7 +21,10 @@ import com.renttrack.app.ui.components.Formatters
 import com.renttrack.app.ui.components.condoTextFieldColors
 import com.renttrack.app.ui.theme.*
 import com.renttrack.app.viewmodel.SPropertySummaryEntry
+import com.renttrack.app.viewmodel.SubscriptionViewModel
 import com.renttrack.app.viewmodel.SupabaseRentViewModel
+
+private const val FREE_PROPERTY_LIMIT = 3
 
 private val propertyGradients = listOf(
     listOf(Color(0xFF00D4FF), Color(0xFF6C63FF)),
@@ -36,6 +39,7 @@ private val propertyGradients = listOf(
 @Composable
 fun PropertySelectorScreen(
     viewModel: SupabaseRentViewModel,
+    subscriptionViewModel: SubscriptionViewModel,
     onCondominioSelected: (String) -> Unit,
     onResidentAccess: () -> Unit = {},
     onShowOnboarding: () -> Unit = {},
@@ -46,6 +50,8 @@ fun PropertySelectorScreen(
     val isLoading by viewModel.isLoading.collectAsState()
     val activeCondominioId by viewModel.activeCondominioId.collectAsState()
     val vmError by viewModel.error.collectAsState()
+    val isPremium   by subscriptionViewModel.isPremium.collectAsState()
+    var showPaywall by remember { mutableStateOf(false) }
     var showAddSheet    by remember { mutableStateOf(false) }
     var toEdit          by remember { mutableStateOf<SCondominio?>(null) }
     var toDelete        by remember { mutableStateOf<SCondominio?>(null) }
@@ -273,13 +279,42 @@ fun PropertySelectorScreen(
             }
         }
 
-        // FAB — aggiungi proprietà
-        FloatingActionButton(
-            onClick = { showAddSheet = true },
-            modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
-            containerColor = Cyan400, contentColor = DarkBg
-        ) { Icon(Icons.Filled.Add, "Aggiungi proprietà") }
-        // RIMOSSO: bottone "Area Condomino"
+        // FAB — aggiungi proprietà (con quota badge per utenti free)
+        Column(
+            modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 16.dp),
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            // Badge quota visibile solo agli utenti free
+            if (!isPremium) {
+                val remaining = (FREE_PROPERTY_LIMIT - proprieta.size).coerceAtLeast(0)
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = if (remaining == 0) Red400.copy(alpha = 0.9f)
+                            else DarkSurface.copy(alpha = 0.92f)
+                ) {
+                    Text(
+                        if (remaining == 0) "Limite raggiunto · Passa a Pro"
+                        else "${proprieta.size}/$FREE_PROPERTY_LIMIT immobili gratuiti",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (remaining == 0) Color.White else TextSecondary,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+            }
+            FloatingActionButton(
+                onClick = {
+                    if (!isPremium && proprieta.size >= FREE_PROPERTY_LIMIT) {
+                        showPaywall = true
+                    } else {
+                        showAddSheet = true
+                    }
+                },
+                containerColor = if (!isPremium && proprieta.size >= FREE_PROPERTY_LIMIT)
+                    Red400 else Cyan400,
+                contentColor = DarkBg
+            ) { Icon(Icons.Filled.Add, "Aggiungi proprietà") }
+        }
     }
     } // fine Scaffold
 
@@ -295,6 +330,14 @@ fun PropertySelectorScreen(
                 )
                 showAddSheet = false
             }
+        )
+    }
+
+    // Paywall overlay — limite 3 immobili gratis
+    if (showPaywall) {
+        PaywallScreen(
+            subscriptionViewModel = subscriptionViewModel,
+            onDismiss = { showPaywall = false }
         )
     }
 
