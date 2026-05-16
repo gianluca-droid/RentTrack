@@ -40,57 +40,90 @@ import com.renttrack.app.viewmodel.YearlyTotal
 import com.renttrack.app.ui.components.Formatters
 import com.renttrack.app.ui.components.SummaryCard
 import com.renttrack.app.ui.theme.*
+import com.renttrack.app.viewmodel.SubscriptionViewModel
 import com.renttrack.app.viewmodel.SupabaseRentViewModel
 
 private val MONTHS = listOf("Gen","Feb","Mar","Apr","Mag","Giu","Lug","Ago","Set","Ott","Nov","Dic")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ReportsScreen(viewModel: SupabaseRentViewModel) {
+fun ReportsScreen(viewModel: SupabaseRentViewModel, subscriptionViewModel: SubscriptionViewModel) {
     var selectedTab by remember { mutableIntStateOf(0) }
+    val isPremium   by subscriptionViewModel.isPremium.collectAsState()
+    var showPaywall by remember { mutableStateOf(false) }
     val tabs = listOf("Panoramica", "Mensile", "Archivio")
 
-    // Inizializza report dati al primo lancio
     LaunchedEffect(Unit) { viewModel.setReportScope(SupabaseRentViewModel.ReportScope.ACTIVE) }
 
-    Column(modifier = Modifier.fillMaxSize().background(DarkBg)) {
-        // ── Tab Row ──────────────────────────────────────────────────
-        TabRow(
-            selectedTabIndex = selectedTab,
-            containerColor = DarkSurface,
-            contentColor = Cyan400,
-            indicator = { tabPositions ->
-                TabRowDefaults.SecondaryIndicator(
-                    modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
-                    color = Cyan400
-                )
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize().background(DarkBg)) {
+            TabRow(
+                selectedTabIndex = selectedTab,
+                containerColor = DarkSurface,
+                contentColor = Cyan400,
+                indicator = { tabPositions ->
+                    TabRowDefaults.SecondaryIndicator(
+                        modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
+                        color = Cyan400
+                    )
+                }
+            ) {
+                tabs.forEachIndexed { index, title ->
+                    Tab(
+                        selected = selectedTab == index,
+                        onClick = { selectedTab = index },
+                        text = {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(
+                                    title,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = if (selectedTab == index) Cyan400 else TextMuted
+                                )
+                                if (index > 0 && !isPremium) {
+                                    Icon(
+                                        Icons.Filled.Lock, null,
+                                        tint = Color(0xFFFFC947),
+                                        modifier = Modifier.size(10.dp)
+                                    )
+                                }
+                            }
+                        }
+                    )
+                }
             }
-        ) {
-            tabs.forEachIndexed { index, title ->
-                Tab(
-                    selected = selectedTab == index,
-                    onClick = { selectedTab = index },
-                    text = {
-                        Text(
-                            title,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = if (selectedTab == index) Cyan400 else TextMuted
-                        )
-                    }
-                )
+
+            val navigateToMensile: (Int) -> Unit = { year ->
+                viewModel.setSelectedYear(year)
+                selectedTab = 1
+            }
+            Crossfade(targetState = selectedTab, label = "report_tabs") { tab ->
+                when (tab) {
+                    0 -> PanoramicaTab(viewModel, isPremium = isPremium, onUnlock = { showPaywall = true })
+                    1 -> if (isPremium) MensileTab(viewModel)
+                         else ReportProLockedCard(
+                             title = "Analisi Mensile",
+                             description = "Breakdown mensile di entrate e uscite con dettaglio per ogni mese dell'anno.",
+                             onUnlock = { showPaywall = true }
+                         )
+                    2 -> if (isPremium) ArchivioTab(viewModel, onViewMensile = navigateToMensile)
+                         else ReportProLockedCard(
+                             title = "Archivio Storico",
+                             description = "Storico completo per anno con confronto trend nel tempo.",
+                             onUnlock = { showPaywall = true }
+                         )
+                }
             }
         }
 
-        val navigateToMensile: (Int) -> Unit = { year ->
-            viewModel.setSelectedYear(year)
-            selectedTab = 1
-        }
-        Crossfade(targetState = selectedTab, label = "report_tabs") { tab ->
-            when (tab) {
-                0 -> PanoramicaTab(viewModel)
-                1 -> MensileTab(viewModel)
-                2 -> ArchivioTab(viewModel, onViewMensile = navigateToMensile)
-            }
+        // Paywall overlay
+        if (showPaywall) {
+            PaywallScreen(
+                subscriptionViewModel = subscriptionViewModel,
+                onDismiss = { showPaywall = false }
+            )
         }
     }
 }
@@ -100,7 +133,11 @@ fun ReportsScreen(viewModel: SupabaseRentViewModel) {
 // ─── TAB 1: Panoramica ───────────────────────────────────────────────
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun PanoramicaTab(viewModel: SupabaseRentViewModel) {
+private fun PanoramicaTab(
+    viewModel: SupabaseRentViewModel,
+    isPremium: Boolean,
+    onUnlock: () -> Unit
+) {
     val totalExpenses   by viewModel.reportTotalExpenses.collectAsState()
     val totalPayments   by viewModel.reportTotalPayments.collectAsState()
     val expByCategory   by viewModel.reportExpensesByCategory.collectAsState()
@@ -286,8 +323,17 @@ private fun PanoramicaTab(viewModel: SupabaseRentViewModel) {
                 )
             )
         }
-        // ── Pannello Export Professionale ───────────────────────────
-        item {
+        // ── [PRO] Export Professionale ────────────────────────────
+        if (!isPremium) {
+            item {
+                ReportProLockedCard(
+                    title = "Export Report",
+                    description = "Esporta i tuoi dati in CSV o Excel con dettaglio completo di entrate, uscite e saldo.",
+                    onUnlock = onUnlock
+                )
+            }
+        }
+        if (isPremium) item {
             val ctx           = LocalContext.current
             val allCondominiE by viewModel.allCondomini.collectAsState()
             val activeCondoId by viewModel.activeCondominioId.collectAsState()
@@ -536,8 +582,17 @@ private fun PanoramicaTab(viewModel: SupabaseRentViewModel) {
                 )
             }
         }
-        // ── Sezione Backup & Ripristino ─────────────────────────
-        item {
+        // ── [PRO] Backup & Ripristino ──────────────────────────
+        if (!isPremium) {
+            item {
+                ReportProLockedCard(
+                    title = "Backup & Ripristino",
+                    description = "Salva e ripristina tutti i tuoi dati. Incluso export su Drive o email.",
+                    onUnlock = onUnlock
+                )
+            }
+        }
+        if (isPremium) item {
             val ctx = LocalContext.current
             val backupStatus by viewModel.backupStatus.collectAsState()
 
@@ -1073,5 +1128,75 @@ private fun LegendDot(color: Color, label: String) {
                 .background(color)
         )
         Text(label, style = MaterialTheme.typography.labelSmall, color = TextMuted)
+    }
+}
+
+// ─── Card "funzione Pro" ──────────────────────────────────────────────────────
+@Composable
+private fun ReportProLockedCard(
+    title: String,
+    description: String,
+    onUnlock: () -> Unit
+) {
+    val ProGold = Color(0xFFFFC947)
+    Box(
+        modifier = Modifier.fillMaxSize().padding(24.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(1.dp, ProGold.copy(alpha = 0.4f), RoundedCornerShape(20.dp)),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF131628))
+        ) {
+            Column(
+                modifier = Modifier.padding(28.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(androidx.compose.foundation.shape.CircleShape)
+                        .background(ProGold.copy(alpha = 0.12f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Filled.Lock, null,
+                        tint = ProGold,
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = Color.White,
+                    textAlign = TextAlign.Center
+                )
+                Text(
+                    description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.55f),
+                    textAlign = TextAlign.Center
+                )
+                Button(
+                    onClick = onUnlock,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = ProGold,
+                        contentColor = Color(0xFF1A0A00)
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Filled.Stars, null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        "Sblocca con Pro",
+                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.ExtraBold)
+                    )
+                }
+            }
+        }
     }
 }
