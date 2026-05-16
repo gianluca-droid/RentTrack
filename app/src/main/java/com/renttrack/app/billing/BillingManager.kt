@@ -4,7 +4,6 @@ import android.app.Activity
 import android.content.Context
 import android.util.Log
 import com.android.billingclient.api.*
-import com.renttrack.app.BuildConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -29,6 +28,11 @@ class BillingManager(context: Context) : PurchasesUpdatedListener {
         const val PRODUCT_MONTHLY = "renttrack_pro_monthly"
         const val PRODUCT_YEARLY  = "renttrack_pro_yearly"
         private const val TAG = "BillingManager"
+        /**
+         * ⚠️ Impostare a FALSE prima di pubblicare sullo store!
+         * TRUE = sempre Pro (utile per sviluppo e test UI)
+         */
+        private const val FORCE_PREMIUM_FOR_TESTING = true
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -41,8 +45,8 @@ class BillingManager(context: Context) : PurchasesUpdatedListener {
         .build()
 
     // ── State flows ──────────────────────────────────────────────────────────
-    // In DEBUG: sempre Pro per facilitare i test dello sviluppatore
-    private val _isPremium = MutableStateFlow(BuildConfig.DEBUG)
+    // FORCE_PREMIUM_FOR_TESTING=true → sempre Pro in sviluppo
+    private val _isPremium = MutableStateFlow(FORCE_PREMIUM_FOR_TESTING)
     val isPremium: StateFlow<Boolean> = _isPremium.asStateFlow()
 
     private val _products = MutableStateFlow<List<ProductDetails>>(emptyList())
@@ -108,7 +112,9 @@ class BillingManager(context: Context) : PurchasesUpdatedListener {
                 val active = result.purchasesList.any { purchase ->
                     purchase.purchaseState == Purchase.PurchaseState.PURCHASED
                 }
-                _isPremium.value = active
+                if (!FORCE_PREMIUM_FOR_TESTING) {
+                    _isPremium.value = active
+                }
                 Log.d(TAG, "Premium status: $active")
             }
         }
@@ -142,7 +148,9 @@ class BillingManager(context: Context) : PurchasesUpdatedListener {
                 purchases?.forEach { purchase ->
                     if (purchase.purchaseState == Purchase.PurchaseState.PURCHASED) {
                         acknowledgePurchase(purchase)
-                        _isPremium.value = true
+                        if (!FORCE_PREMIUM_FOR_TESTING) {
+                            _isPremium.value = true
+                        }
                     }
                 }
             }
