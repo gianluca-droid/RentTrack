@@ -226,6 +226,13 @@ fun DashboardScreen(
                             )
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            // Vetrina pubblica
+                            IconButton(onClick = onVediVetrina, modifier = Modifier.size(36.dp)) {
+                                Surface(shape = RoundedCornerShape(8.dp), color = Cyan400.copy(alpha = 0.15f)) {
+                                    Icon(Icons.Filled.Visibility, "Vedi vetrina", tint = Cyan400,
+                                        modifier = Modifier.padding(6.dp).size(18.dp))
+                                }
+                            }
                             IconButton(onClick = onCreaAnnuncio, modifier = Modifier.size(36.dp)) {
                                 Surface(shape = RoundedCornerShape(8.dp), color = Cyan400) {
                                     Icon(Icons.Filled.Add, null, tint = DarkBg,
