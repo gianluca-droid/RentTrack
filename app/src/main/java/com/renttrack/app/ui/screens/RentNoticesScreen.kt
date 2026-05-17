@@ -46,6 +46,7 @@ fun RentNoticesScreen(viewModel: SupabaseRentViewModel) {
     var showConfirmSendDialog by remember { mutableStateOf<SCedolino?>(null) }
     var showPagamentoDialog by remember { mutableStateOf<SCedolino?>(null) }
     // Ricevuta post-pagamento (4 var separate per evitare data class locale)
+    var triggerReceipt   by remember { mutableStateOf<SCedolino?>(null) }  // staging: aspetta chiusura dialog
     var receiptCedolino  by remember { mutableStateOf<SCedolino?>(null) }
     var receiptMethod    by remember { mutableStateOf("") }
     var receiptReference by remember { mutableStateOf("") }
@@ -814,6 +815,16 @@ fun RentNoticesScreen(viewModel: SupabaseRentViewModel) {
         )
     }
 
+    // Apri ricevuta SOLO dopo che il dialog pagamento è completamente chiuso
+    // (altrimenti Android dismisserebbe entrambi nello stesso frame)
+    LaunchedEffect(triggerReceipt, showPagamentoDialog) {
+        if (triggerReceipt != null && showPagamentoDialog == null) {
+            kotlinx.coroutines.delay(250) // attendi chiusura window manager
+            receiptCedolino  = triggerReceipt
+            triggerReceipt   = null
+        }
+    }
+
     // Dialog: registra pagamento con metodo
     showPagamentoDialog?.let { ced ->
         RegistraPagamentoDialog(
@@ -822,11 +833,11 @@ fun RentNoticesScreen(viewModel: SupabaseRentViewModel) {
             { showPagamentoDialog = null },
             { method, reference ->
                 viewModel.markCedolinoPaidWithPayment(ced, method, reference)
-                // Prepara dati ricevuta
-                receiptCedolino  = ced
+                // Salva dati ricevuta in staging — verrà mostrata dopo 250ms
                 receiptMethod    = method
                 receiptReference = reference
                 receiptPaid      = ced.total - ced.paidAmount
+                triggerReceipt   = ced   // NON receiptCedolino direttamente
                 showPagamentoDialog = null
             }
         )

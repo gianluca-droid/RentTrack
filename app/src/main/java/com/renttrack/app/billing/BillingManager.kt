@@ -32,7 +32,7 @@ class BillingManager(context: Context) : PurchasesUpdatedListener {
          * ⚠️ RELEASE: impostato a FALSE → billing reale Google Play attivo.
          * Per sviluppo locale: impostare a TRUE per testare le feature Pro senza acquisti.
          */
-        private const val FORCE_PREMIUM_FOR_TESTING = false
+        private const val FORCE_PREMIUM_FOR_TESTING = true  // ← false solo per build Play Store
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
