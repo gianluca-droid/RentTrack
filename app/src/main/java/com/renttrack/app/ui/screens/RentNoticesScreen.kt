@@ -415,13 +415,7 @@ fun RentNoticesScreen(viewModel: SupabaseRentViewModel) {
                             Text(Formatters.currency(cedolino.total), style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold), color = TextPrimary, modifier = Modifier.weight(1f), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                             Column(horizontalAlignment = Alignment.End) {
                                 Text("Scad. ${Formatters.date(cedolino.dueDate)}", style = MaterialTheme.typography.bodySmall, color = if (isOverdue) Color(0xFFFF6B6B) else TextMuted)
-                                if (isOverdue) {
-                                    val giorni = ((System.currentTimeMillis() - cedolino.dueDate) / (24L * 60 * 60 * 1000)).toInt().coerceAtLeast(1)
-                                    val residuo = (cedolino.total - cedolino.paidAmount).coerceAtLeast(0.0)
-                                    val mora = residuo * 0.05 * giorni / 365.0
-                                    Text("⚠ SCADUTO · $giorni gg", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = Color(0xFFFF6B6B))
-                                    if (mora > 0.01) Text("Mora stimata: ${Formatters.currency(mora)}", style = MaterialTheme.typography.labelSmall, color = Color(0xFFFF6B6B).copy(alpha = 0.75f))
-                                }
+                                if (isOverdue) Text("⚠ SCADUTO", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = Color(0xFFFF6B6B))
                             }
                         }
                         if (cedolino.paidAmount > 0) {
