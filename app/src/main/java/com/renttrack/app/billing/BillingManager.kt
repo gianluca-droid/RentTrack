@@ -10,6 +10,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import com.renttrack.app.BuildConfig
 import kotlinx.coroutines.launch
 
 /**
@@ -34,7 +35,7 @@ class BillingManager(context: Context) : PurchasesUpdatedListener {
          */
         // DEBUG → sempre Pro (sviluppo locale, no Play Store needed)
         // RELEASE → billing reale Google Play
-        private val FORCE_PREMIUM_FOR_TESTING = com.renttrack.app.BuildConfig.DEBUG
+        private val FORCE_PREMIUM_FOR_TESTING = BuildConfig.DEBUG
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
