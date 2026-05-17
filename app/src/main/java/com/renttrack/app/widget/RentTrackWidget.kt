@@ -57,7 +57,9 @@ class RentTrackWidget : AppWidgetProvider() {
             views.setTextViewText(R.id.widget_update_time, timeFmt.format(Date()))
 
             // ── Dati da Supabase (caricati in background) ──────────────────
-            val prefs = context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
+            // FIX: usa SecurePrefs (stesso file del resto dell'app) — prima usava
+            //      "auth_prefs" che nessuno scriveva → widget sempre non autenticato
+            val prefs = com.renttrack.app.SecurePrefs.get(context)
             val token = prefs.getString("auth_token", null)
 
             if (token.isNullOrBlank()) {

@@ -31,7 +31,7 @@ fun SettingsScreen(
     subscriptionViewModel: SubscriptionViewModel? = null
 ) {
     val context = LocalContext.current
-    val prefs   = remember { context.getSharedPreferences("renttrack_prefs", android.content.Context.MODE_PRIVATE) }
+    val prefs   = remember { com.renttrack.app.SecurePrefs.get(context) }
     val isDebugBuild = remember { (context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0 }
     val simulateFreePlan by (subscriptionViewModel?.simulateFreePlan ?: kotlinx.coroutines.flow.MutableStateFlow(false)).collectAsState()
 

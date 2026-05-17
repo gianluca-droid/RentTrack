@@ -30,7 +30,7 @@ class RentCheckWorker(
 
     override suspend fun doWork(): Result {
         return try {
-            val prefs = context.getSharedPreferences("renttrack_prefs", Context.MODE_PRIVATE)
+            val prefs = com.renttrack.app.SecurePrefs.get(context)
             val token = prefs.getString("auth_token", null)
 
             // Nessun token → utente non loggato, niente notifiche

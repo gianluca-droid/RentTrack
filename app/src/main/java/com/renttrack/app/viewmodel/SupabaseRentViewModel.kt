@@ -33,7 +33,7 @@ data class SPropertySummaryEntry(
 
 class SupabaseRentViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val prefs = application.getSharedPreferences("renttrack_prefs", Context.MODE_PRIVATE)
+    private val prefs = com.renttrack.app.SecurePrefs.get(application)
     val repo = SupabaseRentRepository(prefs)
 
     // ── Loading ──────────────────────────────────────────────────────

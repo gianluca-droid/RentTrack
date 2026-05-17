@@ -86,7 +86,7 @@ fun OnboardingScreen(onFinished: () -> Unit) {
     )
 
     fun finish() {
-        context.getSharedPreferences("renttrack_prefs", Context.MODE_PRIVATE)
+        com.renttrack.app.SecurePrefs.get(context)
             .edit().putBoolean("onboarding_shown", true).apply()
         onFinished()
     }

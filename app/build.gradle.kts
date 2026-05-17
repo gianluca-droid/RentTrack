@@ -77,6 +77,9 @@ dependencies {
     // Navigation Compose
     implementation("androidx.navigation:navigation-compose:2.7.7")
 
+    // Security — EncryptedSharedPreferences (token storage cifrato AES-256)
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+
     // Room Database (usato da Daos.kt — non rimuovere)
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")

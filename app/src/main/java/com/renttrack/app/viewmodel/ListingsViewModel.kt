@@ -36,12 +36,8 @@ class ListingsViewModel(
     private val contentResolver: ContentResolver
 ) : ViewModel() {
 
-    private val baseUrl = "https://zjqrtuposdrimzjoydgh.supabase.co"
-    private val anonKey =
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9." +
-        "eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpqcXJ0dXBvc2RyaW16am95ZGdoIiwi" +
-        "cm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMzE5MDMsImV4cCI6MjA5MzkwNzkwM30." +
-        "dLvc0pPrfIXiBGJSDTnRtNU6FRppFPSr86pLwHD35j4"
+    private val baseUrl = com.renttrack.app.AppConfig.SUPABASE_URL
+    private val anonKey  = com.renttrack.app.AppConfig.SUPABASE_ANON_KEY
 
     private val authToken: String? get() = prefs.getString("auth_token", null)
 
@@ -748,7 +744,7 @@ class ListingsViewModel(
 // ─── Factory ──────────────────────────────────────────────────────────────────
 class ListingsViewModelFactory(private val context: Context) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        val prefs = context.getSharedPreferences("renttrack_prefs", Context.MODE_PRIVATE)
+        val prefs = com.renttrack.app.SecurePrefs.get(context)
         @Suppress("UNCHECKED_CAST")
         return ListingsViewModel(prefs, context.contentResolver) as T
     }

@@ -471,7 +471,7 @@ class AuthViewModel(
 class AuthViewModelFactory(private val context: Context) :
     androidx.lifecycle.ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        val prefs = context.getSharedPreferences("renttrack_prefs", Context.MODE_PRIVATE)
+        val prefs = com.renttrack.app.SecurePrefs.get(context)
         @Suppress("UNCHECKED_CAST")
         return AuthViewModel(prefs, context.applicationContext) as T
     }

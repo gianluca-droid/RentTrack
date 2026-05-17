@@ -171,7 +171,7 @@ fun MainApp(
 
     // ── Onboarding check ─────────────────────────────────────────────────
     val onboardingShown = remember {
-        context.getSharedPreferences("renttrack_prefs", android.content.Context.MODE_PRIVATE)
+        com.renttrack.app.SecurePrefs.get(context)
             .getBoolean("onboarding_shown", false)
     }
 
