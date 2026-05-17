@@ -1,4 +1,4 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
+﻿@file:OptIn(ExperimentalMaterial3Api::class)
 
 package com.renttrack.app.ui.screens
 
@@ -304,9 +304,10 @@ fun RentNoticesScreen(
                                             }
                                         )
 
-                                }
-                            }
-                        }
+                                        }            // fine if (cwi != null)
+                                }                // fine DropdownMenu
+                            }                    // fine Box
+                        }                        // fine Row header
                         Spacer(Modifier.height(10.dp))
                         Row(verticalAlignment = Alignment.Bottom) {
                             Text(Formatters.currency(cedolino.total), style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold), color = TextPrimary, modifier = Modifier.weight(1f), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
