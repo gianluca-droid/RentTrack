@@ -38,6 +38,8 @@ object XlsxExporter {
 
     private val DATE_FMT = SimpleDateFormat("dd/MM/yyyy", Locale.ITALIAN)
     private val NUM_FMT  = DecimalFormat("#,##0.00", DecimalFormatSymbols(Locale.ITALIAN))
+    /** OOXML richiede numeri con '.' come decimale — lo stile cella gestisce la visualizzazione */
+    private fun rawNum(d: Double): String = String.format(Locale.US, "%.2f", d)
 
     fun buildXlsx(
         payments: List<SPayment>,
@@ -89,16 +91,16 @@ object XlsxExporter {
         val sb = StringBuilder()
         sb.appendLine("""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>""")
         sb.appendLine("""<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">""")
+        // <cols> DEVE essere prima di <sheetData> — se no il file risulta corrotto
+        sb.appendLine("""<cols><col min="1" max="1" width="32" customWidth="1"/><col min="2" max="2" width="22" customWidth="1"/></cols>""")
         sb.appendLine("""<sheetData>""")
-
-        // Larghezze colonne
-        sb.appendLine("""<cols><col min="1" max="1" width="28" customWidth="1"/><col min="2" max="2" width="22" customWidth="1"/></cols>""")
 
         fun strRow(r: Int, label: String, value: String, styleLabel: Int = 1, styleVal: Int = 1) {
             sb.appendLine("""<row r="$r"><c r="A$r" t="s" s="$styleLabel"><v>${sst.id(label)}</v></c><c r="B$r" t="s" s="$styleVal"><v>${sst.id(value)}</v></c></row>""")
         }
+        // numRow usa rawNum(): <v> deve contenere un float US, lo stile si occupa del formato visivo
         fun numRow(r: Int, label: String, value: Double, styleLabel: Int = 1, styleVal: Int = 5) {
-            sb.appendLine("""<row r="$r"><c r="A$r" t="s" s="$styleLabel"><v>${sst.id(label)}</v></c><c r="B$r" s="$styleVal"><v>${NUM_FMT.format(value)}</v></c></row>""")
+            sb.appendLine("""<row r="$r"><c r="A$r" t="s" s="$styleLabel"><v>${sst.id(label)}</v></c><c r="B$r" s="$styleVal"><v>${rawNum(value)}</v></c></row>""")
         }
         fun emptyRow(r: Int) { sb.appendLine("""<row r="$r"/>""") }
 
@@ -172,7 +174,7 @@ object XlsxExporter {
             sb.append("""<c r="B$r" t="s" s="$rowStyle"><v>${sst.id(row.tipo)}</v></c>""")
             sb.append("""<c r="C$r" t="s" s="$rowStyle"><v>${sst.id(row.descrizione)}</v></c>""")
             sb.append("""<c r="D$r" t="s" s="$rowStyle"><v>${sst.id(row.riferimento)}</v></c>""")
-            sb.append("""<c r="E$r" s="$numStyle"><v>${NUM_FMT.format(row.importo)}</v></c>""")
+            sb.append("""<c r="E$r" s="$numStyle"><v>${rawNum(row.importo)}</v></c>""")
             sb.append("""<c r="F$r" t="s" s="$rowStyle"><v>${sst.id(row.immobile)}</v></c>""")
             sb.append("""<c r="G$r" t="s" s="$rowStyle"><v>${sst.id(row.note)}</v></c>""")
             sb.appendLine("""</row>""")
@@ -185,7 +187,7 @@ object XlsxExporter {
         sb.append("""<c r="B$totalR" s="3"/>""")
         sb.append("""<c r="C$totalR" t="s" s="3"><v>${sst.id("Entrate: ${NUM_FMT.format(totalIn)} €  |  Uscite: ${NUM_FMT.format(totalOut)} €")}</v></c>""")
         sb.append("""<c r="D$totalR" s="3"/>""")
-        sb.append("""<c r="E$totalR" s="5"><v>${NUM_FMT.format(balance)}</v></c>""")
+        sb.append("""<c r="E$totalR" s="5"><v>${rawNum(balance)}</v></c>""")
         sb.append("""<c r="F$totalR" s="3"/>""")
         sb.append("""<c r="G$totalR" t="s" s="3"><v>${sst.id("Saldo Netto")}</v></c>""")
         sb.appendLine("""</row>""")
