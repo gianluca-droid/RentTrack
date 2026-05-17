@@ -576,7 +576,7 @@ fun MainApp(
             composable(Screen.Tenants.route)    {
                 TenantsScreen(viewModel = viewModel)
             }
-            composable(Screen.Affitti.route)    { RentNoticesScreen(viewModel) }
+            composable(Screen.Affitti.route)    { RentNoticesScreen(viewModel, subscriptionViewModel) }
             composable(Screen.Expenses.route)   { ExpensesScreen(viewModel) }
             composable(Screen.Documenti.route) {
                 SubscriptionGate(

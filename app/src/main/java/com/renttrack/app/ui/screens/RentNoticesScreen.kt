@@ -30,22 +30,28 @@ import com.renttrack.app.ui.components.*
 import com.renttrack.app.ui.theme.*
 import com.renttrack.app.util.CedolinoPdfGenerator
 import com.renttrack.app.viewmodel.SupabaseRentViewModel
+import com.renttrack.app.viewmodel.SubscriptionViewModel
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RentNoticesScreen(viewModel: SupabaseRentViewModel) {
+fun RentNoticesScreen(
+    viewModel: SupabaseRentViewModel,
+    subscriptionViewModel: SubscriptionViewModel
+) {
     val cedolini by viewModel.cedolini.collectAsState()
     val cedoliniWithItems by viewModel.cedoliniWithItems.collectAsState()
     val pendingCount by viewModel.pendingCedolini.collectAsState()
     val units by viewModel.units.collectAsState()
     val context = LocalContext.current
 
+    val isPremium by subscriptionViewModel.isPremium.collectAsState()
+    var showPaywall by remember { mutableStateOf(false) }
+
     var showGenerateDialog by remember { mutableStateOf(false) }
     var showSingleDialog by remember { mutableStateOf(false) }
     var showQuotaDialog by remember { mutableStateOf(false) }
     var showDetailDialog by remember { mutableStateOf<SCedolinoWithItems?>(null) }
-    var showConfirmSendDialog by remember { mutableStateOf<SCedolino?>(null) }
     var showPagamentoDialog by remember { mutableStateOf<SCedolino?>(null) }
     // Ricevuta post-pagamento (4 var separate per evitare data class locale)
     var triggerReceipt   by remember { mutableStateOf<SCedolino?>(null) }  // staging: aspetta chiusura dialog
@@ -276,141 +282,92 @@ fun RentNoticesScreen(viewModel: SupabaseRentViewModel) {
                                             }
                                         )
                                     }
-                                    val shareText = buildString {
-                                        appendLine("📋 Avviso Affitto")
-                                        appendLine("Intestato a: ${viewModel.getUnitName(cedolino.unitId)}")
-                                        appendLine("Periodo: ${cedolino.period}")
-                                        cwi?.items?.forEach { appendLine("• ${it.description}: ${Formatters.currency(it.amount)}") }
-                                        appendLine("─────────────────")
-                                        appendLine("TOTALE: ${Formatters.currency(cedolino.total)}")
-                                        appendLine("Scadenza: ${Formatters.date(cedolino.dueDate)}")
-                                    }
-                                    DropdownMenuItem(
-                                        text = { Text("Condividi", color = TextPrimary) },
-                                        leadingIcon = { Icon(Icons.Filled.Share, null, tint = Green400, modifier = Modifier.size(18.dp)) },
-                                        onClick = {
-                                            val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                                                type = "text/plain"
-                                                putExtra(android.content.Intent.EXTRA_TEXT, shareText)
-                                                putExtra(android.content.Intent.EXTRA_SUBJECT, "Avviso affitto ${cedolino.period}")
-                                            }
-                                            context.startActivity(android.content.Intent.createChooser(intent, "Invia avviso"))
-                                            showMenu = false
-                                        }
-                                    )
-                                    // ── Invia via Email ──────────────────────────────
+                                    // ── Invia avviso PDF (Pro) ────────────────────────
                                     val tenantUnit = units.find { it.id == cedolino.unitId }
-                                    val tenantEmail = tenantUnit?.ownerEmail ?: ""
-                                    DropdownMenuItem(
-                                        text = { Text("Invia Email", color = TextPrimary) },
-                                        leadingIcon = { Icon(Icons.Filled.Email, null, tint = Cyan400, modifier = Modifier.size(18.dp)) },
-                                        onClick = {
-                                            val subject = "Avviso affitto ${cedolino.period}"
-                                            val body = buildString {
-                                                appendLine("Gentile ${tenantUnit?.ownerName ?: "Inquilino"},")
-                                                appendLine()
-                                                appendLine("Le inviamo l'avviso di pagamento per il periodo: ${cedolino.period}")
-                                                appendLine()
-                                                cwi?.items?.forEach { appendLine("• ${it.description}: ${Formatters.currency(it.amount)}") }
-                                                appendLine("─────────────────────")
-                                                appendLine("TOTALE DA VERSARE: ${Formatters.currency(cedolino.total)}")
-                                                appendLine("Scadenza: ${Formatters.date(cedolino.dueDate)}")
-                                                appendLine()
-                                                appendLine("Cordiali saluti")
-                                            }
-                                            val emailIntent = if (tenantEmail.isNotBlank()) {
-                                                android.content.Intent(android.content.Intent.ACTION_SENDTO).apply {
-                                                    data = android.net.Uri.parse("mailto:")
-                                                    putExtra(android.content.Intent.EXTRA_EMAIL, arrayOf(tenantEmail))
-                                                    putExtra(android.content.Intent.EXTRA_SUBJECT, subject)
-                                                    putExtra(android.content.Intent.EXTRA_TEXT, body)
-                                                }
-                                            } else {
-                                                // Fallback: condivisione generica se email non impostata
-                                                android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                                                    type = "text/plain"
-                                                    putExtra(android.content.Intent.EXTRA_SUBJECT, subject)
-                                                    putExtra(android.content.Intent.EXTRA_TEXT, body)
-                                                }
-                                            }
-                                            try {
-                                                context.startActivity(emailIntent)
-                                            } catch (e: Exception) {
-                                                context.startActivity(
-                                                    android.content.Intent.createChooser(
-                                                        android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                                                            type = "text/plain"
-                                                            putExtra(android.content.Intent.EXTRA_TEXT, body)
-                                                        },
-                                                        "Invia avviso"
-                                                    )
-                                                )
-                                            }
-                                            showMenu = false
-                                        }
+                                    HorizontalDivider(
+                                        modifier = Modifier.padding(vertical = 2.dp),
+                                        color = TextMuted.copy(alpha = 0.12f)
                                     )
-                                    // ── Invia via WhatsApp ────────────────────────────
-                                    val tenantPhone = tenantUnit?.ownerPhone ?: ""
                                     DropdownMenuItem(
-                                        text = { Text("WhatsApp", color = TextPrimary) },
+                                        text = {
+                                            Column {
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    Text(
+                                                        if (cedolino.sentToResident) "Inviato ✓ — Reinvia PDF" else "Invia avviso PDF",
+                                                        color = if (cedolino.sentToResident) Green400 else TextPrimary
+                                                    )
+                                                    Spacer(Modifier.width(6.dp))
+                                                    if (!isPremium) {
+                                                        Surface(
+                                                            shape = RoundedCornerShape(4.dp),
+                                                            color = Cyan400.copy(alpha = 0.15f)
+                                                        ) {
+                                                            Text(
+                                                                "PRO",
+                                                                style = MaterialTheme.typography.labelSmall.copy(
+                                                                    fontWeight = FontWeight.ExtraBold
+                                                                ),
+                                                                color = Cyan400,
+                                                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                                if (cwi != null && tenantUnit != null) {
+                                                    Text(
+                                                        "${tenantUnit.ownerName.ifBlank { "Inquilino" }} · ${tenantUnit.ownerPhone.ifBlank { tenantUnit.ownerEmail.ifBlank { "" } }}",
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        color = TextMuted
+                                                    )
+                                                }
+                                            }
+                                        },
                                         leadingIcon = {
                                             Icon(
-                                                Icons.Filled.Chat, null,
-                                                tint = androidx.compose.ui.graphics.Color(0xFF25D366),
+                                                Icons.Filled.Share, null,
+                                                tint = if (cedolino.sentToResident) Green400 else Cyan400,
                                                 modifier = Modifier.size(18.dp)
                                             )
                                         },
                                         onClick = {
-                                            val waBody = buildString {
-                                                appendLine("Ciao ${tenantUnit?.ownerName?.split(" ")?.firstOrNull() ?: ""},")
-                                                appendLine()
-                                                appendLine("ecco l'avviso per *${cedolino.period}*:")
-                                                appendLine()
-                                                cwi?.items?.forEach { appendLine("• ${it.description}: ${Formatters.currency(it.amount)}") }
-                                                appendLine("────────────────")
-                                                appendLine("*TOTALE: ${Formatters.currency(cedolino.total)}*")
-                                                appendLine("Scadenza: ${Formatters.date(cedolino.dueDate)}")
+                                            if (!isPremium) {
+                                                showPaywall = true
+                                                showMenu = false
+                                                return@DropdownMenuItem
                                             }
-                                            try {
-                                                if (tenantPhone.isNotBlank()) {
-                                                    val cleanPhone = tenantPhone
-                                                        .replace(Regex("[\\s\\-().+]"), "")
-                                                        .let { if (it.startsWith("0")) "39$it" else it }
-                                                    val encoded = java.net.URLEncoder.encode(waBody, "UTF-8")
-                                                    val waIntent = android.content.Intent(
-                                                        android.content.Intent.ACTION_VIEW,
-                                                        android.net.Uri.parse("https://wa.me/$cleanPhone?text=$encoded")
+                                            if (cwi != null) {
+                                                try {
+                                                    val pdfUri = CedolinoPdfGenerator.generateAndShare(
+                                                        context      = context,
+                                                        cedolino     = cedolino,
+                                                        items        = cwi.items,
+                                                        tenantName   = tenantUnit?.ownerName ?: viewModel.getUnitName(cedolino.unitId),
+                                                        propertyName = tenantUnit?.number ?: ""
                                                     )
-                                                    context.startActivity(waIntent)
-                                                } else {
                                                     context.startActivity(
-                                                        android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                                                            type = "text/plain"
-                                                            setPackage("com.whatsapp")
-                                                            putExtra(android.content.Intent.EXTRA_TEXT, waBody)
-                                                        }
+                                                        android.content.Intent.createChooser(
+                                                            android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                                                type = "application/pdf"
+                                                                putExtra(android.content.Intent.EXTRA_STREAM, pdfUri)
+                                                                putExtra(android.content.Intent.EXTRA_SUBJECT, "Avviso affitto ${cedolino.period}")
+                                                                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                                                // Pre-compila email se disponibile
+                                                                tenantUnit?.ownerEmail?.takeIf { it.isNotBlank() }?.let {
+                                                                    putExtra(android.content.Intent.EXTRA_EMAIL, arrayOf(it))
+                                                                }
+                                                            },
+                                                            "Invia avviso a ${tenantUnit?.ownerName ?: "inquilino"}"
+                                                        )
                                                     )
+                                                    // Segna come inviato automaticamente
+                                                    viewModel.markCedolinoSent(cedolino)
+                                                } catch (e: Exception) {
+                                                    android.util.Log.e("PDF", "Errore condivisione PDF: ${e.message}")
                                                 }
-                                            } catch (e: Exception) {
-                                                context.startActivity(
-                                                    android.content.Intent.createChooser(
-                                                        android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                                                            type = "text/plain"
-                                                            putExtra(android.content.Intent.EXTRA_TEXT, waBody)
-                                                        }, "Invia avviso"
-                                                    )
-                                                )
                                             }
                                             showMenu = false
                                         }
                                     )
-                                    if (!cedolino.sentToResident) {
-                                        DropdownMenuItem(
-                                            text = { Text("Segna come inviato", color = TextPrimary) },
-                                            leadingIcon = { Icon(Icons.Filled.Send, null, tint = Cyan400, modifier = Modifier.size(18.dp)) },
-                                            onClick = { showConfirmSendDialog = cedolino; showMenu = false }
-                                        )
-                                    }
 
                                 }
                             }
@@ -545,18 +502,61 @@ fun RentNoticesScreen(viewModel: SupabaseRentViewModel) {
                         Button(
                             onClick = {
                                 if (selectedIds.isNotEmpty()) {
+                                    if (!isPremium) { showPaywall = true; return@Button }
+                                    // Genera e condividi PDF per ogni cedolino selezionato
+                                    val selected = openCedolini.filter { it.id in selectedIds }
+                                    selected.forEach { ced ->
+                                        val cwiSel = cedoliniWithItems.find { it.cedolino.id == ced.id }
+                                        val unitSel = units.find { it.id == ced.unitId }
+                                        if (cwiSel != null) {
+                                            try {
+                                                val pdfUri = CedolinoPdfGenerator.generateAndShare(
+                                                    context      = context,
+                                                    cedolino     = ced,
+                                                    items        = cwiSel.items,
+                                                    tenantName   = unitSel?.ownerName ?: viewModel.getUnitName(ced.unitId),
+                                                    propertyName = unitSel?.number ?: ""
+                                                )
+                                                context.startActivity(
+                                                    android.content.Intent.createChooser(
+                                                        android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                                            type = "application/pdf"
+                                                            putExtra(android.content.Intent.EXTRA_STREAM, pdfUri)
+                                                            putExtra(android.content.Intent.EXTRA_SUBJECT, "Avviso affitto ${ced.period}")
+                                                            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                                            unitSel?.ownerEmail?.takeIf { it.isNotBlank() }?.let {
+                                                                putExtra(android.content.Intent.EXTRA_EMAIL, arrayOf(it))
+                                                            }
+                                                        },
+                                                        "Invia a ${unitSel?.ownerName ?: "inquilino"}"
+                                                    )
+                                                )
+                                            } catch (e: Exception) {
+                                                android.util.Log.e("PDF", "Errore bulk PDF: ${e.message}")
+                                            }
+                                        }
+                                    }
                                     viewModel.bulkMarkSent(selectedIds)
                                     selectionMode = false; selectedIds = emptySet()
                                 }
                             },
                             enabled = selectedIds.isNotEmpty(),
-                            colors = ButtonDefaults.buttonColors(containerColor = Green500, contentColor = Color.White),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isPremium) Green500 else DarkSurface,
+                                contentColor = if (isPremium) Color.White else Cyan400
+                            ),
                             shape = RoundedCornerShape(10.dp),
                             modifier = Modifier.weight(1f)
                         ) {
-                            Icon(Icons.Filled.Send, null, modifier = Modifier.size(16.dp))
+                            Icon(
+                                if (isPremium) Icons.Filled.Share else Icons.Filled.Lock,
+                                null, modifier = Modifier.size(16.dp)
+                            )
                             Spacer(Modifier.width(4.dp))
-                            Text("Segna inviati", style = MaterialTheme.typography.labelMedium)
+                            Text(
+                                if (isPremium) "Invia avvisi" else "Invia avvisi (Pro)",
+                                style = MaterialTheme.typography.labelMedium
+                            )
                         }
                     }
                 }
@@ -773,49 +773,14 @@ fun RentNoticesScreen(viewModel: SupabaseRentViewModel) {
         )
     }
 
-    // Dialog: conferma invio al condomino
-    showConfirmSendDialog?.let { cedolino ->
-        AlertDialog(
-            onDismissRequest = { showConfirmSendDialog = null },
-            icon = { Icon(Icons.Filled.Send, null, tint = Cyan400) },
-            title = { Text("Conferma Invio") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        "Stai per inviare l'avviso affitto del periodo \"${cedolino.period}\" a:",
-                        style = MaterialTheme.typography.bodyMedium, color = TextSecondary
-                    )
-                    Text(
-                        viewModel.getUnitName(cedolino.unitId),
-                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-                        color = Cyan400
-                    )
-                    Text(
-                        "Importo: ${Formatters.currency(cedolino.total)}",
-                        style = MaterialTheme.typography.bodyMedium, color = TextPrimary
-                    )
-                    HorizontalDivider(color = TextMuted.copy(alpha = 0.2f))
-                    Text(
-                        "Una volta inviato, sarà disponibile per l'inquilino.",
-                        style = MaterialTheme.typography.bodySmall, color = TextMuted
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        viewModel.markCedolinoSent(cedolino)
-                        showConfirmSendDialog = null
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = Cyan500)
-                ) { Text("Conferma Invio") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showConfirmSendDialog = null }) { Text("Annulla") }
-            },
-            containerColor = DarkSurface
+    // Paywall overlay per funzioni Pro
+    if (showPaywall) {
+        PaywallScreen(
+            subscriptionViewModel = subscriptionViewModel,
+            onDismiss = { showPaywall = false }
         )
     }
+
 
     // Apri ricevuta SOLO dopo che il dialog pagamento è completamente chiuso
     // (altrimenti Android dismisserebbe entrambi nello stesso frame)
