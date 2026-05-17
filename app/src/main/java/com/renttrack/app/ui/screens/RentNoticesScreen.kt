@@ -1649,8 +1649,8 @@ private fun EditCedolinoDialog(
                         style = MaterialTheme.typography.bodySmall, color = TextMuted)
                     OutlinedTextField(
                         value = dueDayStr,
-                        onValueChange = { if (it.length <= 2 && (it.toIntOrNull() ?: 0) <= 28) dueDayStr = it },
-                        label = { Text("Nuovo giorno scadenza (1–28)") },
+                        onValueChange = { if (it.length <= 2 && (it.toIntOrNull() ?: 0) <= 31) dueDayStr = it },
+                        label = { Text("Nuovo giorno scadenza (1–31)") },
                         modifier = Modifier.fillMaxWidth(), singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         supportingText = { Text("Mese e anno restano invariati", color = TextMuted) },
