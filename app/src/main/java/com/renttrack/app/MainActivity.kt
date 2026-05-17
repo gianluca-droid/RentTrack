@@ -132,10 +132,13 @@ fun MainApp(
                 }
             }
             is AuthState.LoggedIn -> {
-                // Trigger refresh dati (ex race condition fix)
                 viewModel.refresh()
-                // Se siamo su ResetPassword, naviga alla home
-                if (currentRoute == Screen.ResetPassword.route) {
+                // Esci da schermate pubbliche se l'utente risulta loggato
+                val publicRoutes = listOf(
+                    Screen.Annunci.route, Screen.Login.route,
+                    Screen.DettaglioAnnuncio.route, Screen.CreaAnnuncio.route
+                )
+                if (currentRoute in publicRoutes || currentRoute == Screen.ResetPassword.route) {
                     val dest = if (viewModel.activeCondominioId.value.isNotBlank())
                         Screen.Dashboard.route else Screen.CondominioSelector.route
                     navController.navigate(dest) { popUpTo(0) { inclusive = true } }

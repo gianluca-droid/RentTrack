@@ -56,7 +56,8 @@ object XlsxExporter {
         val rows        = buildRows(payments, expenses, condoMap)
         val monthly     = XlsxChartExporter.monthlyTotals(payments, expenses)
         val categories  = XlsxChartExporter.categoryTotals(expenses)
-        val hasCharts   = monthly.isNotEmpty()
+        // grafici solo se ci sono sia dati mensili che categorie spese (evita crash su serie vuote)
+        val hasCharts   = monthly.isNotEmpty() && categories.isNotEmpty()
 
         val sst = SharedStringTable()
         val sheet1Xml = buildSummarySheet(sst, scopeLabel, periodoLabel, totalIn, totalOut, balance, rows.size, hasCharts)
@@ -269,8 +270,8 @@ object XlsxExporter {
     // ── Open XML files ────────────────────────────────────────────────────
 
     private fun contentTypesXml(hasCharts: Boolean = false): String {
-        val chartTypes = if (hasCharts) """
-  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+        // NOTA: NON ripetere <Default Extension="rels"> se è già presente nel blocco base
+        val chartOverrides = if (hasCharts) """
   <Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>
   <Override PartName="/xl/charts/chart1.xml"     ContentType="application/vnd.openxmlformats-officedocument.drawingml.chart+xml"/>
   <Override PartName="/xl/charts/chart2.xml"     ContentType="application/vnd.openxmlformats-officedocument.drawingml.chart+xml"/>""" else ""
@@ -282,7 +283,7 @@ object XlsxExporter {
   <Override PartName="/xl/worksheets/sheet1.xml"  ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
   <Override PartName="/xl/worksheets/sheet2.xml"  ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
   <Override PartName="/xl/styles.xml"             ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
-  <Override PartName="/xl/sharedStrings.xml"      ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/>$chartTypes
+  <Override PartName="/xl/sharedStrings.xml"      ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/>$chartOverrides
 </Types>"""
     }
 
