@@ -806,7 +806,9 @@ class SupabaseRentViewModel(application: Application) : AndroidViewModel(applica
                 val unitDueCal = Calendar.getInstance().apply {
                     set(Calendar.YEAR,         refCal.get(Calendar.YEAR))
                     set(Calendar.MONTH,        refCal.get(Calendar.MONTH))
-                    set(Calendar.DAY_OF_MONTH, minOf(unit.paymentDayOfMonth, getActualMaximum(Calendar.DAY_OF_MONTH)))
+                    set(Calendar.DAY_OF_MONTH, 1) // reset per getActualMaximum corretto
+                    val maxDay = getActualMaximum(Calendar.DAY_OF_MONTH)
+                    set(Calendar.DAY_OF_MONTH, minOf(unit.paymentDayOfMonth, maxDay))
                     set(Calendar.HOUR_OF_DAY, 23); set(Calendar.MINUTE, 59); set(Calendar.SECOND, 59)
                 }
                 repo.insertCedolinoWithItems(
@@ -839,9 +841,11 @@ class SupabaseRentViewModel(application: Application) : AndroidViewModel(applica
                 val period = "${mesi[month]} $year"
                 if (period !in existing) {
                     val dueCal = Calendar.getInstance().apply {
-                        set(Calendar.YEAR, if (month == 11) year + 1 else year)
+                        set(Calendar.YEAR,  if (month == 11) year + 1 else year)
                         set(Calendar.MONTH, if (month == 11) 0 else month + 1)
-                        set(Calendar.DAY_OF_MONTH, minOf(unit.paymentDayOfMonth, getActualMaximum(Calendar.DAY_OF_MONTH)))
+                        set(Calendar.DAY_OF_MONTH, 1) // reset per getActualMaximum corretto
+                        val maxDay = getActualMaximum(Calendar.DAY_OF_MONTH)
+                        set(Calendar.DAY_OF_MONTH, minOf(unit.paymentDayOfMonth, maxDay))
                     }
                     repo.insertCedolinoWithItems(
                         SCedolino(unitId = unit.id, condominioId = condId, period = period,

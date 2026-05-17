@@ -935,7 +935,9 @@ private fun SingleCedolinoDialog(
         derivedStateOf {
             Calendar.getInstance().apply {
                 add(Calendar.MONTH, 1)
-                set(Calendar.DAY_OF_MONTH, minOf(selectedUnit.paymentDayOfMonth, getActualMaximum(Calendar.DAY_OF_MONTH)))
+                set(Calendar.DAY_OF_MONTH, 1) // reset per getActualMaximum corretto
+                val maxDay = getActualMaximum(Calendar.DAY_OF_MONTH)
+                set(Calendar.DAY_OF_MONTH, minOf(selectedUnit.paymentDayOfMonth, maxDay))
                 set(Calendar.HOUR_OF_DAY, 23); set(Calendar.MINUTE, 59); set(Calendar.SECOND, 59)
             }.timeInMillis
         }
@@ -1123,9 +1125,11 @@ private fun GenerateCedoliniDialog(
             val period = "${nomiMesi[m]} $y"
             // dueDate = giorno [dueDay] del mese successivo
             val dueCal = Calendar.getInstance().apply {
-                set(Calendar.YEAR,  if (m == 11) y + 1 else y)
-                set(Calendar.MONTH, if (m == 11) 0 else m + 1)
-                set(Calendar.DAY_OF_MONTH, minOf((dueDay.toIntOrNull() ?: 5).coerceIn(1, 31), getActualMaximum(Calendar.DAY_OF_MONTH)))
+                set(Calendar.YEAR,         if (m == 11) y + 1 else y)
+                set(Calendar.MONTH,        if (m == 11) 0 else m + 1)
+                set(Calendar.DAY_OF_MONTH, 1) // reset per getActualMaximum corretto
+                val maxDay = getActualMaximum(Calendar.DAY_OF_MONTH)
+                set(Calendar.DAY_OF_MONTH, minOf((dueDay.toIntOrNull() ?: 5).coerceIn(1, 31), maxDay))
                 set(Calendar.HOUR_OF_DAY, 23); set(Calendar.MINUTE, 59); set(Calendar.SECOND, 59)
             }
             result.add(period to dueCal.timeInMillis)
@@ -1390,7 +1394,9 @@ fun QuotaDirectaDialog(
         derivedStateOf {
             java.util.Calendar.getInstance().apply {
                 add(java.util.Calendar.MONTH, 1)
-                set(java.util.Calendar.DAY_OF_MONTH, minOf((selectedUnit?.paymentDayOfMonth ?: 5).coerceIn(1, 31), getActualMaximum(java.util.Calendar.DAY_OF_MONTH)))
+                set(java.util.Calendar.DAY_OF_MONTH, 1) // reset per getActualMaximum corretto
+                val maxDay = getActualMaximum(java.util.Calendar.DAY_OF_MONTH)
+                set(java.util.Calendar.DAY_OF_MONTH, minOf((selectedUnit?.paymentDayOfMonth ?: 5).coerceIn(1, 31), maxDay))
                 set(java.util.Calendar.HOUR_OF_DAY, 23); set(java.util.Calendar.MINUTE, 59); set(java.util.Calendar.SECOND, 59)
             }.timeInMillis
         }
@@ -1664,9 +1670,11 @@ private fun EditCedolinoDialog(
                     onClick = {
                         val originalDay = cal.get(Calendar.DAY_OF_MONTH)
                         val newDay      = dueDayStr.toIntOrNull()?.coerceIn(1, 31) ?: originalDay
-                        val newDueCal   = Calendar.getInstance().apply {
+                        val newDueCal = Calendar.getInstance().apply {
                             timeInMillis = cedolino.dueDate
-                            set(Calendar.DAY_OF_MONTH, newDay)
+                            set(Calendar.DAY_OF_MONTH, 1) // reset per getActualMaximum corretto
+                            val maxDay = getActualMaximum(Calendar.DAY_OF_MONTH)
+                            set(Calendar.DAY_OF_MONTH, minOf(newDay, maxDay))
                         }
                         val updated = cedolino.copy(
                             period  = period.trim(),
