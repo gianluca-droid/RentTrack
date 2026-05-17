@@ -32,7 +32,9 @@ class BillingManager(context: Context) : PurchasesUpdatedListener {
          * ⚠️ RELEASE: impostato a FALSE → billing reale Google Play attivo.
          * Per sviluppo locale: impostare a TRUE per testare le feature Pro senza acquisti.
          */
-        private const val FORCE_PREMIUM_FOR_TESTING = false // ← TRUE solo per dev locale
+        // DEBUG → sempre Pro (sviluppo locale, no Play Store needed)
+        // RELEASE → billing reale Google Play
+        private val FORCE_PREMIUM_FOR_TESTING = com.renttrack.app.BuildConfig.DEBUG
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
