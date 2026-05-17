@@ -10,6 +10,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import com.renttrack.app.AppConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -53,12 +54,8 @@ class AuthViewModel(
     private var recoveryAccessToken: String? = null
     private var recoveryRefreshToken: String? = null
 
-    private val supabaseUrl = "https://zjqrtuposdrimzjoydgh.supabase.co"
-    private val anonKey     =
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9." +
-        "eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpqcXJ0dXBvc2RyaW16am95ZGdoIiwi" +
-        "cm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMzE5MDMsImV4cCI6MjA5MzkwNzkwM30." +
-        "dLvc0pPrfIXiBGJSDTnRtNU6FRppFPSr86pLwHD35j4"
+    private val supabaseUrl = AppConfig.SUPABASE_URL
+    private val anonKey     = AppConfig.SUPABASE_ANON_KEY
 
     init { checkSession() }
 
@@ -191,7 +188,7 @@ class AuthViewModel(
                     _authState.value = AuthState.Error(msg)
                 }
             } catch (e: Exception) {
-                _authState.value = AuthState.Error("Errore di rete: ${e.message}")
+                _authState.value = AuthState.Error("Errore di connessione. Verifica la rete e riprova.")
             }
         }
     }
@@ -247,7 +244,7 @@ class AuthViewModel(
                     }
                 }
             } catch (e: Exception) {
-                _authState.value = AuthState.Error("Errore di rete: ${e.message}")
+                _authState.value = AuthState.Error("Errore di connessione. Verifica la rete e riprova.")
             }
         }
     }
@@ -307,7 +304,7 @@ class AuthViewModel(
             } catch (e: GetCredentialException) {
                 _authState.value = AuthState.Error("Accesso con Google annullato")
             } catch (e: Exception) {
-                _authState.value = AuthState.Error("Errore Google Sign-In: ${e.message}")
+                _authState.value = AuthState.Error("Errore di connessione. Verifica la rete e riprova.")
             }
         }
     }
@@ -342,7 +339,7 @@ class AuthViewModel(
                 // Supabase risponde sempre 200 (non rivela se l'email esiste o no)
                 _authState.value = AuthState.RecoverySent
             } catch (e: Exception) {
-                _authState.value = AuthState.Error("Errore di rete: ${e.message}")
+                _authState.value = AuthState.Error("Errore di connessione. Verifica la rete e riprova.")
             }
         }
     }
@@ -439,7 +436,7 @@ class AuthViewModel(
                     _authState.value = AuthState.Error(msg)
                 }
             } catch (e: Exception) {
-                _authState.value = AuthState.Error("Errore di rete: ${e.message}")
+                _authState.value = AuthState.Error("Errore di connessione. Verifica la rete e riprova.")
             }
         }
     }

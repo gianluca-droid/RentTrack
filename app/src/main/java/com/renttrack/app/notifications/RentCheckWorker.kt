@@ -127,7 +127,10 @@ class RentCheckWorker(
 
             Result.success()
         } catch (e: Exception) {
-            android.util.Log.e("RentCheckWorker", "Errore controllo notifiche: ${e.message}", e)
+            // Log dettagliato solo in build di sviluppo (non esposto in release)
+            if ((context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
+                android.util.Log.e("RentCheckWorker", "Errore controllo notifiche: ${e.message}", e)
+            }
             Result.retry()
         }
     }

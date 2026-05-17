@@ -1,6 +1,7 @@
 package com.renttrack.app.data.repository
 
 import android.content.SharedPreferences
+import com.renttrack.app.AppConfig
 import com.renttrack.app.data.model.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -12,12 +13,8 @@ import java.io.OutputStreamWriter
 
 class SupabaseRentRepository(private val prefs: SharedPreferences) {
 
-    private val baseUrl = "https://zjqrtuposdrimzjoydgh.supabase.co/rest/v1"
-    private val anonKey =
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9." +
-        "eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpqcXJ0dXBvc2RyaW16am95ZGdoIiwi" +
-        "cm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMzE5MDMsImV4cCI6MjA5MzkwNzkwM30." +
-        "dLvc0pPrfIXiBGJSDTnRtNU6FRppFPSr86pLwHD35j4"
+    private val baseUrl = "${AppConfig.SUPABASE_URL}/rest/v1"
+    private val anonKey = AppConfig.SUPABASE_ANON_KEY
 
     private val token: String get() = prefs.getString("auth_token", "") ?: ""
 
@@ -46,7 +43,7 @@ class SupabaseRentRepository(private val prefs: SharedPreferences) {
         val refreshToken = prefs.getString("refresh_token", null) ?: return false
         return try {
             val body = """{"refresh_token":"$refreshToken"}"""
-            val conn = URL("https://zjqrtuposdrimzjoydgh.supabase.co/auth/v1/token?grant_type=refresh_token")
+            val conn = URL("${AppConfig.SUPABASE_URL}/auth/v1/token?grant_type=refresh_token")
                 .openConnection() as HttpURLConnection
             conn.requestMethod = "POST"
             conn.setRequestProperty("Content-Type", "application/json")
@@ -154,7 +151,9 @@ class SupabaseRentRepository(private val prefs: SharedPreferences) {
     }
 
     suspend fun getCondominioById(id: String): SCondominio? = withContext(Dispatchers.IO) {
-        val arr = JSONArray(get("/condomini?id=eq.$id"))
+        val uid = userId
+        // owner_id filter: difesa in profondità client-side (RLS già garantisce l'ownership server-side)
+        val arr = JSONArray(get("/condomini?id=eq.$id&owner_id=eq.$uid"))
         if (arr.length() > 0) parseCondominio(arr.getJSONObject(0)) else null
     }
 

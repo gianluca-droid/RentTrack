@@ -65,7 +65,7 @@ class BillingManager(context: Context) : PurchasesUpdatedListener {
                         checkPremiumStatus()
                     }
                 } else {
-                    Log.e(TAG, "Billing setup failed: ${result.debugMessage}")
+                    if (isDebugBuild) Log.e(TAG, "Billing setup failed: ${result.debugMessage}")
                 }
             }
             override fun onBillingServiceDisconnected() {
@@ -155,7 +155,7 @@ class BillingManager(context: Context) : PurchasesUpdatedListener {
             BillingClient.BillingResponseCode.USER_CANCELED ->
                 Log.d(TAG, "User cancelled purchase")
             else ->
-                Log.e(TAG, "Purchase error: ${result.debugMessage}")
+                if (isDebugBuild) Log.e(TAG, "Purchase error: ${result.debugMessage}")
         }
     }
 
