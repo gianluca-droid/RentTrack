@@ -569,7 +569,9 @@ class SupabaseRentRepository(private val prefs: SharedPreferences) {
 
     /**
      * Carica un file su Supabase Storage nel bucket "documenti".
-     * Restituisce il path pubblico del file oppure null in caso di errore.
+     * Restituisce il path relativo del file oppure null in caso di errore.
+     *
+     * Usa requireToken() + retry su 401 per coerenza con get()/post().
      */
     suspend fun uploadDocumentoFile(
         fileBytes: ByteArray,
@@ -578,33 +580,46 @@ class SupabaseRentRepository(private val prefs: SharedPreferences) {
         condominioId: String
     ): String? = withContext(Dispatchers.IO) {
         try {
-            val storageBase = "https://zjqrtuposdrimzjoydgh.supabase.co/storage/v1"
-            val filePath = "$condominioId/${java.util.UUID.randomUUID()}_$fileName"
-            val uploadUrl = "$storageBase/object/documenti/$filePath"
-
-            val conn = java.net.URL(uploadUrl).openConnection() as java.net.HttpURLConnection
-            conn.requestMethod = "POST"
-            conn.setRequestProperty("apikey", anonKey)
-            conn.setRequestProperty("Authorization", "Bearer $token")
-            conn.setRequestProperty("Content-Type", mimeType)
-            conn.setRequestProperty("x-upsert", "true")
-            conn.connectTimeout = 30_000
-            conn.readTimeout    = 60_000
-            conn.doOutput = true
-            conn.outputStream.use { it.write(fileBytes) }
-
-            if (conn.responseCode in 200..299) {
-                filePath   // restituisce il path relativo; per l'URL pubblico: storageBase/object/public/documenti/$filePath
-            } else {
-                val err = conn.errorStream?.bufferedReader()?.readText()
-                android.util.Log.e("Repository", "Upload doc error ${conn.responseCode}: $err")
-                null
-            }.also { conn.disconnect() }
+            doUploadDocumento(fileBytes, fileName, mimeType, condominioId, retried = false)
         } catch (e: Exception) {
-            android.util.Log.e("Repository", "Upload doc exception: ${e.message}")
             null
         }
     }
+
+    private fun doUploadDocumento(
+        fileBytes: ByteArray,
+        fileName: String,
+        mimeType: String,
+        condominioId: String,
+        retried: Boolean
+    ): String? {
+        val tok = requireToken()   // lancia eccezione se non autenticato
+        val storageBase = "${AppConfig.SUPABASE_URL}/storage/v1"
+        val filePath = "$condominioId/${java.util.UUID.randomUUID()}_$fileName"
+        val conn = java.net.URL("$storageBase/object/documenti/$filePath")
+            .openConnection() as java.net.HttpURLConnection
+        conn.requestMethod = "POST"
+        conn.setRequestProperty("apikey", anonKey)
+        conn.setRequestProperty("Authorization", "Bearer $tok")
+        conn.setRequestProperty("Content-Type", mimeType)
+        conn.setRequestProperty("x-upsert", "true")
+        conn.connectTimeout = 30_000
+        conn.readTimeout    = 60_000
+        conn.doOutput = true
+        conn.outputStream.use { it.write(fileBytes) }
+        return try {
+            val code = conn.responseCode
+            when {
+                code in 200..299 -> filePath
+                code == 401 && !retried && tryRefreshToken() ->
+                    doUploadDocumento(fileBytes, fileName, mimeType, condominioId, retried = true)
+                else -> null
+            }
+        } finally {
+            conn.disconnect()
+        }
+    }
+
 
     /** URL pubblico di un file nel bucket "documenti" */
     fun getDocumentoPublicUrl(filePath: String): String =

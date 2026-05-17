@@ -79,6 +79,16 @@ fun DocumentiScreen(viewModel: SupabaseRentViewModel) {
     val documentCount by viewModel.documentCount.collectAsState()
     val units by viewModel.units.collectAsState()
 
+    // ── Feedback upload/eliminazione: mostra Toast all'utente ────────
+    val backupStatus by viewModel.backupStatus.collectAsState()
+    LaunchedEffect(backupStatus) {
+        val msg = backupStatus ?: return@LaunchedEffect
+        if (msg.isNotBlank()) {
+            android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_LONG).show()
+            viewModel.clearBackupStatus()
+        }
+    }
+
     var selectedCategoria by remember { mutableStateOf<String?>(null) }
     var showAddSheet by remember { mutableStateOf(false) }
     var documentoToDelete by remember { mutableStateOf<SDocumento?>(null) }
