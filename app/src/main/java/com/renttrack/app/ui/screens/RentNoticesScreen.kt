@@ -901,7 +901,7 @@ fun RentNoticesScreen(viewModel: SupabaseRentViewModel) {
                 }
             },
             dismissButton = {
-                androidx.compose.material3.TextButton(onClick = { pendingReceipt = null }) {
+                androidx.compose.material3.TextButton(onClick = { receiptCedolino = null }) {
                     androidx.compose.material3.Text("No grazie", color = com.renttrack.app.ui.theme.TextSecondary)
                 }
             }
