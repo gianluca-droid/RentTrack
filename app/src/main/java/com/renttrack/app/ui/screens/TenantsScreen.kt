@@ -634,7 +634,7 @@ private fun TenantFormDialog(unit: SCondoUnit?, condominioId: String, onDismiss:
                 item {
                     OutlinedTextField(
                         value = paymentDay,
-                        onValueChange = { v -> if (v.length <= 2 && (v.toIntOrNull() ?: 0) <= 28) paymentDay = v },
+                        onValueChange = { v -> if (v.length <= 2 && (v.toIntOrNull() ?: 0) <= 31) paymentDay = v },
                         label = { Text("Giorno scadenza pagamento") },
                         placeholder = { Text("es. 5", color = TextMuted) },
                         leadingIcon = { Icon(Icons.Filled.CalendarMonth, null, tint = TextMuted, modifier = Modifier.size(18.dp)) },
@@ -663,7 +663,7 @@ private fun TenantFormDialog(unit: SCondoUnit?, condominioId: String, onDismiss:
                         scala        = unit?.scala ?: "",
                         leaseStartDate     = leaseStart,
                         leaseEndDate       = leaseEnd,
-                        paymentDayOfMonth  = paymentDay.toIntOrNull()?.coerceIn(1, 28) ?: 5
+                        paymentDayOfMonth  = paymentDay.toIntOrNull()?.coerceIn(1, 31) ?: 5
                     ))
                 },
                 enabled = ownerName.isNotBlank(),
@@ -887,7 +887,7 @@ private fun ChangeTenantDialog(
                 item {
                     OutlinedTextField(
                         value = newPayDay,
-                        onValueChange = { v -> if (v.length <= 2 && (v.toIntOrNull() ?: 0) <= 28) newPayDay = v },
+                        onValueChange = { v -> if (v.length <= 2 && (v.toIntOrNull() ?: 0) <= 31) newPayDay = v },
                         label = { Text("Giorno scadenza pagamento") },
                         placeholder = { Text("es. 5", color = TextMuted) },
                         leadingIcon = { Icon(Icons.Filled.CalendarMonth, null, tint = TextMuted, modifier = Modifier.size(18.dp)) },
@@ -907,7 +907,7 @@ private fun ChangeTenantDialog(
                         exitNotes, newName, newEmail, newPhone,
                         newStart, newEnd,
                         newRent.toDoubleOrNull() ?: unit.millesimi,
-                        newPayDay.toIntOrNull()?.coerceIn(1, 28) ?: unit.paymentDayOfMonth
+                        newPayDay.toIntOrNull()?.coerceIn(1, 31) ?: unit.paymentDayOfMonth
                     )
                 },
                 enabled = newName.isNotBlank(),
