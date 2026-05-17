@@ -241,101 +241,39 @@ fun RentNoticesScreen(
                                             leadingIcon = { Icon(Icons.Filled.ContentCopy, null, tint = Amber400, modifier = Modifier.size(18.dp)) },
                                             onClick = { viewModel.duplicateCedolino(cwi); showMenu = false }
                                         )
-                                        // ── Genera PDF ──────────────────────────────────
-                                        val tenantUnitPdf = units.find { it.id == cedolino.unitId }
-                                        DropdownMenuItem(
-                                            text = { Text("Genera PDF", color = TextPrimary) },
-                                            leadingIcon = { Icon(Icons.Filled.PictureAsPdf, null, tint = Color(0xFFFF6B6B), modifier = Modifier.size(18.dp)) },
-                                            onClick = {
-                                                try {
-                                                    val uri = CedolinoPdfGenerator.generateAndShare(
-                                                        context       = context,
-                                                        cedolino      = cedolino,
-                                                        items         = cwi.items,
-                                                        tenantName    = tenantUnitPdf?.ownerName ?: viewModel.getUnitName(cedolino.unitId),
-                                                        propertyName  = tenantUnitPdf?.number ?: ""
-                                                    )
-                                                    val pdfIntent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
-                                                        setDataAndType(uri, "application/pdf")
-                                                        flags = android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or
-                                                                android.content.Intent.FLAG_ACTIVITY_NEW_TASK
-                                                    }
-                                                    try {
-                                                        context.startActivity(pdfIntent)
-                                                    } catch (e: Exception) {
-                                                        // Nessun visualizzatore PDF: offri condivisione
-                                                        context.startActivity(
-                                                            android.content.Intent.createChooser(
-                                                                android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                                                                    type = "application/pdf"
-                                                                    putExtra(android.content.Intent.EXTRA_STREAM, uri)
-                                                                    flags = android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
-                                                                },
-                                                                "Condividi PDF"
-                                                            )
-                                                        )
-                                                    }
-                                                } catch (e: Exception) {
-                                                    android.util.Log.e("PDF", "Errore generazione PDF: ${e.message}")
-                                                }
-                                                showMenu = false
-                                            }
+                                        // ── Unica voce PDF: genera + share + segna inviato ──
+                                        val tenantUnit = units.find { it.id == cedolino.unitId }
+                                        HorizontalDivider(
+                                            modifier = Modifier.padding(vertical = 2.dp),
+                                            color = TextMuted.copy(alpha = 0.12f)
                                         )
-                                    }
-                                    // ── Invia avviso PDF (Pro) ────────────────────────
-                                    val tenantUnit = units.find { it.id == cedolino.unitId }
-                                    HorizontalDivider(
-                                        modifier = Modifier.padding(vertical = 2.dp),
-                                        color = TextMuted.copy(alpha = 0.12f)
-                                    )
-                                    DropdownMenuItem(
-                                        text = {
-                                            Column {
-                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                        DropdownMenuItem(
+                                            text = {
+                                                Column {
                                                     Text(
                                                         if (cedolino.sentToResident) "Inviato ✓ — Reinvia PDF" else "Invia avviso PDF",
                                                         color = if (cedolino.sentToResident) Green400 else TextPrimary
                                                     )
-                                                    Spacer(Modifier.width(6.dp))
-                                                    if (!isPremium) {
-                                                        Surface(
-                                                            shape = RoundedCornerShape(4.dp),
-                                                            color = Cyan400.copy(alpha = 0.15f)
-                                                        ) {
+                                                    if (tenantUnit != null) {
+                                                        val contact = tenantUnit.ownerPhone.ifBlank { tenantUnit.ownerEmail }.ifBlank { "" }
+                                                        if (tenantUnit.ownerName.isNotBlank() || contact.isNotBlank()) {
                                                             Text(
-                                                                "PRO",
-                                                                style = MaterialTheme.typography.labelSmall.copy(
-                                                                    fontWeight = FontWeight.ExtraBold
-                                                                ),
-                                                                color = Cyan400,
-                                                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                                                                "${tenantUnit.ownerName.ifBlank { "Inquilino" }}${if (contact.isNotBlank()) " · $contact" else ""}",
+                                                                style = MaterialTheme.typography.labelSmall,
+                                                                color = TextMuted
                                                             )
                                                         }
                                                     }
                                                 }
-                                                if (cwi != null && tenantUnit != null) {
-                                                    Text(
-                                                        "${tenantUnit.ownerName.ifBlank { "Inquilino" }} · ${tenantUnit.ownerPhone.ifBlank { tenantUnit.ownerEmail.ifBlank { "" } }}",
-                                                        style = MaterialTheme.typography.labelSmall,
-                                                        color = TextMuted
-                                                    )
-                                                }
-                                            }
-                                        },
-                                        leadingIcon = {
-                                            Icon(
-                                                Icons.Filled.Share, null,
-                                                tint = if (cedolino.sentToResident) Green400 else Cyan400,
-                                                modifier = Modifier.size(18.dp)
-                                            )
-                                        },
-                                        onClick = {
-                                            if (!isPremium) {
-                                                showPaywall = true
-                                                showMenu = false
-                                                return@DropdownMenuItem
-                                            }
-                                            if (cwi != null) {
+                                            },
+                                            leadingIcon = {
+                                                Icon(
+                                                    Icons.Filled.Share, null,
+                                                    tint = if (cedolino.sentToResident) Green400 else Cyan400,
+                                                    modifier = Modifier.size(18.dp)
+                                                )
+                                            },
+                                            onClick = {
                                                 try {
                                                     val pdfUri = CedolinoPdfGenerator.generateAndShare(
                                                         context      = context,
@@ -351,23 +289,20 @@ fun RentNoticesScreen(
                                                                 putExtra(android.content.Intent.EXTRA_STREAM, pdfUri)
                                                                 putExtra(android.content.Intent.EXTRA_SUBJECT, "Avviso affitto ${cedolino.period}")
                                                                 addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                                                // Pre-compila email se disponibile
                                                                 tenantUnit?.ownerEmail?.takeIf { it.isNotBlank() }?.let {
                                                                     putExtra(android.content.Intent.EXTRA_EMAIL, arrayOf(it))
                                                                 }
                                                             },
-                                                            "Invia avviso a ${tenantUnit?.ownerName ?: "inquilino"}"
+                                                            "Invia a ${tenantUnit?.ownerName ?: "inquilino"}"
                                                         )
                                                     )
-                                                    // Segna come inviato automaticamente
                                                     viewModel.markCedolinoSent(cedolino)
                                                 } catch (e: Exception) {
-                                                    android.util.Log.e("PDF", "Errore condivisione PDF: ${e.message}")
+                                                    android.util.Log.e("PDF", "Errore PDF: ${e.message}")
                                                 }
+                                                showMenu = false
                                             }
-                                            showMenu = false
-                                        }
-                                    )
+                                        )
 
                                 }
                             }
