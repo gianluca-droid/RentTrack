@@ -53,19 +53,19 @@ object XlsxExporter {
         val totalOut = expenses.sumOf { it.amount }
         val balance  = totalIn - totalOut
 
-        // Raccoglie tutte le righe dati ordinate per data desc
-        val rows = buildRows(payments, expenses, condoMap)
+        val rows        = buildRows(payments, expenses, condoMap)
+        val monthly     = XlsxChartExporter.monthlyTotals(payments, expenses)
+        val categories  = XlsxChartExporter.categoryTotals(expenses)
+        val hasCharts   = monthly.isNotEmpty()
 
-        // SharedStrings: raccoglie tutte le stringhe per SST
         val sst = SharedStringTable()
-
-        val sheet1Xml = buildSummarySheet(sst, scopeLabel, periodoLabel, totalIn, totalOut, balance, rows.size)
+        val sheet1Xml = buildSummarySheet(sst, scopeLabel, periodoLabel, totalIn, totalOut, balance, rows.size, hasCharts)
         val sheet2Xml = buildDataSheet(sst, rows, totalIn, totalOut, balance)
         val sstXml    = sst.buildXml()
 
         val baos = ByteArrayOutputStream()
         ZipOutputStream(baos).use { zip ->
-            zip.entry("[Content_Types].xml", contentTypesXml())
+            zip.entry("[Content_Types].xml", contentTypesXml(hasCharts))
             zip.entry("_rels/.rels", rootRelsXml())
             zip.entry("xl/workbook.xml", workbookXml())
             zip.entry("xl/_rels/workbook.xml.rels", workbookRelsXml())
@@ -73,6 +73,13 @@ object XlsxExporter {
             zip.entry("xl/sharedStrings.xml", sstXml)
             zip.entry("xl/worksheets/sheet1.xml", sheet1Xml)
             zip.entry("xl/worksheets/sheet2.xml", sheet2Xml)
+            if (hasCharts) {
+                zip.entry("xl/charts/chart1.xml", XlsxChartExporter.barChartXml(monthly))
+                zip.entry("xl/charts/chart2.xml", XlsxChartExporter.pieChartXml(categories))
+                zip.entry("xl/drawings/drawing1.xml", XlsxChartExporter.drawingXml())
+                zip.entry("xl/drawings/_rels/drawing1.xml.rels", XlsxChartExporter.drawingRelsXml())
+                zip.entry("xl/worksheets/_rels/sheet1.xml.rels", XlsxChartExporter.sheet1RelsXml())
+            }
         }
         return baos.toByteArray()
     }
@@ -86,19 +93,19 @@ object XlsxExporter {
         totalIn: Double,
         totalOut: Double,
         balance: Double,
-        movCount: Int
+        movCount: Int,
+        hasCharts: Boolean = false
     ): String {
         val sb = StringBuilder()
         sb.appendLine("""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>""")
-        sb.appendLine("""<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">""")
-        // <cols> DEVE essere prima di <sheetData> — se no il file risulta corrotto
+        val rNs = if (hasCharts) """ xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"""" else ""
+        sb.appendLine("""<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"$rNs>""")
         sb.appendLine("""<cols><col min="1" max="1" width="32" customWidth="1"/><col min="2" max="2" width="22" customWidth="1"/></cols>""")
         sb.appendLine("""<sheetData>""")
 
         fun strRow(r: Int, label: String, value: String, styleLabel: Int = 1, styleVal: Int = 1) {
             sb.appendLine("""<row r="$r"><c r="A$r" t="s" s="$styleLabel"><v>${sst.id(label)}</v></c><c r="B$r" t="s" s="$styleVal"><v>${sst.id(value)}</v></c></row>""")
         }
-        // numRow usa rawNum(): <v> deve contenere un float US, lo stile si occupa del formato visivo
         fun numRow(r: Int, label: String, value: Double, styleLabel: Int = 1, styleVal: Int = 5) {
             sb.appendLine("""<row r="$r"><c r="A$r" t="s" s="$styleLabel"><v>${sst.id(label)}</v></c><c r="B$r" s="$styleVal"><v>${rawNum(value)}</v></c></row>""")
         }
@@ -122,7 +129,9 @@ object XlsxExporter {
         strRow(15, "N° movimenti totali", "$movCount",  2, 1)
         strRow(16, "di cui Entrate",      "${movCount}", 2, 1)
 
-        sb.appendLine("""</sheetData></worksheet>""")
+        sb.appendLine("""</sheetData>""")
+        if (hasCharts) sb.appendLine("""<drawing r:id="rId1"/>""")
+        sb.appendLine("""</worksheet>""")
         return sb.toString()
     }
 
@@ -259,7 +268,13 @@ object XlsxExporter {
 
     // ── Open XML files ────────────────────────────────────────────────────
 
-    private fun contentTypesXml() = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+    private fun contentTypesXml(hasCharts: Boolean = false): String {
+        val chartTypes = if (hasCharts) """
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>
+  <Override PartName="/xl/charts/chart1.xml"     ContentType="application/vnd.openxmlformats-officedocument.drawingml.chart+xml"/>
+  <Override PartName="/xl/charts/chart2.xml"     ContentType="application/vnd.openxmlformats-officedocument.drawingml.chart+xml"/>""" else ""
+        return """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
   <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
   <Default Extension="xml"  ContentType="application/xml"/>
@@ -267,8 +282,9 @@ object XlsxExporter {
   <Override PartName="/xl/worksheets/sheet1.xml"  ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
   <Override PartName="/xl/worksheets/sheet2.xml"  ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
   <Override PartName="/xl/styles.xml"             ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
-  <Override PartName="/xl/sharedStrings.xml"      ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/>
+  <Override PartName="/xl/sharedStrings.xml"      ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/>$chartTypes
 </Types>"""
+    }
 
     private fun rootRelsXml() = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
