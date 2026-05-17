@@ -85,6 +85,7 @@ fun DashboardScreen(
     var showOpenCedoliniSheet by remember { mutableStateOf(false) }
 
     // Carica i listing del proprietario appena si apre il Dashboard
+    val isLoadingListings by listingsViewModel.myListingsLoading.collectAsState()
     LaunchedEffect(Unit) { listingsViewModel.loadMyListings() }
 
     LazyColumn(
@@ -175,7 +176,9 @@ fun DashboardScreen(
             val myListings by listingsViewModel.myListings.collectAsState()
             val activeCount = myListings.count { it.isActive }
 
-            if (myListings.isEmpty()) {
+            // Mostra il banner solo DOPO che il caricamento è completato
+            // (evita il flash "nessun annuncio" durante il cold start Supabase)
+            if (!isLoadingListings && myListings.isEmpty()) {
                 // ── Banner CTA: nessun annuncio ancora pubblicato ──
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
