@@ -2,6 +2,8 @@
 
 package com.renttrack.app.ui.screens
 
+import kotlinx.coroutines.delay
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -819,7 +821,7 @@ fun RentNoticesScreen(viewModel: SupabaseRentViewModel) {
     // (altrimenti Android dismisserebbe entrambi nello stesso frame)
     LaunchedEffect(triggerReceipt, showPagamentoDialog) {
         if (triggerReceipt != null && showPagamentoDialog == null) {
-            kotlinx.coroutines.delay(250) // attendi chiusura window manager
+            delay(250) // attendi chiusura window manager
             receiptCedolino  = triggerReceipt
             triggerReceipt   = null
         }
