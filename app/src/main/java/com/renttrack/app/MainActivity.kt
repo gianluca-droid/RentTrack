@@ -612,10 +612,11 @@ fun MainApp(
                 val isPremium by subscriptionViewModel.isPremium.collectAsState()
                 val units by viewModel.units.collectAsState()
                 SettingsScreen(
-                    onBack      = { navController.popBackStack() },
-                    isPremium   = isPremium,
-                    unitsCount  = units.size,
-                    onUpgrade   = { navController.navigate(Screen.Paywall.route) }
+                    onBack                = { navController.popBackStack() },
+                    isPremium             = isPremium,
+                    unitsCount            = units.size,
+                    onUpgrade             = { navController.navigate(Screen.Paywall.route) },
+                    subscriptionViewModel = subscriptionViewModel
                 )
             }
             composable(Screen.Paywall.route) {

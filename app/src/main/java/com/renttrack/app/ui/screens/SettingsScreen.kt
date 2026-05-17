@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.renttrack.app.notifications.RentCheckWorker
 import com.renttrack.app.ui.theme.*
+import com.renttrack.app.viewmodel.SubscriptionViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -26,10 +27,13 @@ fun SettingsScreen(
     onBack: () -> Unit,
     isPremium: Boolean = false,
     unitsCount: Int = 0,
-    onUpgrade: () -> Unit = {}
+    onUpgrade: () -> Unit = {},
+    subscriptionViewModel: SubscriptionViewModel? = null
 ) {
     val context = LocalContext.current
     val prefs   = remember { context.getSharedPreferences("renttrack_prefs", android.content.Context.MODE_PRIVATE) }
+    val isDebugBuild = remember { (context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0 }
+    val simulateFreePlan by (subscriptionViewModel?.simulateFreePlan ?: kotlinx.coroutines.flow.MutableStateFlow(false)).collectAsState()
 
     // ── Stati configurazione ──────────────────────────────────────────────────
     var reminderDays    by remember { mutableIntStateOf(prefs.getInt(RentCheckWorker.PREF_REMINDER_DAYS, 3)) }
@@ -268,6 +272,28 @@ fun SettingsScreen(
                         "Privacy Policy",
                         "renttrack.it/privacy"
                     )
+                }
+            }
+
+            // ── Sezione Debug (solo build di sviluppo) ────────────────────
+            if (isDebugBuild) {
+                item { SettingsSectionHeader(Icons.Filled.BugReport, "🛠 Debug — Solo sviluppo") }
+                item {
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = Color(0xFF1A1A2E),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column {
+                            SettingsToggleRow(
+                                icon    = Icons.Filled.MoneyOff,
+                                label   = "Simula piano Free",
+                                desc    = "Disabilita Pro per testare paywall e limitazioni utente gratuito",
+                                checked = simulateFreePlan,
+                                onToggle = { subscriptionViewModel?.toggleDebugFreePlan(it) }
+                            )
+                        }
+                    }
                 }
             }
         }
