@@ -610,7 +610,7 @@ fun MainApp(
             }
             composable(Screen.Settings.route) {
                 val isPremium by subscriptionViewModel.isPremium.collectAsState()
-                val units by rentViewModel.units.collectAsState()
+                val units by viewModel.units.collectAsState()
                 SettingsScreen(
                     onBack      = { navController.popBackStack() },
                     isPremium   = isPremium,
