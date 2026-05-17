@@ -10,7 +10,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import com.renttrack.app.BuildConfig
 import kotlinx.coroutines.launch
 
 /**
@@ -29,13 +28,6 @@ class BillingManager(context: Context) : PurchasesUpdatedListener {
         const val PRODUCT_MONTHLY = "renttrack_pro_monthly"
         const val PRODUCT_YEARLY  = "renttrack_pro_yearly"
         private const val TAG = "BillingManager"
-        /**
-         * ⚠️ RELEASE: impostato a FALSE → billing reale Google Play attivo.
-         * Per sviluppo locale: impostare a TRUE per testare le feature Pro senza acquisti.
-         */
-        // DEBUG → sempre Pro (sviluppo locale, no Play Store needed)
-        // RELEASE → billing reale Google Play
-        private val FORCE_PREMIUM_FOR_TESTING = BuildConfig.DEBUG
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -47,9 +39,12 @@ class BillingManager(context: Context) : PurchasesUpdatedListener {
         )
         .build()
 
+    // DEBUG build (flag:debuggable) → sempre Pro; RELEASE → billing reale
+    private val isDebugBuild = (context.applicationInfo.flags and
+            android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+
     // ── State flows ──────────────────────────────────────────────────────────
-    // FORCE_PREMIUM_FOR_TESTING=true → sempre Pro in sviluppo
-    private val _isPremium = MutableStateFlow(FORCE_PREMIUM_FOR_TESTING)
+    private val _isPremium = MutableStateFlow(isDebugBuild)
     val isPremium: StateFlow<Boolean> = _isPremium.asStateFlow()
 
     private val _products = MutableStateFlow<List<ProductDetails>>(emptyList())
@@ -115,7 +110,7 @@ class BillingManager(context: Context) : PurchasesUpdatedListener {
                 val active = result.purchasesList.any { purchase ->
                     purchase.purchaseState == Purchase.PurchaseState.PURCHASED
                 }
-                if (!FORCE_PREMIUM_FOR_TESTING) {
+                if (!isDebugBuild) {
                     _isPremium.value = active
                 }
                 Log.d(TAG, "Premium status: $active")
@@ -151,7 +146,7 @@ class BillingManager(context: Context) : PurchasesUpdatedListener {
                 purchases?.forEach { purchase ->
                     if (purchase.purchaseState == Purchase.PurchaseState.PURCHASED) {
                         acknowledgePurchase(purchase)
-                        if (!FORCE_PREMIUM_FOR_TESTING) {
+                        if (!isDebugBuild) {
                             _isPremium.value = true
                         }
                     }
