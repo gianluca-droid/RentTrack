@@ -1,4 +1,4 @@
-﻿@file:OptIn(ExperimentalMaterial3Api::class)
+@file:OptIn(ExperimentalMaterial3Api::class)
 
 package com.renttrack.app.ui.screens
 
@@ -1528,9 +1528,13 @@ private fun EditCedolinoDialog(
     onSave: (SCedolino, Set<String>) -> Unit  // cedolino aggiornato + IDs da propagare
 ) {
     val cal        = remember { Calendar.getInstance().apply { timeInMillis = cedolino.dueDate } }
-    var period     by remember { mutableStateOf(cedolino.period) }
-    var dueDayStr  by remember { mutableStateOf(cal.get(Calendar.DAY_OF_MONTH).toString()) }
-    var importoStr by remember { mutableStateOf(cedolino.total.toString()) }
+    val mesi        = listOf("Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno",
+                             "Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre")
+    var period       by remember { mutableStateOf(cedolino.period) }
+    var dueDayStr    by remember { mutableStateOf(cal.get(Calendar.DAY_OF_MONTH).toString()) }
+    var dueMonthIdx  by remember { mutableIntStateOf(cal.get(Calendar.MONTH)) }   // 0-based
+    var dueYear      by remember { mutableIntStateOf(cal.get(Calendar.YEAR)) }
+    var importoStr   by remember { mutableStateOf(cedolino.total.toString()) }
 
     // Step 1 = modifica, Step 2 = propaga scadenza (solo se giorno cambia e ci sono altri)
     var step           by remember { mutableIntStateOf(1) }
@@ -1567,13 +1571,49 @@ private fun EditCedolinoDialog(
                     )
                     Text("Scadenza attuale: ${Formatters.date(cedolino.dueDate)}",
                         style = MaterialTheme.typography.bodySmall, color = TextMuted)
+
+                    // ── Mese / Anno ───────────────────────────────────────
+                    Text("Nuova data scadenza",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = TextMuted)
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = DarkBg,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, TextMuted.copy(alpha = 0.25f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            IconButton(onClick = {
+                                if (dueMonthIdx == 0) { dueMonthIdx = 11; dueYear-- }
+                                else dueMonthIdx--
+                            }) {
+                                Icon(Icons.Filled.ChevronLeft, "Mese precedente", tint = Cyan400)
+                            }
+                            Text(
+                                "${mesi[dueMonthIdx]} $dueYear",
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                color = TextPrimary
+                            )
+                            IconButton(onClick = {
+                                if (dueMonthIdx == 11) { dueMonthIdx = 0; dueYear++ }
+                                else dueMonthIdx++
+                            }) {
+                                Icon(Icons.Filled.ChevronRight, "Mese successivo", tint = Cyan400)
+                            }
+                        }
+                    }
+
+                    // ── Giorno ───────────────────────────────────────────
                     OutlinedTextField(
                         value = dueDayStr,
                         onValueChange = { if (it.length <= 2 && (it.toIntOrNull() ?: 0) <= 31) dueDayStr = it },
-                        label = { Text("Nuovo giorno scadenza (1–31)") },
+                        label = { Text("Giorno scadenza (1–31)") },
                         modifier = Modifier.fillMaxWidth(), singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        supportingText = { Text("Mese e anno restano invariati", color = TextMuted) },
                         colors = tfColors
                     )
                 }
@@ -1585,8 +1625,10 @@ private fun EditCedolinoDialog(
                         val originalDay = cal.get(Calendar.DAY_OF_MONTH)
                         val newDay      = dueDayStr.toIntOrNull()?.coerceIn(1, 31) ?: originalDay
                         val newDueCal = Calendar.getInstance().apply {
-                            timeInMillis = cedolino.dueDate
-                            set(Calendar.DAY_OF_MONTH, 1) // reset per getActualMaximum corretto
+                            timeInMillis = cedolino.dueDate   // mantiene l'orario originale
+                            set(Calendar.YEAR,  dueYear)
+                            set(Calendar.MONTH, dueMonthIdx)
+                            set(Calendar.DAY_OF_MONTH, 1)    // reset prima di getActualMaximum
                             val maxDay = getActualMaximum(Calendar.DAY_OF_MONTH)
                             set(Calendar.DAY_OF_MONTH, minOf(newDay, maxDay))
                         }
