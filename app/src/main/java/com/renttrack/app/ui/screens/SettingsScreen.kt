@@ -1,6 +1,7 @@
 package com.renttrack.app.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,12 +16,18 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.renttrack.app.notifications.RentCheckWorker
 import com.renttrack.app.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(onBack: () -> Unit) {
+fun SettingsScreen(
+    onBack: () -> Unit,
+    isPremium: Boolean = false,
+    unitsCount: Int = 0,
+    onUpgrade: () -> Unit = {}
+) {
     val context = LocalContext.current
     val prefs   = remember { context.getSharedPreferences("renttrack_prefs", android.content.Context.MODE_PRIVATE) }
 
@@ -59,6 +66,111 @@ fun SettingsScreen(onBack: () -> Unit) {
             ),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+
+            // ── Sezione Piano abbonamento ─────────────────────────────────
+            item { SettingsSectionHeader(Icons.Filled.Star, "Piano abbonamento") }
+            item {
+                if (isPremium) {
+                    // ── Utente PRO ──
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = Cyan400.copy(alpha = 0.08f),
+                        border = BorderStroke(1.5.dp, Cyan400.copy(alpha = 0.4f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = Cyan400
+                                ) {
+                                    Text(
+                                        " PRO ",
+                                        color = DarkBg,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        fontSize = 13.sp,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                                    )
+                                }
+                                Text("RentTrack Pro attivo", fontWeight = FontWeight.Bold, color = TextPrimary)
+                            }
+                            val proFeatures = listOf(
+                                "✓ Proprietà illimitate",
+                                "✓ Report e export XLSX/CSV",
+                                "✓ Archivio documenti",
+                                "✓ Invia avvisi PDF agli inquilini",
+                                "✓ Statistiche avanzate"
+                            )
+                            proFeatures.forEach { feature ->
+                                Text(feature, style = MaterialTheme.typography.bodySmall, color = Cyan400)
+                            }
+                        }
+                    }
+                } else {
+                    // ── Utente FREE ──
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = DarkCard,
+                        border = BorderStroke(1.dp, TextMuted.copy(alpha = 0.2f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = TextMuted.copy(alpha = 0.15f)
+                                ) {
+                                    Text(
+                                        " FREE ",
+                                        color = TextMuted,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        fontSize = 13.sp,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                                    )
+                                }
+                                Column {
+                                    Text("Piano Gratuito", fontWeight = FontWeight.Bold, color = TextPrimary)
+                                    Text(
+                                        "Proprietà: $unitsCount / 2",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = if (unitsCount >= 2) Color(0xFFFF6B6B) else TextMuted
+                                    )
+                                }
+                            }
+                            val freeFeatures = listOf(
+                                "✓ Fino a 2 proprietà",
+                                "✓ Avvisi di pagamento base",
+                                "✗ Report e export" to false,
+                                "✗ Archivio documenti" to false,
+                                "✗ Invio PDF avvisi" to false
+                            )
+                            listOf(
+                                "✓ Fino a 2 proprietà" to true,
+                                "✓ Avvisi di pagamento base" to true,
+                                "✗ Report e export XLSX/CSV" to false,
+                                "✗ Archivio documenti" to false,
+                                "✗ Invio PDF avvisi agli inquilini" to false
+                            ).forEach { (feature, available) ->
+                                Text(
+                                    feature,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (available) TextSecondary else TextMuted.copy(alpha = 0.5f)
+                                )
+                            }
+                            Button(
+                                onClick = onUpgrade,
+                                colors = ButtonDefaults.buttonColors(containerColor = Cyan400, contentColor = DarkBg),
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(Icons.Filled.Star, null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text("Passa a Pro", fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            }
 
             // ── Sezione Notifiche ─────────────────────────────────────────
             item { SettingsSectionHeader(Icons.Filled.Notifications, "Notifiche e Reminder") }
@@ -105,7 +217,7 @@ fun SettingsScreen(onBack: () -> Unit) {
 
             item {
                 SettingsCard {
-                    SettingsInfoRow(Icons.Filled.PhoneAndroid, "Versione app", "1.0.0 (build 1)")
+                    SettingsInfoRow(Icons.Filled.PhoneAndroid, "Versione app", "1.2.0 (build 3)")
                     HorizontalDivider(color = Color(0xFF2D3748))
                     SettingsInfoRow(Icons.Filled.Cloud, "Backend", "Supabase Cloud")
                     HorizontalDivider(color = Color(0xFF2D3748))

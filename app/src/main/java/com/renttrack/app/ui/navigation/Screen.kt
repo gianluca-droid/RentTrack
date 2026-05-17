@@ -29,6 +29,7 @@ sealed class Screen(
     data object ResetPassword       : Screen("reset_password",      "Nuova Password",   "",                      Icons.Filled.Lock,         Icons.Filled.Lock)
     data object Search              : Screen("search",              "Cerca",            "Ricerca globale",        Icons.Filled.Search,       Icons.Filled.Search)
     data object Settings            : Screen("settings",            "Impostazioni",     "",                       Icons.Filled.Settings,     Icons.Filled.Settings)
+    data object Paywall             : Screen("paywall",             "Pro",              "",                       Icons.Filled.Star,         Icons.Filled.Star)
 
     companion object {
         /** 5 tab nella bottom bar — Pagamenti rimosso, Affitti al suo posto */

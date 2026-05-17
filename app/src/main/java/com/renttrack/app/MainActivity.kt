@@ -609,8 +609,19 @@ fun MainApp(
                 )
             }
             composable(Screen.Settings.route) {
+                val isPremium by subscriptionViewModel.isPremium.collectAsState()
+                val units by rentViewModel.units.collectAsState()
                 SettingsScreen(
-                    onBack = { navController.popBackStack() }
+                    onBack      = { navController.popBackStack() },
+                    isPremium   = isPremium,
+                    unitsCount  = units.size,
+                    onUpgrade   = { navController.navigate(Screen.Paywall.route) }
+                )
+            }
+            composable(Screen.Paywall.route) {
+                PaywallScreen(
+                    subscriptionViewModel = subscriptionViewModel,
+                    onDismiss = { navController.popBackStack() }
                 )
             }
         }
