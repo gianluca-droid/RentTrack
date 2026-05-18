@@ -135,21 +135,14 @@ fun SettingsScreen(
                                 Column {
                                     Text("Piano Gratuito", fontWeight = FontWeight.Bold, color = TextPrimary)
                                     Text(
-                                        "Proprietà: $unitsCount / 2",
+                                        "Proprietà: $unitsCount / 3",
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = if (unitsCount >= 2) Color(0xFFFF6B6B) else TextMuted
+                                        color = if (unitsCount >= 3) Color(0xFFFF6B6B) else TextMuted
                                     )
                                 }
                             }
-                            val freeFeatures = listOf(
-                                "✓ Fino a 2 proprietà",
-                                "✓ Avvisi di pagamento base",
-                                "✗ Report e export" to false,
-                                "✗ Archivio documenti" to false,
-                                "✗ Invio PDF avvisi" to false
-                            )
                             listOf(
-                                "✓ Fino a 2 proprietà" to true,
+                                "✓ Fino a 3 proprietà" to true,
                                 "✓ Avvisi di pagamento base" to true,
                                 "✗ Report e export XLSX/CSV" to false,
                                 "✗ Archivio documenti" to false,
@@ -221,7 +214,7 @@ fun SettingsScreen(
 
             item {
                 SettingsCard {
-                    SettingsInfoRow(Icons.Filled.PhoneAndroid, "Versione app", "1.2.0 (build 3)")
+                    SettingsInfoRow(Icons.Filled.PhoneAndroid, "Versione app", "1.3.2 (build 6)")
                     HorizontalDivider(color = Color(0xFF2D3748))
                     SettingsInfoRow(Icons.Filled.Cloud, "Backend", "Supabase Cloud")
                     HorizontalDivider(color = Color(0xFF2D3748))
