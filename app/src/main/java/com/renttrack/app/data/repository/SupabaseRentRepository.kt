@@ -662,7 +662,8 @@ class SupabaseRentRepository(private val prefs: SharedPreferences) {
                     when {
                         signed.isBlank() -> null
                         signed.startsWith("http") -> signed
-                        else -> "${AppConfig.SUPABASE_URL}$signed"
+                        signed.startsWith("/storage/") -> "${AppConfig.SUPABASE_URL}$signed"
+                        else -> "${AppConfig.SUPABASE_URL}/storage/v1$signed"
                     }
                 }
                 code == 401 && !retried && tryRefreshToken() ->
