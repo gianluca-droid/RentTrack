@@ -37,15 +37,13 @@ import com.renttrack.app.viewmodel.SupabaseRentViewModel
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlinx.coroutines.launch
 
-// ─── Helper: URL pubblico Supabase Storage ────────────────────────────────────
-// I documenti sono salvati su Supabase Storage (non in locale).
-// filePath contiene il path relativo es. "condoId/uuid_nome.pdf"
-private const val SUPABASE_DOCS_URL =
-    "https://zjqrtuposdrimzjoydgh.supabase.co/storage/v1/object/public/documenti/"
-
+// ─── Helper: URL documenti ─────────────────────────────────────────────────────
+// Fallback pubblico — sostituito dal signed URL quando il bucket è privato.
 private fun documentoPublicUrl(filePath: String): String =
-    if (filePath.startsWith("http")) filePath else "$SUPABASE_DOCS_URL$filePath"
+    if (filePath.startsWith("http")) filePath
+    else "${com.renttrack.app.AppConfig.SUPABASE_URL}/storage/v1/object/public/documenti/$filePath"
 
 enum class DocSortOrder(val label: String, val icon: String) {
     DATE_DESC("Più recenti", "🕐"),
@@ -88,6 +86,16 @@ fun DocumentiScreen(viewModel: SupabaseRentViewModel) {
             viewModel.clearBackupStatus()
         }
     }
+
+    // ── Signed URL cache (per bucket privato) ──────────────────────────
+    val signedUrls by viewModel.signedUrls.collectAsState()
+    val scope = rememberCoroutineScope()
+    // Richiede signed URL in background per tutti i documenti visibili
+    LaunchedEffect(documenti) {
+        documenti.forEach { doc -> if (doc.filePath.isNotBlank()) viewModel.requestSignedUrl(doc.filePath) }
+    }
+    // Helper locale: usa signed URL se disponibile, fallback pubblico
+    fun resolvedUrl(doc: SDocumento) = signedUrls[doc.filePath] ?: documentoPublicUrl(doc.filePath)
 
     var selectedCategoria by remember { mutableStateOf<String?>(null) }
     var showAddSheet by remember { mutableStateOf(false) }
@@ -361,20 +369,23 @@ fun DocumentiScreen(viewModel: SupabaseRentViewModel) {
                         items(documentiFiltrati, key = { it.id }) { doc ->
                             DocumentGridCard(
                                 documento = doc,
+                                resolvedImageUrl = resolvedUrl(doc),
                                 onOpen = {
                                     if (doc.fileType == "Foto" || doc.fileType.startsWith("image/")) {
                                         photoViewer = doc
                                     } else {
-                                        val url = documentoPublicUrl(doc.filePath)
-                                        val mimeType = when (doc.fileType) {
-                                            "Word" -> "application/msword"
-                                            "PDF"  -> "application/pdf"
-                                            else   -> doc.fileType.ifBlank { "application/octet-stream" }
+                                        scope.launch {
+                                            val url = viewModel.resolveDocumentoUrl(doc.filePath)
+                                            val mimeType = when (doc.fileType) {
+                                                "Word" -> "application/msword"
+                                                "PDF"  -> "application/pdf"
+                                                else   -> doc.fileType.ifBlank { "application/octet-stream" }
+                                            }
+                                            context.startActivity(Intent(Intent.ACTION_VIEW).apply {
+                                                setDataAndType(Uri.parse(url), mimeType)
+                                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                            })
                                         }
-                                        context.startActivity(Intent(Intent.ACTION_VIEW).apply {
-                                            setDataAndType(Uri.parse(url), mimeType)
-                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                        })
                                     }
                                 },
                                 onEdit = { documentoToEdit = doc },
@@ -389,34 +400,39 @@ fun DocumentiScreen(viewModel: SupabaseRentViewModel) {
                             DocumentCard(
                                 documento = doc,
                                 units = units,
+                                resolvedImageUrl = resolvedUrl(doc),
                                 onOpen = {
                                     if (doc.fileType == "Foto" || doc.fileType.startsWith("image/")) {
                                         photoViewer = doc
                                     } else {
-                                        val url = documentoPublicUrl(doc.filePath)
-                                        val mimeType = when (doc.fileType) {
-                                            "Word" -> "application/msword"
-                                            "PDF"  -> "application/pdf"
-                                            else   -> doc.fileType.ifBlank { "application/octet-stream" }
+                                        scope.launch {
+                                            val url = viewModel.resolveDocumentoUrl(doc.filePath)
+                                            val mimeType = when (doc.fileType) {
+                                                "Word" -> "application/msword"
+                                                "PDF"  -> "application/pdf"
+                                                else   -> doc.fileType.ifBlank { "application/octet-stream" }
+                                            }
+                                            context.startActivity(Intent(Intent.ACTION_VIEW).apply {
+                                                setDataAndType(Uri.parse(url), mimeType)
+                                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                            })
                                         }
-                                        context.startActivity(Intent(Intent.ACTION_VIEW).apply {
-                                            setDataAndType(Uri.parse(url), mimeType)
-                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                        })
                                     }
                                 },
                                 onEdit = { documentoToEdit = doc },
                                 onDelete = { documentoToDelete = doc },
                                 onShare = {
-                                    val url = documentoPublicUrl(doc.filePath)
-                                    context.startActivity(Intent.createChooser(
-                                        Intent(Intent.ACTION_SEND).apply {
-                                            type = "text/plain"
-                                            putExtra(Intent.EXTRA_TEXT, url)
-                                            putExtra(Intent.EXTRA_SUBJECT, doc.titolo)
-                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                        }, "Condividi ${doc.titolo}"
-                                    ))
+                                    scope.launch {
+                                        val url = viewModel.resolveDocumentoUrl(doc.filePath)
+                                        context.startActivity(Intent.createChooser(
+                                            Intent(Intent.ACTION_SEND).apply {
+                                                type = "text/plain"
+                                                putExtra(Intent.EXTRA_TEXT, url)
+                                                putExtra(Intent.EXTRA_SUBJECT, doc.titolo)
+                                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                            }, "Condividi ${doc.titolo}"
+                                        ))
+                                    }
                                 }
                             )
                         }
@@ -454,7 +470,7 @@ fun DocumentiScreen(viewModel: SupabaseRentViewModel) {
                 ) {
                     // Immagine
                     AsyncImage(
-                        model = documentoPublicUrl(doc.filePath),
+                        model = resolvedUrl(doc),
                         contentDescription = doc.titolo,
                         contentScale = ContentScale.Fit,
                         modifier = Modifier.fillMaxSize()
@@ -562,6 +578,7 @@ fun DocumentiScreen(viewModel: SupabaseRentViewModel) {
 fun DocumentCard(
     documento: SDocumento,
     units: List<SCondoUnit> = emptyList(),
+    resolvedImageUrl: String? = null,
     onOpen: () -> Unit,
     onEdit: () -> Unit = {},
     onDelete: () -> Unit,
@@ -610,7 +627,7 @@ fun DocumentCard(
                     Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                         if ((documento.fileType == "Foto" || documento.fileType.startsWith("image/")) && documento.filePath.isNotBlank()) {
                             AsyncImage(
-                                model = documentoPublicUrl(documento.filePath),
+                                model = resolvedImageUrl ?: documentoPublicUrl(documento.filePath),
                                 contentDescription = null,
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier.fillMaxSize()
@@ -708,6 +725,7 @@ fun DocumentCard(
 @Composable
 fun DocumentGridCard(
     documento: SDocumento,
+    resolvedImageUrl: String? = null,
     onOpen: () -> Unit,
     onEdit: () -> Unit = {},
     onDelete: () -> Unit
@@ -735,7 +753,7 @@ fun DocumentGridCard(
             // Background: foto reale o icona
             if (isPhoto) {
                 AsyncImage(
-                    model = documentoPublicUrl(documento.filePath),
+                    model = resolvedImageUrl ?: documentoPublicUrl(documento.filePath),
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()

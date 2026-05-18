@@ -510,6 +510,10 @@ class SupabaseRentViewModel(application: Application) : AndroidViewModel(applica
     val documentCount: StateFlow<Int> = _documenti.map { it.size }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
+    // Cache signed URL per bucket privato: filePath -> signedUrl (scadenza ~1h)
+    private val _signedUrls = MutableStateFlow<Map<String, String>>(emptyMap())
+    val signedUrls: StateFlow<Map<String, String>> = _signedUrls.asStateFlow()
+
     // ── Backup status ─────────────────────────────────────────────────
     private val _backupStatus = MutableStateFlow<String?>(null)
     val backupStatus: StateFlow<String?> = _backupStatus
@@ -574,6 +578,23 @@ class SupabaseRentViewModel(application: Application) : AndroidViewModel(applica
     fun deleteDocumento(doc: SDocumento) = viewModelScope.launch {
         try { repo.deleteDocumento(doc.id); refresh() }
         catch (e: Exception) { _backupStatus.value = "❌ Errore eliminazione: ${e.message}" }
+    }
+
+    /** Richiede in background un signed URL per [filePath] e lo salva in cache. */
+    fun requestSignedUrl(filePath: String) {
+        if (filePath.isBlank() || _signedUrls.value.containsKey(filePath)) return
+        viewModelScope.launch(Dispatchers.IO) {
+            val url = repo.generateSignedUrl(filePath)
+            if (url != null) _signedUrls.update { it + (filePath to url) }
+        }
+    }
+
+    /** Restituisce il signed URL (da cache o generato ora), fallback al public URL. */
+    suspend fun resolveDocumentoUrl(filePath: String): String {
+        _signedUrls.value[filePath]?.let { return it }
+        val url = withContext(Dispatchers.IO) { repo.generateSignedUrl(filePath) }
+        if (url != null) _signedUrls.update { it + (filePath to url) }
+        return url ?: repo.getDocumentoPublicUrl(filePath)
     }
 
     // ── UI state ──────────────────────────────────────────────────────
