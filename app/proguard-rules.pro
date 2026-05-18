@@ -3,6 +3,9 @@
 -keep class com.renttrack.app.data.repository.** { *; }
 -keep class com.renttrack.app.billing.** { *; }
 
+# ─── SLF4J (usato internamente da Ktor/Supabase) ─────────────────────────────
+-dontwarn org.slf4j.**
+
 # ─── Kotlin Serialization ─────────────────────────────────────────────────────
 -keepattributes *Annotation*, InnerClasses
 -dontnote kotlinx.serialization.AnnotationsKt
