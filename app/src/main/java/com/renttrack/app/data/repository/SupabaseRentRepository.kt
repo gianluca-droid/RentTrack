@@ -626,33 +626,56 @@ class SupabaseRentRepository(private val prefs: SharedPreferences) {
         "${AppConfig.SUPABASE_URL}/storage/v1/object/public/documenti/$filePath"
 
     /**
-     * Genera un URL firmato con scadenza [expiresIn] secondi per un file nel bucket
-     * "documenti" privato. Restituisce null in caso di errore o se non autenticato.
+     * Genera un URL firmato per un file nel bucket "documenti" privato.
+     * Retry su 401, logga errori, gestisce URL relativo e assoluto.
      */
     suspend fun generateSignedUrl(filePath: String, expiresIn: Int = 3600): String? =
         withContext(Dispatchers.IO) {
-            try {
-                val tok = requireToken()
-                val conn = java.net.URL(
-                    "${AppConfig.SUPABASE_URL}/storage/v1/object/sign/documenti/$filePath"
-                ).openConnection() as java.net.HttpURLConnection
-                conn.requestMethod = "POST"
-                conn.setRequestProperty("apikey", anonKey)
-                conn.setRequestProperty("Authorization", "Bearer $tok")
-                conn.setRequestProperty("Content-Type", "application/json")
-                conn.connectTimeout = 10_000; conn.readTimeout = 10_000
-                conn.doOutput = true
-                java.io.OutputStreamWriter(conn.outputStream).use { it.write("""{"expiresIn":$expiresIn}""") }
-                try {
-                    val code = conn.responseCode
-                    if (code in 200..299) {
-                        val json = JSONObject(conn.inputStream.bufferedReader().readText())
-                        val signed = json.optString("signedURL")
-                        if (signed.isNotBlank()) "${AppConfig.SUPABASE_URL}$signed" else null
-                    } else null
-                } finally { conn.disconnect() }
-            } catch (_: Exception) { null }
+            try { doGenerateSignedUrl(filePath, expiresIn, retried = false) }
+            catch (e: Exception) {
+                android.util.Log.e("SignedURL", "Exception: ${e.message}")
+                null
+            }
         }
+
+    private fun doGenerateSignedUrl(filePath: String, expiresIn: Int, retried: Boolean): String? {
+        val tok = requireToken()
+        val conn = java.net.URL(
+            "${AppConfig.SUPABASE_URL}/storage/v1/object/sign/documenti/$filePath"
+        ).openConnection() as java.net.HttpURLConnection
+        conn.requestMethod = "POST"
+        conn.setRequestProperty("apikey", anonKey)
+        conn.setRequestProperty("Authorization", "Bearer $tok")
+        conn.setRequestProperty("Content-Type", "application/json")
+        conn.connectTimeout = 10_000; conn.readTimeout = 10_000
+        conn.doOutput = true
+        OutputStreamWriter(conn.outputStream).use { it.write("{\"expiresIn\":$expiresIn}") }
+        return try {
+            val code = conn.responseCode
+            android.util.Log.d("SignedURL", "HTTP $code for $filePath")
+            when {
+                code in 200..299 -> {
+                    val body = conn.inputStream.bufferedReader().readText()
+                    android.util.Log.d("SignedURL", "Body: $body")
+                    val json = JSONObject(body)
+                    val signed = json.optString("signedURL").ifBlank { json.optString("signedUrl") }
+                    when {
+                        signed.isBlank() -> null
+                        signed.startsWith("http") -> signed
+                        else -> "${AppConfig.SUPABASE_URL}$signed"
+                    }
+                }
+                code == 401 && !retried && tryRefreshToken() ->
+                    doGenerateSignedUrl(filePath, expiresIn, retried = true)
+                else -> {
+                    val err = conn.errorStream?.bufferedReader()?.readText()
+                    android.util.Log.e("SignedURL", "Error $code: $err")
+                    null
+                }
+            }
+        } finally { conn.disconnect() }
+    }
+
 
     private fun parseDocumento(o: JSONObject) = SDocumento(
         id                = o.optString("id"),
