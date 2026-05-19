@@ -31,12 +31,20 @@ class RentCheckWorker(
     override suspend fun doWork(): Result {
         return try {
             val prefs = com.renttrack.app.SecurePrefs.get(context)
+            val isDebug = (context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+
+            // Prova a rinnovare il token proattivamente prima di ogni check
+            // (evita che il worker fallisca silenziosamente per token scaduto)
+            val repo = SupabaseRentRepository(prefs)
             val token = prefs.getString("auth_token", null)
 
             // Nessun token → utente non loggato, niente notifiche
-            if (token.isNullOrBlank()) return Result.success()
+            if (token.isNullOrBlank()) {
+                if (isDebug) android.util.Log.d("RentCheckWorker", "Nessun token — utente non loggato")
+                return Result.success()
+            }
 
-            val repo = SupabaseRentRepository(prefs)
+            if (isDebug) android.util.Log.d("RentCheckWorker", "Worker avviato — check cedolini e contratti")
 
             // Leggi configurazione reminder
             val reminderDaysBefore = prefs.getInt(PREF_REMINDER_DAYS, DEFAULT_REMINDER_DAYS)

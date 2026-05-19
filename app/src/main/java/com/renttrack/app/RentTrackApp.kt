@@ -36,12 +36,12 @@ class RentTrackApp : Application() {
 
         val dailyWork = PeriodicWorkRequestBuilder<RentCheckWorker>(1, TimeUnit.DAYS)
             .setConstraints(constraints)
-            .setInitialDelay(1, TimeUnit.HOURS)   // prima esecuzione dopo 1h dall'avvio
+            // Nessun delay: prima esecuzione entro 15 min dall'avvio
             .build()
 
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             "rent_daily_check",
-            ExistingPeriodicWorkPolicy.KEEP,       // non sostituisce se già schedulato
+            ExistingPeriodicWorkPolicy.UPDATE,  // sostituisce se versione precedente era KEEP
             dailyWork
         )
     }
