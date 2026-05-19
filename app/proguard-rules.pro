@@ -1,9 +1,17 @@
-# ─── App Models ──────────────────────────────────────────────────────────────
+# ─── App: solo le classi accedute via reflection ─────────────────────────────
+# I modelli dati (JSON @Serializable): R8 non può tracciarli staticamente
 -keep class com.renttrack.app.data.model.** { *; }
--keep class com.renttrack.app.data.repository.** { *; }
--keep class com.renttrack.app.billing.** { *; }
--keep class com.renttrack.app.ui.** { *; }
+# ViewModels: istanziati via factory (reflection)
 -keep class com.renttrack.app.viewmodel.** { *; }
+# Billing: callback e interfacce Play
+-keep class com.renttrack.app.billing.** { *; }
+# Config e prefs: accesso per nome
+-keep class com.renttrack.app.AppConfig { *; }
+-keep class com.renttrack.app.SecurePrefs { *; }
+-keep class com.renttrack.app.PropertyManager { *; }
+# Widget e Worker: registrati via XML/manifest
+-keep class com.renttrack.app.widget.** { *; }
+-keep class com.renttrack.app.notifications.** { *; }
 
 # ─── SLF4J (usato internamente da Ktor/Supabase) ─────────────────────────────
 -dontwarn org.slf4j.**
@@ -47,12 +55,11 @@
 -keep class androidx.room.** { *; }
 -keep class * extends androidx.room.RoomDatabase { *; }
 
-# ─── App (catch-all: nessuna classe interna viene rimossa) ────────────────────
--keep class com.renttrack.app.** { *; }
--keep class com.gianlucadelfini.renttrack.** { *; }
+# (catch-all rimosso — R8 ottimizza liberamente le classi non in lista)
 
 # ─── WorkManager ──────────────────────────────────────────────────────────────
--keep class androidx.work.** { *; }
+-keep class * extends androidx.work.Worker { *; }
+-keep class * extends androidx.work.ListenableWorker { *; }
 
 # ─── Security / Preferences ───────────────────────────────────────────────────
 -keep class androidx.security.crypto.** { *; }
@@ -61,8 +68,7 @@
 -keep class androidx.credentials.** { *; }
 -keep class com.google.android.gms.auth.api.identity.** { *; }
 
-# ─── Jetpack Compose ──────────────────────────────────────────────────────────
--keep class androidx.compose.** { *; }
+# Compose non necessita -keep: le classi sono referenziate direttamente nel codice
 -dontwarn androidx.compose.**
 
 # ─── Coroutines ───────────────────────────────────────────────────────────────
